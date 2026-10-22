@@ -65,25 +65,74 @@ public static class Program
             csvFormatter,
             TimeSpan.FromSeconds(config.ScanIntervalSeconds));
 
+        System.Runtime.InteropServices.PosixSignalRegistration? posixSigInt = null;
+        System.Runtime.InteropServices.PosixSignalRegistration? posixSigTerm = null;
+
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+        {
+            posixSigInt = System.Runtime.InteropServices.PosixSignalRegistration.Create(
+                System.Runtime.InteropServices.PosixSignal.SIGINT,
+                ctx =>
+                {
+                    ctx.Cancel = true;
+                    _ = cts.CancelAsync();
+                });
+
+            posixSigTerm = System.Runtime.InteropServices.PosixSignalRegistration.Create(
+                System.Runtime.InteropServices.PosixSignal.SIGTERM,
+                ctx =>
+                {
+                    ctx.Cancel = true;
+                    _ = cts.CancelAsync();
+                });
+        }
+
+        using var sigIntScope = posixSigInt;
+        using var sigTermScope = posixSigTerm;
+
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            _ = cts.CancelAsync();
+        };
+
         var auditTask = engine.RunContinuousAuditAsync(cts.Token);
 
-        var cancellationMonitorTask = Task.Run(async () =>
+        if (!Console.IsInputRedirected)
         {
-            while (!Console.KeyAvailable)
+            _ = Task.Run(async () =>
             {
-                await Task.Delay(500, cts.Token).ConfigureAwait(false);
-            }
+                try
+                {
+                    while (!cts.IsCancellationRequested)
+                    {
+                        if (Console.KeyAvailable)
+                        {
+                            var key = Console.ReadKey(intercept: true);
+                            if (key.KeyChar is 'q' or 'Q')
+                            {
+                                await cts.CancelAsync().ConfigureAwait(false);
+                                break;
+                            }
+                        }
 
-            var key = Console.ReadKey(intercept: true);
-            if (key.Key == ConsoleKey.Q)
-            {
-                await cts.CancelAsync().ConfigureAwait(false);
-            }
-        }, cts.Token);
+                        await Task.Delay(250, cts.Token).ConfigureAwait(false);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Environnement non interactif sans terminal
+                }
+                catch (OperationCanceledException)
+                {
+                    // Fin coopérative
+                }
+            }, cts.Token);
+        }
 
         try
         {
-            await Task.WhenAny(auditTask, cancellationMonitorTask).ConfigureAwait(false);
+            await auditTask.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
