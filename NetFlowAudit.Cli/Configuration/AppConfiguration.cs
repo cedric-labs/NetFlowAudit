@@ -44,4 +44,24 @@ public sealed record AppConfiguration
     /// Exclure les processus système (NT AUTHORITY, SYSTEM, root).
     /// </summary>
     public bool ExcludeSystemAccounts { get; init; } = true;
+
+    /// <summary>
+    /// Exclure les flux intra-machine (LocalIp == RemoteIp ou boucle locale).
+    /// </summary>
+    public bool ExcludeLoopbackFlows { get; init; } = true;
+
+    /// <summary>
+    /// Liste des ports locaux à exclure de l'audit.
+    /// </summary>
+    public List<int> ExcludedLocalPorts { get; init; } = [];
+
+    /// <summary>
+    /// Liste des ports distants à exclure de l'audit.
+    /// </summary>
+    public List<int> ExcludedRemotePorts { get; init; } = [];
+
+    /// <summary>
+    /// Active l'interface terminal dynamique (TUI style btop) en mode interactif.
+    /// </summary>
+    public bool EnableDashboard { get; init; } = true;
 }

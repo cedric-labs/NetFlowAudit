@@ -18,7 +18,16 @@
   - Pour les flux sortants, neutralise l'impact des ports clients éphémères afin de ne pas multiplier les lignes identiques pour une même destination.
   - Met à jour le compteur d'observations (`ObservationCount`) et l'horodatage de dernière vue (`LastSeenUtc`).
   - Reprise automatique : recharge le fichier CSV existant au démarrage pour conserver l'historique sans doublon.
-- **Filtrage avancé des processus** : Exclusion configurable par identifiant (PID), nom exact, préfixe, suffixe, sous-chaîne ou comptes système (`SYSTEM`, `root`).
+- **Filtrage avancé des processus & du réseau** : 
+  - Exclusion de processus par identifiant (PID), nom exact, préfixe, suffixe, sous-chaîne ou comptes système (`SYSTEM`, `root`).
+  - Exclusion automatique des flux internes intra-machine (`LocalIp == RemoteIp`, adresses loopback `127.0.0.0/8`, `::1` et IP locales de l'hôte).
+  - Exclusion ciblée de ports locaux (`ExcludedLocalPorts`) ou de ports distants (`ExcludedRemotePorts`).
+- **Tableau de bord interactif style `btop`** :
+  - Interface plein écran ANSI anti-scintillement (double-buffer) affichant l'uptime, l'état global et les statistiques réseau en direct.
+  - Répartition instantanée des protocoles (TCP/UDP) et directions (écoute, entrant, sortant).
+  - Top des processus locaux les plus actifs en nombre de sockets.
+  - Défilement en temps réel des dernières découvertes de flux réseau horodatées.
+  - Désactivation automatique ou manuelle via `--no-tui` / `--daemon` lors d'une exécution en service ou redirection de flux.
 - **Multiplateforme & Autonome** : Fonctionne sous Windows et Linux (x64 / ARM64), diffusable sous forme de binaire autonome (*self-contained single-file*) sans prérequis d'installation du SDK/Runtime .NET.
 
 ---
@@ -79,6 +88,10 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 {
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
+  "EnableDashboard": true,
+  "ExcludeLoopbackFlows": true,
+  "ExcludedLocalPorts": [],
+  "ExcludedRemotePorts": [],
   "ExcludedPids": [0, 4],
   "ExcludedExactNames": [
     "System",
@@ -100,10 +113,16 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | :--- | :--- | :--- | :--- |
 | `ScanIntervalSeconds` | Entier | `5` | Fréquence en secondes entre deux balayages de la table des sockets actives. |
 | `OutputCsvPath` | Chaîne | `"netflow_audit.csv"` | Chemin relatif ou absolu du fichier CSV de sortie. |
+| `EnableDashboard` | Booléen | `true` | Active le tableau de bord interactif dans le terminal en mode interactif. |
+| `ExcludeLoopbackFlows` | Booléen | `true` | Ignore les flux internes lorsque `LocalIp == RemoteIp`, adresses loopback (`127.0.0.0/8`, `::1`) ou interfaces locales de la machine. |
+| `ExcludedLocalPorts` | Tableau d'entiers | `[]` | Liste des ports d'écoute ou locaux à ignorer (ex: `[22, 3389]`). |
+| `ExcludedRemotePorts` | Tableau d'entiers | `[]` | Liste des ports distants cibles à ignorer (ex: `[53, 443]`). |
 | `ExcludedPids` | Tableau d'entiers | `[0, 4]` | Liste des identifiants de processus (PID) à ignorer systématiquement. |
 | `ExcludedExactNames` | Tableau de chaînes | `["System", "Idle"]` | Noms exacts de processus exclus (insensible à la casse). |
 | `ExcludedPrefixes` | Tableau de chaînes | `[]` | Préfixes de noms de processus à exclure. |
 | `ExcludedSuffixes` | Tableau de chaînes | `[]` | Suffixes de noms de processus à exclure. |
+| `ExcludedContains` | Tableau de chaînes | `[]` | Sous-chaînes contenues dans le nom du processus à exclure. |
+| `ExcludeSystemAccounts` | Booléen | `true` | Exclut automatiquement les processus exécutés sous des comptes système (`SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`, `root`). |
 | `ExcludedContains` | Tableau de chaînes | `[]` | Sous-chaînes contenues dans le nom du processus à exclure. |
 | `ExcludeSystemAccounts` | Booléen | `true` | Exclut automatiquement les processus exécutés sous des comptes système (`SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`, `root`). |
 

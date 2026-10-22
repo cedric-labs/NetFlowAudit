@@ -1,9 +1,11 @@
 using System.Text.Json;
 using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
+using NetFlowAudit.Cli.Dashboard;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Engine;
 using NetFlowAudit.Core.Export;
+using NetFlowAudit.Core.Filtering;
 using NetFlowAudit.Core.Providers;
 using ProcessForge.Filtering;
 using ProcessForge.Inspectors;
@@ -21,21 +23,31 @@ public static class Program
     /// </summary>
     public static async Task Main(string[] args)
     {
-        Console.WriteLine("==================================================");
-        Console.WriteLine("  NetFlowAudit - Agent d'audit des flux réseau");
-        Console.WriteLine("==================================================");
-
         var config = LoadConfiguration();
+
+        var disableDashboardArg = args.Any(a => a.Equals("--no-tui", StringComparison.OrdinalIgnoreCase) ||
+                                                a.Equals("--daemon", StringComparison.OrdinalIgnoreCase) ||
+                                                a.Equals("--silent", StringComparison.OrdinalIgnoreCase));
+
+        var useDashboard = config.EnableDashboard && !disableDashboardArg && !Console.IsInputRedirected && !Console.IsOutputRedirected;
 
         using var cts = new CancellationTokenSource();
 
         var hostProvider = new LocalServerHostProvider();
         var host = hostProvider.GetCurrentHostMetadata();
-        Console.WriteLine($"Serveur hôte    : {host.HostName} ({host.OperatingSystemDescription})");
-        Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
-        Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
-        Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
-        Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
+
+        if (!useDashboard)
+        {
+            Console.WriteLine("==================================================");
+            Console.WriteLine("  NetFlowAudit - Agent d'audit des flux réseau");
+            Console.WriteLine("==================================================");
+            Console.WriteLine($"Serveur hôte    : {host.HostName} ({host.OperatingSystemDescription})");
+            Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
+            Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
+            Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
+            Console.WriteLine($"Exclusion loop  : {(config.ExcludeLoopbackFlows ? "Activée" : "Désactivée")}");
+            Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
+        }
 
         var processInspector = new CrossPlatformProcessInspector();
         var socketScanner = SocketScannerFactory.Create(processInspector);
@@ -51,6 +63,16 @@ public static class Program
         };
 
         var exclusionFilter = new ProcessExclusionFilter(filterOptions);
+
+        var flowFilterOptions = new NetworkFlowFilterOptions
+        {
+            ExcludeLoopbackFlows = config.ExcludeLoopbackFlows,
+            ExcludedLocalPorts = new HashSet<int>(config.ExcludedLocalPorts),
+            ExcludedRemotePorts = new HashSet<int>(config.ExcludedRemotePorts)
+        };
+
+        var networkFlowFilter = new NetworkFlowFilter(flowFilterOptions);
+
         var deduplicationRegister = new ConnectionDeduplicationRegister();
         var csvFormatter = new AuditCsvFormatter(new AuditCsvOptions());
 
@@ -59,11 +81,20 @@ public static class Program
         var engine = new FlowAuditEngine(
             socketScanner,
             exclusionFilter,
+            networkFlowFilter,
             deduplicationRegister,
             hostProvider,
             csvWriter,
             csvFormatter,
             TimeSpan.FromSeconds(config.ScanIntervalSeconds));
+
+        FlowAuditDashboardRenderer? dashboard = null;
+        if (useDashboard)
+        {
+            dashboard = new FlowAuditDashboardRenderer(config.ScanIntervalSeconds, config.OutputCsvPath);
+            dashboard.ClearScreen();
+            engine.ScanCycleCompleted += (_, e) => dashboard.Render(e.Result, host);
+        }
 
         System.Runtime.InteropServices.PosixSignalRegistration? posixSigInt = null;
         System.Runtime.InteropServices.PosixSignalRegistration? posixSigTerm = null;
@@ -114,6 +145,11 @@ public static class Program
                                 await cts.CancelAsync().ConfigureAwait(false);
                                 break;
                             }
+
+                            if (key.KeyChar is 'c' or 'C')
+                            {
+                                dashboard?.ClearScreen();
+                            }
                         }
 
                         await Task.Delay(250, cts.Token).ConfigureAwait(false);
@@ -136,7 +172,15 @@ public static class Program
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("Arrêt propre de l'audit de flux.");
+            dashboard?.RestoreCursor();
+            if (!useDashboard)
+            {
+                Console.WriteLine("Arrêt propre de l'audit de flux.");
+            }
+        }
+        finally
+        {
+            dashboard?.RestoreCursor();
         }
     }
 
