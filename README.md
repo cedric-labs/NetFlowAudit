@@ -1,5 +1,9 @@
 # NetFlowAudit - Agent d'Audit Continu des Flux Réseau
 
+<p align="center">
+  <img src="assets/netflowaudit-icon.png" alt="NetFlowAudit Logo" width="200" />
+</p>
+
 **NetFlowAudit** est un agent d'audit réseau multiplateforme (Windows et Linux) conçu pour fonctionner en continu sous la forme d'un service ou d'un daemon d'arrière-plan. Il inspecte l'intégralité du trafic réseau entrant et sortant (TCP et UDP), identifie les processus locaux responsables des communications et journalise ces informations dans un fichier CSV horodaté et dédupliqué.
 
 ---

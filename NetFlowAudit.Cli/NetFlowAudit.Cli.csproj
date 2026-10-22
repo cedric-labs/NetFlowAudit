@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NetFlowAudit.Core\NetFlowAudit.Core.csproj" />
-    
   </ItemGroup>
 
   <PropertyGroup>
@@ -11,12 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <ApplicationIcon>..\assets\netflowaudit.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>
-
-
-
-
-
-
