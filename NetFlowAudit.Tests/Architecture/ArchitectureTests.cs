@@ -8,15 +8,15 @@ namespace NetFlowAudit.Tests.Architecture;
 public sealed class ArchitectureTests
 {
     [Fact]
-    public void Core_ShouldNotDependOn_NetworkOrCli()
+    public void Core_ShouldNotDependOn_Cli()
     {
         // Arrange
-        var coreAssembly = typeof(NetworkConnectionRecord).Assembly;
+        var coreAssembly = typeof(NetworkAuditEntry).Assembly;
 
         // Act
         var result = Types.InAssembly(coreAssembly)
             .ShouldNot()
-            .HaveDependencyOnAny("NetFlowAudit.Network", "NetFlowAudit.Cli")
+            .HaveDependencyOnAny("NetFlowAudit.Cli")
             .GetResult();
 
         // Assert

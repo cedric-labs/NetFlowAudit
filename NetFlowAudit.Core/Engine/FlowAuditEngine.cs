@@ -1,40 +1,45 @@
-using NetFlowAudit.Core.Contracts;
+using FileForge.IO;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Export;
-using NetFlowAudit.Core.Filtering;
+using NetFlowAudit.Core.Models;
+using NetFlowAudit.Core.Providers;
+using ProcessForge.Filtering;
+using SocketForge.Contracts;
 
 namespace NetFlowAudit.Core.Engine;
 
 /// <summary>
-/// Moteur orchestrateur d'audit de flux réseau périodique.
+/// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge et la persistance FileForge.
 /// </summary>
 public sealed class FlowAuditEngine(
-    INetworkSocketScanner socketScanner,
+    ISocketScanner socketScanner,
     ProcessExclusionFilter exclusionFilter,
     ConnectionDeduplicationRegister deduplicationRegister,
-    PersistentCsvAuditWriter csvWriter,
+    LocalServerHostProvider hostProvider,
+    PersistentDelimitedFileWriter csvWriter,
+    AuditCsvFormatter csvFormatter,
     TimeSpan scanInterval)
 {
-    private readonly INetworkSocketScanner _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
+    private readonly ISocketScanner _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
     private readonly ProcessExclusionFilter _exclusionFilter = exclusionFilter ?? throw new ArgumentNullException(nameof(exclusionFilter));
     private readonly ConnectionDeduplicationRegister _deduplicationRegister = deduplicationRegister ?? throw new ArgumentNullException(nameof(deduplicationRegister));
-    private readonly PersistentCsvAuditWriter _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
+    private readonly LocalServerHostProvider _hostProvider = hostProvider ?? throw new ArgumentNullException(nameof(hostProvider));
+    private readonly PersistentDelimitedFileWriter _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
+    private readonly AuditCsvFormatter _csvFormatter = csvFormatter ?? throw new ArgumentNullException(nameof(csvFormatter));
     private readonly TimeSpan _scanInterval = scanInterval;
 
     /// <summary>
-    /// Démarre la boucle continue d'audit de flux réseau.
+    /// Exécute l'audit continu.
     /// </summary>
     public async Task RunContinuousAuditAsync(CancellationToken cancellationToken = default)
     {
         await _csvWriter.InitializeAsync(cancellationToken).ConfigureAwait(false);
 
-        // Hydratation du registre au démarrage pour éviter de réécrire les flux déjà connus
-        var existingSignatures = await _csvWriter.LoadExistingSignaturesAsync(cancellationToken).ConfigureAwait(false);
+        var existingSignatures = await _csvWriter.ReadExistingLinesAsync(cancellationToken).ConfigureAwait(false);
         _deduplicationRegister.Hydrate(existingSignatures);
 
         using var timer = new PeriodicTimer(_scanInterval);
 
-        // Premier cycle immédiat
         await ExecuteScanCycleAsync(cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested && await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
@@ -44,30 +49,35 @@ public sealed class FlowAuditEngine(
     }
 
     /// <summary>
-    /// Exécute un cycle unique d'échantillonnage, de filtrage et de dédoublonnage.
+    /// Exécute un cycle de scan, filtrage et écriture.
     /// </summary>
     public async Task<int> ExecuteScanCycleAsync(CancellationToken cancellationToken = default)
     {
-        var activeConnections = await _socketScanner.ScanActiveConnectionsAsync(cancellationToken).ConfigureAwait(false);
-        var newlyDiscoveredCount = 0;
+        var activeSockets = await _socketScanner.ScanSocketsAsync(cancellationToken).ConfigureAwait(false);
+        var host = _hostProvider.GetCurrentHostMetadata();
+        var now = DateTimeOffset.UtcNow;
+        var newlyDiscovered = 0;
 
-        for (var i = 0; i < activeConnections.Count; i++)
+        for (var i = 0; i < activeSockets.Count; i++)
         {
-            var connection = activeConnections[i];
+            var socket = activeSockets[i];
 
-            if (_exclusionFilter.ShouldExclude(connection.Process))
+            if (_exclusionFilter.ShouldExclude(socket.Process))
             {
                 continue;
             }
 
-            var isNew = _deduplicationRegister.TryRegisterOrUpdate(connection, out var registered);
+            var entry = new NetworkAuditEntry(now, now, 1, host, socket);
+            var isNew = _deduplicationRegister.TryRegisterOrUpdate(entry, out var registered);
+
             if (isNew)
             {
-                await _csvWriter.AppendRecordAsync(registered, cancellationToken).ConfigureAwait(false);
-                newlyDiscoveredCount++;
+                var line = _csvFormatter.FormatEntry(registered);
+                await _csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
+                newlyDiscovered++;
             }
         }
 
-        return newlyDiscoveredCount;
+        return newlyDiscovered;
     }
 }

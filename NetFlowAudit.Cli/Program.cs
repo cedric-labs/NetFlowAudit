@@ -1,12 +1,13 @@
 using System.Text.Json;
+using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Engine;
 using NetFlowAudit.Core.Export;
-using NetFlowAudit.Core.Filtering;
-using NetFlowAudit.Network.Factories;
-using NetFlowAudit.Network.Inspectors;
-using NetFlowAudit.Network.Providers;
+using NetFlowAudit.Core.Providers;
+using ProcessForge.Filtering;
+using ProcessForge.Inspectors;
+using SocketForge.Factories;
 
 namespace NetFlowAudit.Cli;
 
@@ -34,12 +35,12 @@ public static class Program
         Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
         Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
         Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
-        Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' ou Ctrl+C pour stopper)\n");
+        Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
 
         var processInspector = new CrossPlatformProcessInspector();
-        var scanner = NetworkSocketScannerFactory.Create(processInspector, hostProvider);
+        var socketScanner = SocketScannerFactory.Create(processInspector);
 
-        var filterOptions = new ProcessFilterOptions
+        var filterOptions = new ProcessExclusionOptions
         {
             ExcludedProcessIds = config.ExcludedPids,
             ExcludedExactNames = config.ExcludedExactNames,
@@ -53,13 +54,15 @@ public static class Program
         var deduplicationRegister = new ConnectionDeduplicationRegister();
         var csvFormatter = new AuditCsvFormatter(new AuditCsvOptions());
 
-        await using var csvWriter = new PersistentCsvAuditWriter(config.OutputCsvPath, csvFormatter);
+        await using var csvWriter = new PersistentDelimitedFileWriter(config.OutputCsvPath, csvFormatter.BuildHeaderLine());
 
         var engine = new FlowAuditEngine(
-            scanner,
+            socketScanner,
             exclusionFilter,
             deduplicationRegister,
+            hostProvider,
             csvWriter,
+            csvFormatter,
             TimeSpan.FromSeconds(config.ScanIntervalSeconds));
 
         var auditTask = engine.RunContinuousAuditAsync(cts.Token);

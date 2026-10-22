@@ -1,6 +1,5 @@
 <Solution>
   <Project Path="NetFlowAudit.Cli/NetFlowAudit.Cli.csproj" />
   <Project Path="NetFlowAudit.Core/NetFlowAudit.Core.csproj" />
-  <Project Path="NetFlowAudit.Network/NetFlowAudit.Network.csproj" />
   <Project Path="NetFlowAudit.Tests/NetFlowAudit.Tests.csproj" />
 </Solution>

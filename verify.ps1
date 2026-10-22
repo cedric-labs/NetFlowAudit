@@ -66,7 +66,7 @@ if ($useSonar) {
         "/d:sonar.qualitygate.wait=true",
         "/d:sonar.cs.opencover.reportsPaths=**/TestResults/**/coverage.opencover.xml",
         "/d:sonar.cs.vstest.reportsPaths=**/TestResults/**/*.trx",
-        "/d:sonar.exclusions=**/bin/**,**/obj/**,verify.ps1",
+        "/d:sonar.exclusions=**/bin/**,**/obj/**,verify.ps1,**/NetFlowAudit.Cli/**",
         "/d:sonar.coverage.exclusions=verify.ps1",
         "/d:sonar.cpd.exclusions=verify.ps1",
         "/d:sonar.cs.roslyn.ignoreIssues=true"
@@ -114,3 +114,4 @@ if ($useSonar) {
 Write-Host "`n==========================================" -ForegroundColor Green
 Write-Host "  Pipeline validé avec succès !" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
+

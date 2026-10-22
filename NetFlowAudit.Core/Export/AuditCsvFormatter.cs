@@ -1,15 +1,16 @@
 using System.Globalization;
+using FileForge.IO;
 using NetFlowAudit.Core.Models;
 
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Options de configuration du formateur et de l'exportateur CSV.
+/// Options de sélection des colonnes pour l'export CSV NetFlowAudit.
 /// </summary>
 public sealed record AuditCsvOptions
 {
     /// <summary>
-    /// Liste ordonnée des colonnes à inclure dans l'export CSV.
+    /// Colonnes ordonnées à inclure dans le journal CSV.
     /// </summary>
     public IReadOnlyList<AuditCsvColumn> SelectedColumns { get; init; } =
     [
@@ -35,90 +36,72 @@ public sealed record AuditCsvOptions
     ];
 
     /// <summary>
-    /// Séparateur de champ CSV (virgule par défaut).
+    /// Séparateur de champ CSV.
     /// </summary>
-    public string Delimiter { get; init; } = ",";
+    public char Delimiter { get; init; } = ',';
 }
 
 /// <summary>
-/// Formateur de lignes CSV pour les enregistrements d'audit réseau.
+/// Formateur de lignes CSV d'audit s'appuyant sur les règles d'échappement de FileForge.
 /// </summary>
 public sealed class AuditCsvFormatter(AuditCsvOptions options)
 {
     private readonly AuditCsvOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <summary>
-    /// Génère la ligne d'en-tête CSV selon les colonnes sélectionnées.
+    /// Génère la ligne d'en-tête du fichier CSV.
     /// </summary>
     public string BuildHeaderLine()
     {
         var headers = new string[_options.SelectedColumns.Count];
         for (var i = 0; i < _options.SelectedColumns.Count; i++)
         {
-            headers[i] = EscapeField(_options.SelectedColumns[i].ToString());
+            headers[i] = PersistentDelimitedFileWriter.EscapeField(_options.SelectedColumns[i].ToString(), _options.Delimiter);
         }
 
         return string.Join(_options.Delimiter, headers);
     }
 
     /// <summary>
-    /// Formate un enregistrement de flux en une ligne CSV standard conforme RFC 4180.
+    /// Formate une entrée d'audit en ligne CSV.
     /// </summary>
-    public string FormatRecordLine(NetworkConnectionRecord record)
+    public string FormatEntry(NetworkAuditEntry entry)
     {
-        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(entry);
 
         var values = new string[_options.SelectedColumns.Count];
         for (var i = 0; i < _options.SelectedColumns.Count; i++)
         {
-            values[i] = EscapeField(ExtractFieldValue(_options.SelectedColumns[i], record));
+            values[i] = PersistentDelimitedFileWriter.EscapeField(ExtractFieldValue(_options.SelectedColumns[i], entry), _options.Delimiter);
         }
 
         return string.Join(_options.Delimiter, values);
     }
 
-    private static string ExtractFieldValue(AuditCsvColumn column, NetworkConnectionRecord record)
+    private static string ExtractFieldValue(AuditCsvColumn column, NetworkAuditEntry entry)
     {
         return column switch
         {
-            AuditCsvColumn.FirstSeenUtc => record.FirstSeenUtc.ToString("o", CultureInfo.InvariantCulture),
-            AuditCsvColumn.LastSeenUtc => record.LastSeenUtc.ToString("o", CultureInfo.InvariantCulture),
-            AuditCsvColumn.ObservationCount => record.ObservationCount.ToString(CultureInfo.InvariantCulture),
-            AuditCsvColumn.ServerName => record.Server.HostName,
-            AuditCsvColumn.ServerOsVersion => record.Server.OperatingSystemDescription,
-            AuditCsvColumn.ServerPrimaryIp => record.Server.PrimaryIpAddress,
-            AuditCsvColumn.Protocol => record.Protocol.ToString(),
-            AuditCsvColumn.Direction => record.Direction.ToString(),
-            AuditCsvColumn.TcpState => record.TcpState,
-            AuditCsvColumn.LocalIp => record.LocalEndpoint.Address.ToString(),
-            AuditCsvColumn.LocalPort => record.LocalEndpoint.Port.ToString(CultureInfo.InvariantCulture),
-            AuditCsvColumn.RemoteIp => record.RemoteEndpoint.Address.ToString(),
-            AuditCsvColumn.RemotePort => record.RemoteEndpoint.Port.ToString(CultureInfo.InvariantCulture),
-            AuditCsvColumn.ProcessId => record.Process.ProcessId.ToString(CultureInfo.InvariantCulture),
-            AuditCsvColumn.ProcessName => record.Process.ProcessName,
-            AuditCsvColumn.ExecutablePath => record.Process.ExecutablePath,
-            AuditCsvColumn.CommandLine => record.Process.CommandLine,
-            AuditCsvColumn.TargetExecutable => record.Process.TargetExecutable,
-            AuditCsvColumn.UserName => record.Process.UserName,
+            AuditCsvColumn.FirstSeenUtc => entry.FirstSeenUtc.ToString("o", CultureInfo.InvariantCulture),
+            AuditCsvColumn.LastSeenUtc => entry.LastSeenUtc.ToString("o", CultureInfo.InvariantCulture),
+            AuditCsvColumn.ObservationCount => entry.ObservationCount.ToString(CultureInfo.InvariantCulture),
+            AuditCsvColumn.ServerName => entry.Server.HostName,
+            AuditCsvColumn.ServerOsVersion => entry.Server.OperatingSystemDescription,
+            AuditCsvColumn.ServerPrimaryIp => entry.Server.PrimaryIpAddress,
+            AuditCsvColumn.Protocol => entry.Socket.Protocol.ToString(),
+            AuditCsvColumn.Direction => entry.Socket.Direction.ToString(),
+            AuditCsvColumn.TcpState => entry.Socket.State,
+            AuditCsvColumn.LocalIp => entry.Socket.LocalEndpoint.Address.ToString(),
+            AuditCsvColumn.LocalPort => entry.Socket.LocalEndpoint.Port.ToString(CultureInfo.InvariantCulture),
+            AuditCsvColumn.RemoteIp => entry.Socket.RemoteEndpoint.Address.ToString(),
+            AuditCsvColumn.RemotePort => entry.Socket.RemoteEndpoint.Port.ToString(CultureInfo.InvariantCulture),
+            AuditCsvColumn.ProcessId => entry.Socket.Process.ProcessId.ToString(CultureInfo.InvariantCulture),
+            AuditCsvColumn.ProcessName => entry.Socket.Process.ProcessName,
+            AuditCsvColumn.ExecutablePath => entry.Socket.Process.ExecutablePath,
+            AuditCsvColumn.CommandLine => entry.Socket.Process.CommandLine,
+            AuditCsvColumn.TargetExecutable => entry.Socket.Process.TargetExecutable,
+            AuditCsvColumn.UserName => entry.Socket.Process.UserName,
             _ => string.Empty
         };
-    }
-
-    private static string EscapeField(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var mustQuote = value.Contains(',') || value.Contains(';') || value.Contains('"') ||
-                        value.Contains('\n') || value.Contains('\r');
-
-        if (!mustQuote)
-        {
-            return value;
-        }
-
-        return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
     }
 }

@@ -2,6 +2,8 @@ using System.Net;
 using FluentAssertions;
 using NetFlowAudit.Core.Export;
 using NetFlowAudit.Core.Models;
+using ProcessForge.Models;
+using SocketForge.Models;
 using Xunit;
 
 namespace NetFlowAudit.Tests.Export;
@@ -28,7 +30,7 @@ public sealed class AuditCsvFormatterTests
     }
 
     [Fact]
-    public void FormatRecordLine_WhenValuesContainSpecialCharacters_EscapesQuotesAndCommas()
+    public void FormatEntry_WhenValuesContainSpecialCharacters_EscapesQuotesAndCommas()
     {
         // Arrange
         var options = new AuditCsvOptions
@@ -37,20 +39,23 @@ public sealed class AuditCsvFormatterTests
         };
         var formatter = new AuditCsvFormatter(options);
 
-        var record = new NetworkConnectionRecord(
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("10.10.10.2"), 54321),
+            new SocketEndpoint(IPAddress.Parse("172.16.0.1"), 8080),
+            "Established",
+            new ProcessMetadata(9876, "java", @"/usr/bin/java", "java -jar \"app,with,comma.jar\" --port 8080", "app,with,comma.jar", "appuser"));
+
+        var entry = new NetworkAuditEntry(
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             1,
             DummyServer,
-            NetworkTransportProtocol.Tcp,
-            FlowDirection.Outbound,
-            new NetworkEndpoint(IPAddress.Parse("10.10.10.2"), 54321),
-            new NetworkEndpoint(IPAddress.Parse("172.16.0.1"), 8080),
-            "Established",
-            new ProcessMetadata(9876, "java", @"/usr/bin/java", "java -jar \"app,with,comma.jar\" --port 8080", "app,with,comma.jar", "appuser"));
+            socket);
 
         // Act
-        var line = formatter.FormatRecordLine(record);
+        var line = formatter.FormatEntry(entry);
 
         // Assert
         line.Should().Be("java,\"java -jar \"\"app,with,comma.jar\"\" --port 8080\"");

@@ -4,16 +4,15 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Deduplication;
 
 /// <summary>
-/// Registre thread-safe de dédoublonnage des flux et connexions réseau observés.
+/// Registre thread-safe de dédoublonnage des entrées d'audit réseau.
 /// </summary>
 public sealed class ConnectionDeduplicationRegister
 {
-    private readonly ConcurrentDictionary<string, NetworkConnectionRecord> _activeFlows = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, NetworkAuditEntry> _activeFlows = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Initialise le registre avec un ensemble de signatures préexistantes.
+    /// Hydrate le registre avec des clés préexistantes (ex: rechargées depuis un CSV au démarrage).
     /// </summary>
-    /// <param name="existingKeys">Clés de dédoublonnage déjà persistées.</param>
     public void Hydrate(IEnumerable<string> existingKeys)
     {
         ArgumentNullException.ThrowIfNull(existingKeys);
@@ -28,18 +27,15 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Tente d'enregistrer une connexion observée. Retourne true si c'est la toute première fois qu'elle apparaît.
+    /// Tente d'enregistrer une entrée d'audit. Retourne true si c'est la première occurrence observée.
     /// </summary>
-    /// <param name="candidate">Connexion candidate.</param>
-    /// <param name="registered">Connexion résultante enregistrée.</param>
-    /// <returns>True si le flux est nouveau, False s'il s'agit d'un flux déjà connu.</returns>
-    public bool TryRegisterOrUpdate(NetworkConnectionRecord candidate, out NetworkConnectionRecord registered)
+    public bool TryRegisterOrUpdate(NetworkAuditEntry candidate, out NetworkAuditEntry registered)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
-        var key = candidate.ComputeDeduplicationKey();
-
+        var key = candidate.ComputeAuditKey();
         var isNew = false;
+
         registered = _activeFlows.AddOrUpdate(
             key,
             addValueFactory: _ =>
@@ -51,7 +47,6 @@ public sealed class ConnectionDeduplicationRegister
             {
                 if (existing is null)
                 {
-                    // Cas d'une clé hydratée depuis un CSV au démarrage sans objet record complet
                     return candidate;
                 }
 
@@ -59,7 +54,7 @@ public sealed class ConnectionDeduplicationRegister
                 {
                     LastSeenUtc = candidate.LastSeenUtc,
                     ObservationCount = existing.ObservationCount + 1,
-                    TcpState = candidate.TcpState
+                    Socket = existing.Socket with { State = candidate.Socket.State }
                 };
             });
 
@@ -67,7 +62,7 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Nombre total de flux uniques répertoriés dans le registre en mémoire.
+    /// Nombre total de flux uniques répertoriés.
     /// </summary>
     public int UniqueCount => _activeFlows.Count;
 }

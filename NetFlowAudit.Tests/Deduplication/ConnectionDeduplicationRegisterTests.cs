@@ -2,6 +2,8 @@ using System.Net;
 using FluentAssertions;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Models;
+using ProcessForge.Models;
+using SocketForge.Models;
 using Xunit;
 
 namespace NetFlowAudit.Tests.Deduplication;
@@ -15,17 +17,20 @@ public sealed class ConnectionDeduplicationRegisterTests
     {
         // Arrange
         var register = new ConnectionDeduplicationRegister();
-        var record = new NetworkConnectionRecord(
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
+            new SocketEndpoint(IPAddress.Parse("10.0.0.5"), 443),
+            "Established",
+            new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1"));
+
+        var record = new NetworkAuditEntry(
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             1,
             DummyServer,
-            NetworkTransportProtocol.Tcp,
-            FlowDirection.Outbound,
-            new NetworkEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
-            new NetworkEndpoint(IPAddress.Parse("10.0.0.5"), 443),
-            "Established",
-            new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1"));
+            socket);
 
         // Act
         var isNew = register.TryRegisterOrUpdate(record, out var registered);
@@ -41,29 +46,33 @@ public sealed class ConnectionDeduplicationRegisterTests
     {
         // Arrange
         var register = new ConnectionDeduplicationRegister();
-        var record1 = new NetworkConnectionRecord(
-            DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow,
-            1,
-            DummyServer,
-            NetworkTransportProtocol.Tcp,
-            FlowDirection.Outbound,
-            new NetworkEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
-            new NetworkEndpoint(IPAddress.Parse("10.0.0.5"), 443),
-            "Established",
-            new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1"));
+        var proc = new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1");
 
-        var record2 = new NetworkConnectionRecord(
+        var record1 = new NetworkAuditEntry(
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             1,
             DummyServer,
-            NetworkTransportProtocol.Tcp,
-            FlowDirection.Outbound,
-            new NetworkEndpoint(IPAddress.Parse("192.168.1.10"), 50124), // Nouveau port éphémère local
-            new NetworkEndpoint(IPAddress.Parse("10.0.0.5"), 443),
-            "Established",
-            new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1"));
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
+                new SocketEndpoint(IPAddress.Parse("10.0.0.5"), 443),
+                "Established",
+                proc));
+
+        var record2 = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            DummyServer,
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50124),
+                new SocketEndpoint(IPAddress.Parse("10.0.0.5"), 443),
+                "Established",
+                proc));
 
         // Act
         var firstResult = register.TryRegisterOrUpdate(record1, out _);
