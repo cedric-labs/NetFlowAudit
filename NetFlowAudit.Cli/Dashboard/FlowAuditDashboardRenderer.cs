@@ -20,12 +20,16 @@ public sealed partial class FlowAuditDashboardRenderer
     private const string AnsiDarkGray = "\x1b[90m";
     private const string AnsiWhite = "\x1b[97m";
     private const string AnsiHome = "\x1b[H";
+    private const string AnsiClearLine = "\x1b[K";
 
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private readonly List<NetworkAuditEntry> _recentDiscoveries = [];
     private readonly object _syncLock = new();
     private readonly int _scanIntervalSeconds;
     private readonly string _outputCsvPath;
+
+    private int _lastWindowWidth = -1;
+    private int _lastWindowHeight = -1;
 
     /// <summary>
     /// Initialise le moteur de rendu du tableau de bord.
@@ -95,6 +99,8 @@ public sealed partial class FlowAuditDashboardRenderer
 
         lock (_syncLock)
         {
+            CheckAndHandleWindowResize();
+
             if (result.NewlyDiscoveredEntries.Count > 0)
             {
                 foreach (var entry in result.NewlyDiscoveredEntries)
@@ -108,7 +114,7 @@ public sealed partial class FlowAuditDashboardRenderer
                 }
             }
 
-            var frame = BuildDashboardFrame(result, host);
+            var frame = BuildFrame(result, host);
 
             try
             {
@@ -119,6 +125,58 @@ public sealed partial class FlowAuditDashboardRenderer
                 // Erreur d'écriture console (ex: arrêt du terminal)
             }
         }
+    }
+
+    private void CheckAndHandleWindowResize()
+    {
+        if (Console.IsOutputRedirected)
+        {
+            return;
+        }
+
+        try
+        {
+            var width = Console.WindowWidth;
+            var height = Console.WindowHeight;
+
+            if (_lastWindowWidth != -1 && (width != _lastWindowWidth || height != _lastWindowHeight))
+            {
+                ClearScreen();
+            }
+
+            _lastWindowWidth = width;
+            _lastWindowHeight = height;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            // Toléré si le terminal ne supporte pas l'interrogation de taille
+        }
+    }
+
+    private string BuildFrame(FlowAuditCycleResult result, ServerHostMetadata host)
+    {
+        if (!Console.IsOutputRedirected && _lastWindowWidth > 0 && _lastWindowWidth < 102)
+        {
+            return BuildWindowTooSmallFrame(_lastWindowWidth);
+        }
+
+        return BuildDashboardFrame(result, host);
+    }
+
+    internal static string BuildWindowTooSmallFrame(int currentWidth)
+    {
+        var boxWidth = Math.Clamp(currentWidth - 2, 28, 96);
+        var sb = new StringBuilder(512);
+
+        sb.AppendLine($"{AnsiCyan}┌{new string('─', boxWidth)}┐{AnsiReset}{AnsiClearLine}");
+        var msg1 = PadRightVisible($" {AnsiYellow}{AnsiBold}Terminal trop étroit : {currentWidth} cols (min: 102 requises){AnsiReset}", boxWidth);
+        sb.AppendLine($"{AnsiCyan}│{AnsiReset}{msg1}{AnsiCyan}│{AnsiReset}{AnsiClearLine}");
+        var msg2 = PadRightVisible(" Veuillez agrandir la fenêtre du terminal...", boxWidth);
+        sb.AppendLine($"{AnsiCyan}│{AnsiReset}{msg2}{AnsiCyan}│{AnsiReset}{AnsiClearLine}");
+        sb.AppendLine($"{AnsiCyan}└{new string('─', boxWidth)}┘{AnsiReset}{AnsiClearLine}");
+        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter{AnsiClearLine}");
+
+        return sb.ToString();
     }
 
     internal string BuildDashboardFrame(FlowAuditCycleResult result, ServerHostMetadata host)
@@ -171,25 +229,35 @@ public sealed partial class FlowAuditDashboardRenderer
 
         // 1. En-tête principal (Largeur totale : 102 caractères)
         // ┌─ NetFlowAudit v1.0.0 (23) + ─*47 (47) + ┬─ MÉTRIQUES (13) + ─*18 (18) + ┐ (1) = 102
-        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', 47)}┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} {new string('─', 18)}┐{AnsiReset}");
+        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', 47)}┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} {new string('─', 18)}┐{AnsiReset}{AnsiClearLine}");
 
-        // Ligne 1 : Serveur / OS / Uptime | Sockets actives
-        var srvPart = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 15),-15}{AnsiReset} | OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 17),-17}{AnsiReset} | Uptime: {AnsiYellow}{uptimeStr,7}{AnsiReset}";
-        var sockPart = $" Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}";
+        // Lignes du volet d'information avec 3 sous-colonnes parfaitement alignées (22 chars | 23 chars | 18 chars = 69 chars)
+        // Ligne 1 : Serveur | OS | Uptime || Sockets actives
+        var srvCol1 = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 11),-11}{AnsiReset}";
+        var srvCol2 = $"OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 18),-18}{AnsiReset}";
+        var srvCol3 = $"Uptime: {AnsiYellow}{uptimeStr,7}{AnsiReset} ";
+        var srvPart = $"{srvCol1} {AnsiDarkGray}│{AnsiReset} {srvCol2} {AnsiDarkGray}│{AnsiReset} {srvCol3}";
+        var sockPart = $" Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}     ";
         sb.AppendLine(FormatSplitRow(srvPart, 69, sockPart, 30));
 
-        // Ligne 2 : IP Hôte / Scan / Heure | Flux uniques
-        var ipPart = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 15),-15}{AnsiReset} | Scan: {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset}              | Heure : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
-        var flowsPart = $" Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}";
+        // Ligne 2 : IP Hôte | Scan | Heure || Flux uniques
+        var ipCol1 = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 11),-11}{AnsiReset}";
+        var ipCol2 = $"Scan : {AnsiYellow}{_scanIntervalSeconds}s (auto){AnsiReset}      ";
+        var ipCol3 = $"Heure : {AnsiDarkGray}{timestampStr,8}{AnsiReset} ";
+        var ipPart = $"{ipCol1} {AnsiDarkGray}│{AnsiReset} {ipCol2} {AnsiDarkGray}│{AnsiReset} {ipCol3}";
+        var flowsPart = $" Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}     ";
         sb.AppendLine(FormatSplitRow(ipPart, 69, flowsPart, 30));
 
-        // Ligne 3 : Exclusions | Nouveaux flux
-        var exclPart = $" Exclusions : {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} sockets ignorées (ports & loopback)";
-        var newPart = $" Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
-        sb.AppendLine(FormatSplitRow(exclPart, 69, newPart, 30));
+        // Ligne 3 : Statut | Filtre | Ignorés || Nouveaux flux
+        var stCol1 = " Statut  : Actif      ";
+        var stCol2 = "Filtre: Ports/Loopback ";
+        var stCol3 = $"Ignorés:{AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flux";
+        var stPart = $"{stCol1} {AnsiDarkGray}│{AnsiReset} {stCol2} {AnsiDarkGray}│{AnsiReset} {stCol3}";
+        var newPart = $" Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}    ";
+        sb.AppendLine(FormatSplitRow(stPart, 69, newPart, 30));
 
         // 2. Séparateur vers volets médians (Largeur : 1 + 49 + 1 + 19 + 1 + 30 + 1 = 102)
-        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┬{new string('─', 19)}┴{new string('─', 30)}┤{AnsiReset}");
+        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┬{new string('─', 19)}┴{new string('─', 30)}┤{AnsiReset}{AnsiClearLine}");
 
         // 3. Volets médians (Volet trafic 49 chars | Volet processus 50 chars)
         var titleTrafic = $" {AnsiBold}{AnsiWhite}RÉPARTITION DU TRAFIC RÉSEAU{AnsiReset}";
@@ -213,7 +281,7 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine(FormatSplitRow(emptyLine, 49, proc4, 50));
 
         // 4. Séparateur vers tableau des découvertes (1 + 49 + 1 + 50 + 1 = 102)
-        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┴{new string('─', 50)}┤{AnsiReset}");
+        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┴{new string('─', 50)}┤{AnsiReset}{AnsiClearLine}");
 
         // 5. Titre et colonnes du tableau des découvertes (Intérieur : 100 caractères)
         var tableTitle = $" {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}";
@@ -255,22 +323,22 @@ public sealed partial class FlowAuditDashboardRenderer
         }
 
         // 6. Pied de page (1 + 100 + 1 = 102)
-        sb.AppendLine($"{AnsiCyan}└{new string('─', 100)}┘{AnsiReset}");
-        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}");
+        sb.AppendLine($"{AnsiCyan}└{new string('─', 100)}┘{AnsiReset}{AnsiClearLine}");
+        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
 
         return sb.ToString();
     }
 
     private static string FormatRow(string content, int targetWidth)
     {
-        return $"{AnsiCyan}│{AnsiReset}{PadRightVisible(content, targetWidth)}{AnsiCyan}│{AnsiReset}";
+        return $"{AnsiCyan}│{AnsiReset}{PadRightVisible(content, targetWidth)}{AnsiCyan}│{AnsiReset}{AnsiClearLine}";
     }
 
     private static string FormatSplitRow(string col1, int col1Width, string col2, int col2Width)
     {
         var left = PadRightVisible(col1, col1Width);
         var right = PadRightVisible(col2, col2Width);
-        return $"{AnsiCyan}│{AnsiReset}{left}{AnsiCyan}│{AnsiReset}{right}{AnsiCyan}│{AnsiReset}";
+        return $"{AnsiCyan}│{AnsiReset}{left}{AnsiCyan}│{AnsiReset}{right}{AnsiCyan}│{AnsiReset}{AnsiClearLine}";
     }
 
     private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank)

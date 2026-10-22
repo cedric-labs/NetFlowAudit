@@ -25,8 +25,24 @@ public sealed class FlowAuditDashboardRendererTests
         var visibleLen = FlowAuditDashboardRenderer.GetVisibleWidth(ansiText);
 
         // Assert
-        // Visible text is "│ NetFlowAudit │" -> 1 + 1 + 12 + 1 + 1 = 16 characters
         visibleLen.Should().Be(16);
+    }
+
+    [Fact]
+    public void BuildWindowTooSmallFrame_WhenWindowWidthIsNarrow_RendersFittedBoxWithoutWrapping()
+    {
+        // Arrange & Act
+        var frame = FlowAuditDashboardRenderer.BuildWindowTooSmallFrame(70);
+
+        // Assert
+        var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        lines.Should().NotBeEmpty();
+
+        foreach (var line in lines)
+        {
+            var visibleWidth = FlowAuditDashboardRenderer.GetVisibleWidth(line);
+            visibleWidth.Should().BeLessThanOrEqualTo(70);
+        }
     }
 
     [Fact]
@@ -82,7 +98,6 @@ public sealed class FlowAuditDashboardRendererTests
         // Assert
         var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
 
-        // All box lines from top border to bottom border must have visible width of 102
         lines.Length.Should().BeGreaterThan(15);
 
         for (var i = 0; i < lines.Length - 1; i++) // Excluding footer command line
