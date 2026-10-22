@@ -1,0 +1,10 @@
+{
+  "ScanIntervalSeconds": 5,
+  "OutputCsvPath": "netflow_audit.csv",
+  "ExcludedPids": [ 0, 4 ],
+  "ExcludedExactNames": [ "System", "Idle" ],
+  "ExcludedPrefixes": [],
+  "ExcludedSuffixes": [],
+  "ExcludedContains": [],
+  "ExcludeSystemAccounts": false
+}
