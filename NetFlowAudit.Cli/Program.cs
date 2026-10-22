@@ -137,6 +137,8 @@ public static class Program
                 {
                     while (!cts.IsCancellationRequested)
                     {
+                        dashboard?.CheckAndRedrawIfWindowChanged();
+
                         if (Console.KeyAvailable)
                         {
                             var key = Console.ReadKey(intercept: true);
@@ -148,11 +150,11 @@ public static class Program
 
                             if (key.KeyChar is 'c' or 'C')
                             {
-                                dashboard?.ClearScreen();
+                                dashboard?.ForceRedraw();
                             }
                         }
 
-                        await Task.Delay(250, cts.Token).ConfigureAwait(false);
+                        await Task.Delay(100, cts.Token).ConfigureAwait(false);
                     }
                 }
                 catch (InvalidOperationException)

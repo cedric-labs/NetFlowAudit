@@ -21,6 +21,8 @@ public sealed partial class FlowAuditDashboardRenderer
     private const string AnsiWhite = "\x1b[97m";
     private const string AnsiHome = "\x1b[H";
     private const string AnsiClearLine = "\x1b[K";
+    private const string AnsiEnterAltBuffer = "\x1b[?1049h\x1b[H\x1b[2J";
+    private const string AnsiExitAltBuffer = "\x1b[?1049l\x1b[?25h";
 
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private readonly List<NetworkAuditEntry> _recentDiscoveries = [];
@@ -28,8 +30,12 @@ public sealed partial class FlowAuditDashboardRenderer
     private readonly int _scanIntervalSeconds;
     private readonly string _outputCsvPath;
 
+    private FlowAuditCycleResult? _lastResult;
+    private ServerHostMetadata? _lastHost;
     private int _lastWindowWidth = -1;
     private int _lastWindowHeight = -1;
+    private int _lastWindowTop = -1;
+    private int _lastWindowLeft = -1;
 
     /// <summary>
     /// Initialise le moteur de rendu du tableau de bord.
@@ -45,12 +51,14 @@ public sealed partial class FlowAuditDashboardRenderer
         {
             if (!Console.IsOutputRedirected)
             {
+                // Active le Screen Buffer Alternatif ANSI (supprime l'ascenseur/historique) et masque le curseur
+                Console.Write(AnsiEnterAltBuffer);
                 Console.CursorVisible = false;
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            // Environnement sans contrôle de curseur
+            // Environnement sans contrôle de terminal
         }
     }
 
@@ -70,7 +78,7 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Restaure la visibilité du curseur à la fermeture.
+    /// Restaure la visibilité du curseur et le tampon d'écran standard à la fermeture.
     /// </summary>
     public void RestoreCursor()
     {
@@ -78,6 +86,7 @@ public sealed partial class FlowAuditDashboardRenderer
         {
             if (!Console.IsOutputRedirected)
             {
+                Console.Write(AnsiExitAltBuffer);
                 Console.CursorVisible = true;
             }
         }
@@ -88,7 +97,7 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Met à jour et affiche la trame courante du tableau de bord.
+    /// Met à jour les métadonnées et affiche la trame courante du tableau de bord.
     /// </summary>
     /// <param name="result">Synthèse métrique du dernier scan.</param>
     /// <param name="host">Métadonnées de la machine hôte.</param>
@@ -99,7 +108,8 @@ public sealed partial class FlowAuditDashboardRenderer
 
         lock (_syncLock)
         {
-            CheckAndHandleWindowResize();
+            _lastResult = result;
+            _lastHost = host;
 
             if (result.NewlyDiscoveredEntries.Count > 0)
             {
@@ -114,22 +124,16 @@ public sealed partial class FlowAuditDashboardRenderer
                 }
             }
 
-            var frame = BuildFrame(result, host);
-
-            try
-            {
-                Console.Write(AnsiHome + frame);
-            }
-            catch (IOException)
-            {
-                // Erreur d'écriture console (ex: arrêt du terminal)
-            }
+            RenderInternal(forceClear: false);
         }
     }
 
-    private void CheckAndHandleWindowResize()
+    /// <summary>
+    /// Vérifie si la fenêtre a été redimensionnée ou si l'ascenseur a bougé, et redessine immédiatement le tableau de bord.
+    /// </summary>
+    public void CheckAndRedrawIfWindowChanged()
     {
-        if (Console.IsOutputRedirected)
+        if (Console.IsOutputRedirected || _lastResult is null || _lastHost is null)
         {
             return;
         }
@@ -138,29 +142,100 @@ public sealed partial class FlowAuditDashboardRenderer
         {
             var width = Console.WindowWidth;
             var height = Console.WindowHeight;
+            var top = Console.WindowTop;
+            var left = Console.WindowLeft;
 
-            if (_lastWindowWidth != -1 && (width != _lastWindowWidth || height != _lastWindowHeight))
+            var changed = _lastWindowWidth != -1 && (
+                width != _lastWindowWidth ||
+                height != _lastWindowHeight ||
+                top != _lastWindowTop ||
+                left != _lastWindowLeft);
+
+            if (changed)
             {
-                ClearScreen();
-            }
+                lock (_syncLock)
+                {
+                    _lastWindowWidth = width;
+                    _lastWindowHeight = height;
+                    _lastWindowTop = top;
+                    _lastWindowLeft = left;
 
-            _lastWindowWidth = width;
-            _lastWindowHeight = height;
+                    RenderInternal(forceClear: true);
+                }
+            }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            // Toléré si le terminal ne supporte pas l'interrogation de taille
+            // Toléré si le terminal ne supporte pas l'interrogation de géométrie
         }
     }
 
-    private string BuildFrame(FlowAuditCycleResult result, ServerHostMetadata host)
+    /// <summary>
+    /// Force le réaffichage complet du tableau de bord après avoir effacé l'écran.
+    /// </summary>
+    public void ForceRedraw()
     {
-        if (!Console.IsOutputRedirected && _lastWindowWidth > 0 && _lastWindowWidth < 102)
+        lock (_syncLock)
         {
-            return BuildWindowTooSmallFrame(_lastWindowWidth);
+            if (_lastResult is not null && _lastHost is not null)
+            {
+                RenderInternal(forceClear: true);
+            }
+        }
+    }
+
+    private void RenderInternal(bool forceClear)
+    {
+        if (forceClear)
+        {
+            ClearScreen();
         }
 
-        return BuildDashboardFrame(result, host);
+        if (!Console.IsOutputRedirected)
+        {
+            try
+            {
+                _lastWindowWidth = Console.WindowWidth;
+                _lastWindowHeight = Console.WindowHeight;
+                _lastWindowTop = Console.WindowTop;
+                _lastWindowLeft = Console.WindowLeft;
+
+                if (OperatingSystem.IsWindows() && (Console.WindowTop != 0 || Console.WindowLeft != 0))
+                {
+                    Console.SetWindowPosition(0, 0);
+                    _lastWindowTop = 0;
+                    _lastWindowLeft = 0;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or PlatformNotSupportedException or ArgumentOutOfRangeException)
+            {
+                // Toléré selon capacités du terminal
+            }
+        }
+
+        if (_lastResult is null || _lastHost is null)
+        {
+            return;
+        }
+
+        string frame;
+        if (!Console.IsOutputRedirected && _lastWindowWidth > 0 && _lastWindowWidth < 102)
+        {
+            frame = BuildWindowTooSmallFrame(_lastWindowWidth);
+        }
+        else
+        {
+            frame = BuildDashboardFrame(_lastResult, _lastHost);
+        }
+
+        try
+        {
+            Console.Write(AnsiHome + frame);
+        }
+        catch (IOException)
+        {
+            // Erreur console tolérée
+        }
     }
 
     internal static string BuildWindowTooSmallFrame(int currentWidth)
@@ -231,28 +306,28 @@ public sealed partial class FlowAuditDashboardRenderer
         // ┌─ NetFlowAudit v1.0.0 (23) + ─*47 (47) + ┬─ MÉTRIQUES (13) + ─*18 (18) + ┐ (1) = 102
         sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', 47)}┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} {new string('─', 18)}┐{AnsiReset}{AnsiClearLine}");
 
-        // Lignes du volet d'information avec 3 sous-colonnes parfaitement alignées (22 chars | 23 chars | 18 chars = 69 chars)
+        // Lignes du volet d'information : 3 sous-colonnes rigoureusement cadrées (21 + 22 + 20 + séparateurs = 69 chars)
         // Ligne 1 : Serveur | OS | Uptime || Sockets actives
-        var srvCol1 = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 11),-11}{AnsiReset}";
-        var srvCol2 = $"OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 18),-18}{AnsiReset}";
-        var srvCol3 = $"Uptime: {AnsiYellow}{uptimeStr,7}{AnsiReset} ";
-        var srvPart = $"{srvCol1} {AnsiDarkGray}│{AnsiReset} {srvCol2} {AnsiDarkGray}│{AnsiReset} {srvCol3}";
+        var srv1 = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 10),-10}{AnsiReset}";
+        var srv2 = $"OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 17),-17}{AnsiReset}";
+        var srv3 = $"Uptime : {AnsiYellow}{uptimeStr,7}{AnsiReset}";
+        var srvPart = FormatThreeSubColumns(srv1, 21, srv2, 22, srv3, 20);
         var sockPart = $" Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}     ";
         sb.AppendLine(FormatSplitRow(srvPart, 69, sockPart, 30));
 
         // Ligne 2 : IP Hôte | Scan | Heure || Flux uniques
-        var ipCol1 = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 11),-11}{AnsiReset}";
-        var ipCol2 = $"Scan : {AnsiYellow}{_scanIntervalSeconds}s (auto){AnsiReset}      ";
-        var ipCol3 = $"Heure : {AnsiDarkGray}{timestampStr,8}{AnsiReset} ";
-        var ipPart = $"{ipCol1} {AnsiDarkGray}│{AnsiReset} {ipCol2} {AnsiDarkGray}│{AnsiReset} {ipCol3}";
+        var ip1 = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 10),-10}{AnsiReset}";
+        var ip2 = $"Scan : {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset} (auto)";
+        var ip3 = $"Heure  : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
+        var ipPart = FormatThreeSubColumns(ip1, 21, ip2, 22, ip3, 20);
         var flowsPart = $" Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}     ";
         sb.AppendLine(FormatSplitRow(ipPart, 69, flowsPart, 30));
 
         // Ligne 3 : Statut | Filtre | Ignorés || Nouveaux flux
-        var stCol1 = " Statut  : Actif      ";
-        var stCol2 = "Filtre: Ports/Loopback ";
-        var stCol3 = $"Ignorés:{AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flux";
-        var stPart = $"{stCol1} {AnsiDarkGray}│{AnsiReset} {stCol2} {AnsiDarkGray}│{AnsiReset} {stCol3}";
+        var st1 = $" Statut  : {AnsiGreen}Actif{AnsiReset}";
+        var st2 = "Filtre: Ports/Loopback";
+        var st3 = $"Ignorés: {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flux";
+        var stPart = FormatThreeSubColumns(st1, 21, st2, 22, st3, 20);
         var newPart = $" Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}    ";
         sb.AppendLine(FormatSplitRow(stPart, 69, newPart, 30));
 
@@ -329,6 +404,14 @@ public sealed partial class FlowAuditDashboardRenderer
         return sb.ToString();
     }
 
+    private static string FormatThreeSubColumns(string c1, int w1, string c2, int w2, string c3, int w3)
+    {
+        var p1 = PadRightVisible(c1, w1);
+        var p2 = PadRightVisible(c2, w2);
+        var p3 = PadRightVisible(c3, w3);
+        return $"{p1} {AnsiDarkGray}│{AnsiReset} {p2} {AnsiDarkGray}│{AnsiReset} {p3}";
+    }
+
     private static string FormatRow(string content, int targetWidth)
     {
         return $"{AnsiCyan}│{AnsiReset}{PadRightVisible(content, targetWidth)}{AnsiCyan}│{AnsiReset}{AnsiClearLine}";
@@ -373,7 +456,12 @@ public sealed partial class FlowAuditDashboardRenderer
     private static string PadRightVisible(string text, int targetWidth)
     {
         var visibleLen = GetVisibleWidth(text);
-        if (visibleLen >= targetWidth)
+        if (visibleLen > targetWidth)
+        {
+            return Truncate(text, targetWidth);
+        }
+
+        if (visibleLen == targetWidth)
         {
             return text;
         }

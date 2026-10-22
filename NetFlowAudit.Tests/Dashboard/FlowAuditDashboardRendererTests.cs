@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using NetFlowAudit.Cli.Dashboard;
 using NetFlowAudit.Core.Models;
@@ -106,5 +107,55 @@ public sealed class FlowAuditDashboardRendererTests
             var visibleWidth = FlowAuditDashboardRenderer.GetVisibleWidth(line);
             visibleWidth.Should().Be(102, $"Line index {i} ('{line}') must have exact visible width of 102 characters");
         }
+    }
+
+    [Fact]
+    public void BuildDashboardFrame_WhenRendered_EnsuresInternalSeparatorsInHeaderAreStrictlyAligned()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 10,
+            ExcludedSocketsCount: 5,
+            NewlyDiscoveredCount: 2,
+            TotalUniqueFlowsTracked: 8,
+            NewlyDiscoveredEntries: [],
+            ActiveSockets: []);
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+        var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
+        var row1Stripped = StripAnsi(lines[1]);
+        var row2Stripped = StripAnsi(lines[2]);
+        var row3Stripped = StripAnsi(lines[3]);
+
+        var indices1 = FindPipeIndices(row1Stripped);
+        var indices2 = FindPipeIndices(row2Stripped);
+        var indices3 = FindPipeIndices(row3Stripped);
+
+        // Assert
+        indices1.Should().Equal(indices2, "Header row 1 and row 2 must have identical separator indices");
+        indices2.Should().Equal(indices3, "Header row 2 and row 3 must have identical separator indices");
+    }
+
+    private static string StripAnsi(string text)
+    {
+        return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);
+    }
+
+    private static List<int> FindPipeIndices(string text)
+    {
+        var indices = new List<int>();
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '│')
+            {
+                indices.Add(i);
+            }
+        }
+
+        return indices;
     }
 }
