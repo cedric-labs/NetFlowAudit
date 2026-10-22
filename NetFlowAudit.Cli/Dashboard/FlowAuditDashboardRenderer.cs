@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using NetFlowAudit.Core.Models;
 using SocketForge.Models;
 
@@ -8,7 +9,7 @@ namespace NetFlowAudit.Cli.Dashboard;
 /// <summary>
 /// Afficheur de tableau de bord terminal interactif inspiré de btop pour NetFlowAudit.
 /// </summary>
-public sealed class FlowAuditDashboardRenderer
+public sealed partial class FlowAuditDashboardRenderer
 {
     private const string AnsiReset = "\x1b[0m";
     private const string AnsiBold = "\x1b[1m";
@@ -120,7 +121,7 @@ public sealed class FlowAuditDashboardRenderer
         }
     }
 
-    private string BuildDashboardFrame(FlowAuditCycleResult result, ServerHostMetadata host)
+    internal string BuildDashboardFrame(FlowAuditCycleResult result, ServerHostMetadata host)
     {
         var sb = new StringBuilder(4096);
 
@@ -168,24 +169,58 @@ public sealed class FlowAuditDashboardRenderer
             .Take(4)
             .ToList();
 
-        // 1. En-tête principal
-        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} ────────────────────────────────────────────────────────┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} ─────────────┐{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} Serveur : {AnsiWhite}{Truncate(host.HostName, 18),-18}{AnsiReset} | OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 20),-20}{AnsiReset} | Uptime: {AnsiYellow}{uptimeStr,8}{AnsiReset} {AnsiCyan}│{AnsiReset} Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,5}{AnsiReset} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 18),-18}{AnsiReset} | Scan: {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset}              | Heure : {AnsiDarkGray}{timestampStr,8}{AnsiReset} {AnsiCyan}│{AnsiReset} Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,5}{AnsiReset} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} Exclusions : {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} sockets ignorées (ports & loopback)                   {AnsiCyan}│{AnsiReset} Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-4}{AnsiReset} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}├───────────────────────────────────────────────┬───────────────────────────────┴───────────────────────┤{AnsiReset}");
+        // 1. En-tête principal (Largeur totale : 102 caractères)
+        // ┌─ NetFlowAudit v1.0.0 (23) + ─*47 (47) + ┬─ MÉTRIQUES (13) + ─*18 (18) + ┐ (1) = 102
+        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', 47)}┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} {new string('─', 18)}┐{AnsiReset}");
 
-        // 2. Volets médians
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} {AnsiBold}{AnsiWhite}RÉPARTITION DU TRAFIC RÉSEAU{AnsiReset}                  {AnsiCyan}│{AnsiReset} {AnsiBold}{AnsiWhite}TOP PROCESSUS ACTIFS (SOCKETS){AnsiReset}                 {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Écoute: {listeningCount,3}, Sortant: {outboundCount,3})      {AnsiCyan}│{AnsiReset} 1. {FormatTopProcess(topProcesses, 0)} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Écoute: {udpSockets,3})                      {AnsiCyan}│{AnsiReset} 2. {FormatTopProcess(topProcesses, 1)} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} Flux entrants établis : {inboundCount,4}                     {AnsiCyan}│{AnsiReset} 3. {FormatTopProcess(topProcesses, 2)} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset}                                                {AnsiCyan}│{AnsiReset} 4. {FormatTopProcess(topProcesses, 3)} {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}├───────────────────────────────────────────────┴───────────────────────────────────────────────────────┤{AnsiReset}");
+        // Ligne 1 : Serveur / OS / Uptime | Sockets actives
+        var srvPart = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 15),-15}{AnsiReset} | OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, 17),-17}{AnsiReset} | Uptime: {AnsiYellow}{uptimeStr,7}{AnsiReset}";
+        var sockPart = $" Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}";
+        sb.AppendLine(FormatSplitRow(srvPart, 69, sockPart, 30));
 
-        // 3. Tableau des dernières découvertes
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}                                                  {AnsiCyan}│{AnsiReset}");
-        sb.AppendLine($"{AnsiCyan}│{AnsiReset} {AnsiDarkGray}HEURE (UTC)  PROTO DIR    LOCAL                DISTANT              PROCESSUS  CIBLE / CMD{AnsiReset}  {AnsiCyan}│{AnsiReset}");
+        // Ligne 2 : IP Hôte / Scan / Heure | Flux uniques
+        var ipPart = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 15),-15}{AnsiReset} | Scan: {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset}              | Heure : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
+        var flowsPart = $" Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}";
+        sb.AppendLine(FormatSplitRow(ipPart, 69, flowsPart, 30));
+
+        // Ligne 3 : Exclusions | Nouveaux flux
+        var exclPart = $" Exclusions : {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} sockets ignorées (ports & loopback)";
+        var newPart = $" Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
+        sb.AppendLine(FormatSplitRow(exclPart, 69, newPart, 30));
+
+        // 2. Séparateur vers volets médians (Largeur : 1 + 49 + 1 + 19 + 1 + 30 + 1 = 102)
+        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┬{new string('─', 19)}┴{new string('─', 30)}┤{AnsiReset}");
+
+        // 3. Volets médians (Volet trafic 49 chars | Volet processus 50 chars)
+        var titleTrafic = $" {AnsiBold}{AnsiWhite}RÉPARTITION DU TRAFIC RÉSEAU{AnsiReset}";
+        var titleProc = $" {AnsiBold}{AnsiWhite}TOP PROCESSUS ACTIFS (SOCKETS){AnsiReset}";
+        sb.AppendLine(FormatSplitRow(titleTrafic, 49, titleProc, 50));
+
+        var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Écoute: {listeningCount,3}, Sortant: {outboundCount,3})";
+        var proc1 = FormatTopProcess(topProcesses, 0, 1);
+        sb.AppendLine(FormatSplitRow(tcpLine, 49, proc1, 50));
+
+        var udpLine = $" UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Écoute: {udpSockets,3})";
+        var proc2 = FormatTopProcess(topProcesses, 1, 2);
+        sb.AppendLine(FormatSplitRow(udpLine, 49, proc2, 50));
+
+        var inLine = $" Flux entrants établis : {AnsiCyan}{inboundCount,4}{AnsiReset}";
+        var proc3 = FormatTopProcess(topProcesses, 2, 3);
+        sb.AppendLine(FormatSplitRow(inLine, 49, proc3, 50));
+
+        var emptyLine = string.Empty;
+        var proc4 = FormatTopProcess(topProcesses, 3, 4);
+        sb.AppendLine(FormatSplitRow(emptyLine, 49, proc4, 50));
+
+        // 4. Séparateur vers tableau des découvertes (1 + 49 + 1 + 50 + 1 = 102)
+        sb.AppendLine($"{AnsiCyan}├{new string('─', 49)}┴{new string('─', 50)}┤{AnsiReset}");
+
+        // 5. Titre et colonnes du tableau des découvertes (Intérieur : 100 caractères)
+        var tableTitle = $" {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}";
+        sb.AppendLine(FormatRow(tableTitle, 100));
+
+        var tableHeader = $" {AnsiDarkGray}HEURE (UTC)  PROTO DIR  LOCAL                 DISTANT               PROCESSUS   CIBLE / CMD{AnsiReset}";
+        sb.AppendLine(FormatRow(tableHeader, 100));
 
         for (var i = 0; i < 8; i++)
         {
@@ -193,7 +228,7 @@ public sealed class FlowAuditDashboardRenderer
             {
                 var entry = _recentDiscoveries[i];
                 var time = entry.FirstSeenUtc.ToString("HH:mm:ss");
-                var proto = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? "TCP" : "UDP";
+                var proto = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? "TCP " : "UDP ";
                 var dir = entry.Socket.Direction switch
                 {
                     SocketFlowDirection.Listening => "LIST",
@@ -202,41 +237,52 @@ public sealed class FlowAuditDashboardRenderer
                     _ => "UNKN"
                 };
 
-                var local = Truncate($"{entry.Socket.LocalEndpoint.Address}:{entry.Socket.LocalEndpoint.Port}", 20);
-                var remote = Truncate($"{entry.Socket.RemoteEndpoint.Address}:{entry.Socket.RemoteEndpoint.Port}", 20);
-                var proc = Truncate(entry.Socket.Process.ProcessName, 10);
+                var local = Truncate($"{entry.Socket.LocalEndpoint.Address}:{entry.Socket.LocalEndpoint.Port}", 21);
+                var remote = Truncate($"{entry.Socket.RemoteEndpoint.Address}:{entry.Socket.RemoteEndpoint.Port}", 21);
+                var proc = Truncate(entry.Socket.Process.ProcessName, 12);
                 var target = Truncate(!string.IsNullOrWhiteSpace(entry.Socket.Process.TargetExecutable)
                     ? entry.Socket.Process.TargetExecutable
-                    : entry.Socket.Process.CommandLine, 24);
+                    : entry.Socket.Process.CommandLine, 22);
 
                 var color = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? AnsiGreen : AnsiYellow;
-                var line = $"│ {AnsiDarkGray}{time}{AnsiReset}  {color}{proto,-5}{AnsiReset} {dir} {local,-20} {remote,-20} {AnsiMagenta}{proc,-10}{AnsiReset} {AnsiWhite}{target,-24}{AnsiReset} {AnsiCyan}│{AnsiReset}";
-                sb.AppendLine(line);
+                var row = $" {AnsiDarkGray}{time}{AnsiReset}  {color}{proto}{AnsiReset} {dir} {local,-21} {remote,-21} {AnsiMagenta}{proc,-12}{AnsiReset} {AnsiWhite}{target,-22}{AnsiReset}";
+                sb.AppendLine(FormatRow(row, 100));
             }
             else
             {
-                sb.AppendLine($"{AnsiCyan}│{AnsiReset}                                                                                        {AnsiCyan}│{AnsiReset}");
+                sb.AppendLine(FormatRow(string.Empty, 100));
             }
         }
 
-        // 4. Pied de page
-        sb.AppendLine($"{AnsiCyan}└───────────────────────────────────────────────────────────────────────────────────────┘{AnsiReset}");
+        // 6. Pied de page (1 + 100 + 1 = 102)
+        sb.AppendLine($"{AnsiCyan}└{new string('─', 100)}┘{AnsiReset}");
         sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}");
 
         return sb.ToString();
     }
 
-    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index)
+    private static string FormatRow(string content, int targetWidth)
+    {
+        return $"{AnsiCyan}│{AnsiReset}{PadRightVisible(content, targetWidth)}{AnsiCyan}│{AnsiReset}";
+    }
+
+    private static string FormatSplitRow(string col1, int col1Width, string col2, int col2Width)
+    {
+        var left = PadRightVisible(col1, col1Width);
+        var right = PadRightVisible(col2, col2Width);
+        return $"{AnsiCyan}│{AnsiReset}{left}{AnsiCyan}│{AnsiReset}{right}{AnsiCyan}│{AnsiReset}";
+    }
+
+    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank)
     {
         if (index >= list.Count)
         {
-            return "---                                  ";
+            return $" {rank}. ---";
         }
 
         var item = list[index];
-        var name = Truncate(item.Key, 24);
-        var count = item.Value;
-        return $"{name,-24} ({count,3} sockets)";
+        var name = Truncate(item.Key, 28);
+        return $" {rank}. {name,-28} ({item.Value,3} sockets)";
     }
 
     private static string FormatUptime(TimeSpan ts)
@@ -255,4 +301,29 @@ public sealed class FlowAuditDashboardRenderer
 
         return value.Length <= maxLength ? value : value[..(maxLength - 1)] + "…";
     }
+
+    private static string PadRightVisible(string text, int targetWidth)
+    {
+        var visibleLen = GetVisibleWidth(text);
+        if (visibleLen >= targetWidth)
+        {
+            return text;
+        }
+
+        return text + new string(' ', targetWidth - visibleLen);
+    }
+
+    internal static int GetVisibleWidth(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0;
+        }
+
+        var stripped = AnsiEscapeRegex().Replace(text, string.Empty);
+        return stripped.Length;
+    }
+
+    [GeneratedRegex(@"\x1B\[[0-?]*[ -/]*[@-~]")]
+    private static partial Regex AnsiEscapeRegex();
 }

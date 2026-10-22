@@ -38,7 +38,24 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
         var localAddr = connection.LocalEndpoint.Address;
         var remoteAddr = connection.RemoteEndpoint.Address;
 
-        if (remoteAddr.Equals(IPAddress.Any) || remoteAddr.Equals(IPAddress.IPv6Any) || connection.RemoteEndpoint.Port == 0)
+        // Si la socket écoute ou communique exclusivement sur loopback, il s'agit d'un flux interne
+        if (IPAddress.IsLoopback(localAddr))
+        {
+            if (connection.Direction == SocketFlowDirection.Listening ||
+                IPAddress.IsLoopback(remoteAddr) ||
+                remoteAddr.Equals(IPAddress.Any) ||
+                remoteAddr.Equals(IPAddress.IPv6Any) ||
+                connection.RemoteEndpoint.Port == 0)
+            {
+                return true;
+            }
+        }
+
+        // Si la socket écoute sur 0.0.0.0 ou toute autre interface publique, elle n'est pas interne
+        if (connection.Direction == SocketFlowDirection.Listening ||
+            remoteAddr.Equals(IPAddress.Any) ||
+            remoteAddr.Equals(IPAddress.IPv6Any) ||
+            connection.RemoteEndpoint.Port == 0)
         {
             return false;
         }
@@ -48,7 +65,7 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
             return true;
         }
 
-        if (IPAddress.IsLoopback(localAddr) && IPAddress.IsLoopback(remoteAddr))
+        if (IPAddress.IsLoopback(remoteAddr))
         {
             return true;
         }

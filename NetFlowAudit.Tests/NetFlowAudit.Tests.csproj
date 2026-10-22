@@ -24,11 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NetFlowAudit.Core\NetFlowAudit.Core.csproj" />
-    
+    <ProjectReference Include="..\NetFlowAudit.Cli\NetFlowAudit.Cli.csproj" />
   </ItemGroup>
 
 </Project>
-
-
-
-

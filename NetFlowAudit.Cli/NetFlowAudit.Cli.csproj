@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NetFlowAudit.Core\NetFlowAudit.Core.csproj" />
+    <InternalsVisibleTo Include="NetFlowAudit.Tests" />
   </ItemGroup>
 
   <PropertyGroup>

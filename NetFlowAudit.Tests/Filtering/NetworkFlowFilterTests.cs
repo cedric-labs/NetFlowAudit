@@ -150,7 +150,7 @@ public sealed class NetworkFlowFilterTests
     }
 
     [Fact]
-    public void ShouldExclude_WhenSocketIsListening_DoesNotExcludeAsLoopback()
+    public void ShouldExclude_WhenSocketIsListeningOnAnyAddress_DoesNotExcludeAsLoopback()
     {
         // Arrange
         var options = new NetworkFlowFilterOptions { ExcludeLoopbackFlows = true };
@@ -165,6 +165,24 @@ public sealed class NetworkFlowFilterTests
 
         // Act & Assert
         filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldExclude_WhenSocketIsListeningOnLoopbackAddress_ReturnsTrue()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions { ExcludeLoopbackFlows = true };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Listening,
+            new SocketEndpoint(IPAddress.Loopback, 65385),
+            new SocketEndpoint(IPAddress.Any, 0),
+            "Listen",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
     }
 
     [Fact]
