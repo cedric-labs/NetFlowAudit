@@ -180,7 +180,7 @@ public sealed record AppConfiguration
     public List<string> ExcludedRemoteIps { get; init; } = [];
 
     /// <summary>
-    /// Active l'interface terminal dynamique (TUI style btop) en mode interactif.
+    /// Active l'interface terminal dynamique (TUI) en mode interactif.
     /// </summary>
     public bool EnableDashboard { get; init; } = true;
 

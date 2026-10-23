@@ -11,7 +11,7 @@ using SocketForge.Models;
 namespace NetFlowAudit.Cli.Dashboard;
 
 /// <summary>
-/// Interactive terminal dashboard renderer inspired by btop for NetFlowAudit.
+/// Interactive terminal dashboard renderer for NetFlowAudit.
 /// </summary>
 public sealed partial class FlowAuditDashboardRenderer
 {

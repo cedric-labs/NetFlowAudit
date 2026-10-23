@@ -10,7 +10,7 @@
 
 ## Preview
 
-### Interactive `btop`-Style Terminal Dashboard (TUI)
+### Interactive Terminal Dashboard (TUI)
 <p align="center">
   <img src="assets/tui-dashboard-preview.png" alt="NetFlowAudit Interactive Terminal Dashboard" width="100%" />
 </p>
@@ -40,7 +40,7 @@
   - Exclude processes by PID, exact name, prefix, suffix, substring, or system accounts (`SYSTEM`, `root`).
   - Automatic exclusion of loopback/intra-host traffic (`LocalIp == RemoteIp`, `127.0.0.0/8`, `::1`).
   - Interactive live exclusion of Local Ports, Remote IPs/CIDRs, Processes, and Targets directly from the terminal dashboard.
-- **Responsive `btop`-Style Terminal Dashboard (TUI) with Pagination**:
+- **Responsive Terminal Dashboard (TUI) with Pagination**:
   - Full-screen ANSI interface adapting dynamically to terminal width and height.
   - Paginated live flow discovery table with clamped row navigation (`[N/P]` or `[PgDn/PgUp]` for Next/Previous page, `[L]` to load +100 rows, `[A]` to load all).
 - **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
