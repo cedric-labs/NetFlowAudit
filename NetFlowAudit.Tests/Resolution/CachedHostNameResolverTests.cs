@@ -7,11 +7,25 @@ namespace NetFlowAudit.Tests.Resolution;
 
 public sealed class CachedHostNameResolverTests
 {
-    private sealed class FakeOrganizationResolver(Func<IPAddress, string?> resolverFunc) : IIpOrganizationResolver
+    private sealed class FakeOrganizationResolver(
+        Func<IPAddress, string?> resolverFunc,
+        Func<IPAddress, IpOwnerMetadata?>? detailsFunc = null) : IIpOrganizationResolver
     {
         public Task<string?> ResolveOrganizationAsync(IPAddress address, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(resolverFunc(address));
+        }
+
+        public Task<IpOwnerMetadata?> ResolveOwnerDetailsAsync(IPAddress address, CancellationToken cancellationToken = default)
+        {
+            if (detailsFunc is not null)
+            {
+                return Task.FromResult(detailsFunc(address));
+            }
+
+            var org = resolverFunc(address);
+            var metadata = org is not null ? new IpOwnerMetadata(org, "US", "192.0.2.0 - 192.0.2.255", "TEST-NET") : null;
+            return Task.FromResult(metadata);
         }
 
         public void Dispose()
@@ -94,6 +108,14 @@ public sealed class CachedHostNameResolverTests
 
         // Assert
         result.Should().Be("Microsoft Corporation");
+
+        var hasCached = resolver.TryGetCachedEntry(testIp, out var cachedEntry);
+        hasCached.Should().BeTrue();
+        cachedEntry.Should().NotBeNull();
+        cachedEntry!.HostName.Should().Be("Microsoft Corporation");
+        cachedEntry.Organization.Should().Be("Microsoft Corporation");
+        cachedEntry.Country.Should().Be("US");
+        cachedEntry.Source.Should().Be("RDAP");
     }
 
     [Fact]

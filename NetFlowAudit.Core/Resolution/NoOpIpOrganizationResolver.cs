@@ -3,7 +3,7 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Implémentation inactive (sans opération) du résolveur d'organisation IP, utilisée en environnement isolé ou hors-ligne.
+/// Implémentation inactive (No-Op) du résolveur d'organisation IP.
 /// </summary>
 public sealed class NoOpIpOrganizationResolver : IIpOrganizationResolver
 {
@@ -14,8 +14,14 @@ public sealed class NoOpIpOrganizationResolver : IIpOrganizationResolver
     }
 
     /// <inheritdoc />
+    public Task<IpOwnerMetadata?> ResolveOwnerDetailsAsync(IPAddress address, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IpOwnerMetadata?>(null);
+    }
+
+    /// <inheritdoc />
     public void Dispose()
     {
-        // Aucun état ou ressource non gérée à libérer
+        // Aucun état ou ressource à libérer
     }
 }

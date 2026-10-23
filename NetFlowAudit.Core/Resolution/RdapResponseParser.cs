@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Analyseur syntaxique de réponses JSON RDAP (RFC 7483) extrayant l'organisation ou entité propriétaire d'une adresse IP.
+/// Analyseur syntaxique de réponses JSON RDAP (RFC 7483) extrayant l'organisation, le pays et le réseau propriétaire d'une adresse IP.
 /// </summary>
 public static class RdapResponseParser
 {
@@ -16,6 +16,16 @@ public static class RdapResponseParser
     /// <returns>Nom nettoyé de l'organisation ou null si introuvable.</returns>
     public static string? ExtractOrganization(string jsonContent)
     {
+        return ExtractOwnerDetails(jsonContent)?.Organization;
+    }
+
+    /// <summary>
+    /// Extrait les métadonnées complètes du bloc IP (organisation, pays, plage réseau, handle) à partir d'un document RDAP.
+    /// </summary>
+    /// <param name="jsonContent">Contenu JSON brut renvoyé par le service RDAP.</param>
+    /// <returns>Métadonnées extraites ou null si le document est vide ou invalide.</returns>
+    public static IpOwnerMetadata? ExtractOwnerDetails(string jsonContent)
+    {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
             return null;
@@ -26,40 +36,78 @@ public static class RdapResponseParser
             using var doc = JsonDocument.Parse(jsonContent);
             var root = doc.RootElement;
 
-            // 1. Recherche prioritaire dans les entités avec rôle 'registrant'
-            if (root.TryGetProperty("entities", out var entities) && entities.ValueKind == JsonValueKind.Array)
-            {
-                var registrantOrg = FindOrganizationInEntities(entities, targetRole: "registrant");
-                if (!string.IsNullOrWhiteSpace(registrantOrg))
-                {
-                    return SanitizeName(registrantOrg);
-                }
+            var organization = ExtractOrganizationFromRoot(root);
 
-                // 2. Recherche secondaire dans toute autre entité
-                var anyOrg = FindOrganizationInEntities(entities, targetRole: null);
-                if (!string.IsNullOrWhiteSpace(anyOrg))
+            string? country = null;
+            if (root.TryGetProperty("country", out var countryProp) && countryProp.ValueKind == JsonValueKind.String)
+            {
+                country = countryProp.GetString();
+            }
+
+            string? networkRange = null;
+            if (root.TryGetProperty("startAddress", out var startProp) &&
+                root.TryGetProperty("endAddress", out var endProp) &&
+                startProp.ValueKind == JsonValueKind.String &&
+                endProp.ValueKind == JsonValueKind.String)
+            {
+                var start = startProp.GetString();
+                var end = endProp.GetString();
+                if (!string.IsNullOrWhiteSpace(start) && !string.IsNullOrWhiteSpace(end))
                 {
-                    return SanitizeName(anyOrg);
+                    networkRange = $"{start} - {end}";
                 }
             }
 
-            // 3. Repli sur le champ racine 'name' (ex: "MSFT", "FR-PROXAD")
-            if (root.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+            string? handle = null;
+            if (root.TryGetProperty("handle", out var handleProp) && handleProp.ValueKind == JsonValueKind.String)
             {
-                var nameVal = nameProp.GetString();
-                if (!string.IsNullOrWhiteSpace(nameVal))
-                {
-                    return SanitizeName(nameVal);
-                }
+                handle = handleProp.GetString();
             }
 
-            return null;
+            if (organization is null && country is null && networkRange is null && handle is null)
+            {
+                return null;
+            }
+
+            return new IpOwnerMetadata(organization, country, networkRange, handle);
         }
         catch (JsonException)
         {
             // Toléré en cas de JSON tronqué ou malformé provenant du réseau
             return null;
         }
+    }
+
+    private static string? ExtractOrganizationFromRoot(JsonElement root)
+    {
+        // 1. Recherche prioritaire dans les entités avec rôle 'registrant'
+        if (root.TryGetProperty("entities", out var entities) && entities.ValueKind == JsonValueKind.Array)
+        {
+            var registrantOrg = FindOrganizationInEntities(entities, targetRole: "registrant");
+            if (!string.IsNullOrWhiteSpace(registrantOrg))
+            {
+                return SanitizeName(registrantOrg);
+            }
+
+            // 2. Recherche secondaire dans toute autre entité
+            var anyOrg = FindOrganizationInEntities(entities, targetRole: null);
+            if (!string.IsNullOrWhiteSpace(anyOrg))
+            {
+                return SanitizeName(anyOrg);
+            }
+        }
+
+        // 3. Repli sur le champ racine 'name' (ex: "MSFT", "FR-PROXAD")
+        if (root.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+        {
+            var nameVal = nameProp.GetString();
+            if (!string.IsNullOrWhiteSpace(nameVal))
+            {
+                return SanitizeName(nameVal);
+            }
+        }
+
+        return null;
     }
 
     private static string? FindOrganizationInEntities(JsonElement entities, string? targetRole)

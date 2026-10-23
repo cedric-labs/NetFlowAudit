@@ -80,6 +80,13 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
     /// <inheritdoc />
     public async Task<string?> ResolveOrganizationAsync(IPAddress address, CancellationToken cancellationToken = default)
     {
+        var details = await ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
+        return details?.Organization;
+    }
+
+    /// <inheritdoc />
+    public async Task<IpOwnerMetadata?> ResolveOwnerDetailsAsync(IPAddress address, CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(address);
 
         // 1. Filtrage immédiat des adresses privées, locales ou réservées (0ms, aucun trafic réseau)
@@ -115,11 +122,11 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
             }
 
             var content = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
-            var org = RdapResponseParser.ExtractOrganization(content);
+            var details = RdapResponseParser.ExtractOwnerDetails(content);
 
             // Requête réussie : remise à zéro du compteur de défaillances
             Interlocked.Exchange(ref _consecutiveFailures, 0);
-            return org;
+            return details;
         }
         catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
         {

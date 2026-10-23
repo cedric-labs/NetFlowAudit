@@ -18,7 +18,7 @@ public sealed class CachedHostNameResolver(
     private readonly DnsAddressExclusionEvaluator _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
     private readonly PersistentDnsCacheStore? _cacheStore = cacheStore;
     private readonly IIpOrganizationResolver? _organizationResolver = organizationResolver;
-    private readonly ConcurrentDictionary<IPAddress, string> _cache = LoadCache(cacheStore);
+    private readonly ConcurrentDictionary<IPAddress, DnsCacheEntry> _cache = LoadCache(cacheStore);
     private readonly ConcurrentDictionary<IPAddress, byte> _queuedAddresses = new();
     private readonly Channel<IPAddress> _channel = Channel.CreateUnbounded<IPAddress>();
     private readonly CancellationTokenSource _cts = new();
@@ -37,9 +37,9 @@ public sealed class CachedHostNameResolver(
     {
     }
 
-    private static ConcurrentDictionary<IPAddress, string> LoadCache(PersistentDnsCacheStore? cacheStore)
+    private static ConcurrentDictionary<IPAddress, DnsCacheEntry> LoadCache(PersistentDnsCacheStore? cacheStore)
     {
-        var cache = new ConcurrentDictionary<IPAddress, string>();
+        var cache = new ConcurrentDictionary<IPAddress, DnsCacheEntry>();
         if (cacheStore is not null)
         {
             var loaded = cacheStore.Load();
@@ -74,11 +74,38 @@ public sealed class CachedHostNameResolver(
 
         if (_cache.TryGetValue(address, out var cached))
         {
-            hostName = cached;
+            hostName = cached.HostName;
             return true;
         }
 
         hostName = string.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Tente de récupérer l'entrée enrichie complète en cache pour l'adresse spécifiée.
+    /// </summary>
+    /// <param name="address">Adresse IP interrogée.</param>
+    /// <param name="entry">Entrée de cache enrichie ou null si absente.</param>
+    /// <returns>Vrai si l'entrée est en cache, sinon faux.</returns>
+    public bool TryGetCachedEntry(IPAddress address, out DnsCacheEntry? entry)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+
+        if (IsFastTrackAddress(address, out var fastHost))
+        {
+            var source = IPAddress.IsLoopback(address) ? "Local" : "Excluded";
+            entry = new DnsCacheEntry { HostName = fastHost, Source = source };
+            return true;
+        }
+
+        if (_cache.TryGetValue(address, out var cached))
+        {
+            entry = cached;
+            return true;
+        }
+
+        entry = null;
         return false;
     }
 
@@ -97,10 +124,14 @@ public sealed class CachedHostNameResolver(
             return;
         }
 
+        EnsureWorkerStarted();
+
         if (_queuedAddresses.TryAdd(address, 0))
         {
-            EnsureWorkerStarted();
-            _channel.Writer.TryWrite(address);
+            if (!_channel.Writer.TryWrite(address))
+            {
+                _queuedAddresses.TryRemove(address, out _);
+            }
         }
     }
 
@@ -109,17 +140,30 @@ public sealed class CachedHostNameResolver(
     {
         ArgumentNullException.ThrowIfNull(address);
 
-        if (IsFastTrackAddress(address, out var fastHost))
+        if (IsFastTrackAddress(address, out var fastHostName))
         {
-            return fastHost;
+            return fastHostName;
         }
 
-        if (_cache.TryGetValue(address, out var cached))
+        if (_cache.TryGetValue(address, out var cachedHostName))
         {
-            return cached;
+            return cachedHostName.HostName;
         }
 
-        return await ResolveAndCacheAsync(address, cancellationToken).ConfigureAwait(false);
+        await _concurrencySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cache.TryGetValue(address, out var doubleCheck))
+            {
+                return doubleCheck.HostName;
+            }
+
+            return await ResolveAndCacheAsync(address, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _concurrencySemaphore.Release();
+        }
     }
 
     private bool IsFastTrackAddress(IPAddress address, out string hostName)
@@ -139,7 +183,12 @@ public sealed class CachedHostNameResolver(
         if (_exclusionEvaluator.ShouldExclude(address))
         {
             hostName = string.Empty;
-            _cache.TryAdd(address, string.Empty);
+            _cache.TryAdd(address, new DnsCacheEntry
+            {
+                HostName = string.Empty,
+                Source = "Excluded",
+                ResolvedAtUtc = DateTimeOffset.UtcNow
+            });
             return true;
         }
 
@@ -149,7 +198,7 @@ public sealed class CachedHostNameResolver(
 
     private async Task<string> ResolveAndCacheAsync(IPAddress address, CancellationToken cancellationToken)
     {
-        var hostName = string.Empty;
+        string? dnsHostName = null;
 
         // 1. Tentative de résolution DNS inverse (PTR)
         try
@@ -160,7 +209,7 @@ public sealed class CachedHostNameResolver(
             var entry = await Dns.GetHostEntryAsync(address.ToString(), dnsTimeoutCts.Token).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(entry.HostName))
             {
-                hostName = entry.HostName;
+                dnsHostName = entry.HostName;
             }
         }
         catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
@@ -169,16 +218,14 @@ public sealed class CachedHostNameResolver(
             // ou le serveur DNS est inaccessible/hors-ligne.
         }
 
+        IpOwnerMetadata? ownerDetails = null;
+
         // 2. Repli : si aucun nom DNS n'a été trouvé et qu'un résolveur d'organisation est disponible
-        if (string.IsNullOrWhiteSpace(hostName) && _organizationResolver is not null)
+        if (string.IsNullOrWhiteSpace(dnsHostName) && _organizationResolver is not null)
         {
             try
             {
-                var org = await _organizationResolver.ResolveOrganizationAsync(address, cancellationToken).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(org))
-                {
-                    hostName = org;
-                }
+                ownerDetails = await _organizationResolver.ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
             {
@@ -186,7 +233,36 @@ public sealed class CachedHostNameResolver(
             }
         }
 
-        _cache[address] = hostName;
+        string hostName;
+        string source;
+
+        if (!string.IsNullOrWhiteSpace(dnsHostName))
+        {
+            hostName = dnsHostName;
+            source = "DNS";
+        }
+        else if (!string.IsNullOrWhiteSpace(ownerDetails?.Organization))
+        {
+            hostName = ownerDetails.Organization;
+            source = "RDAP";
+        }
+        else
+        {
+            hostName = string.Empty;
+            source = "None";
+        }
+
+        var cacheEntry = new DnsCacheEntry
+        {
+            HostName = hostName,
+            Organization = ownerDetails?.Organization,
+            Country = ownerDetails?.Country,
+            NetworkRange = ownerDetails?.NetworkRange,
+            Source = source,
+            ResolvedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        _cache[address] = cacheEntry;
         ScheduleCacheSave();
         return hostName;
     }
@@ -251,7 +327,7 @@ public sealed class CachedHostNameResolver(
                 await Task.Delay(500).ConfigureAwait(false);
                 Interlocked.Exchange(ref _pendingSaves, 0);
 
-                var snapshot = new Dictionary<string, string>(_cache.Count, StringComparer.OrdinalIgnoreCase);
+                var snapshot = new Dictionary<string, DnsCacheEntry>(_cache.Count, StringComparer.OrdinalIgnoreCase);
                 foreach (var kvp in _cache)
                 {
                     snapshot[kvp.Key.ToString()] = kvp.Value;
@@ -272,7 +348,7 @@ public sealed class CachedHostNameResolver(
 
         if (_cacheStore is not null)
         {
-            var snapshot = new Dictionary<string, string>(_cache.Count, StringComparer.OrdinalIgnoreCase);
+            var snapshot = new Dictionary<string, DnsCacheEntry>(_cache.Count, StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in _cache)
             {
                 snapshot[kvp.Key.ToString()] = kvp.Value;
@@ -305,7 +381,7 @@ public sealed class CachedHostNameResolver(
 
         if (_cacheStore is not null)
         {
-            var snapshot = new Dictionary<string, string>(_cache.Count, StringComparer.OrdinalIgnoreCase);
+            var snapshot = new Dictionary<string, DnsCacheEntry>(_cache.Count, StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in _cache)
             {
                 snapshot[kvp.Key.ToString()] = kvp.Value;

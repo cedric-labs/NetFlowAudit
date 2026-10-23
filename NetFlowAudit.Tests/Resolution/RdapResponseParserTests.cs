@@ -34,6 +34,37 @@ public sealed class RdapResponseParserTests
     }
 
     [Fact]
+    public void ExtractOwnerDetails_WhenJsonHasFullDetails_ReturnsCompleteMetadata()
+    {
+        // Arrange
+        var json = """
+        {
+          "name": "MSFT",
+          "handle": "NET-52-112-0-0-1",
+          "startAddress": "52.112.0.0",
+          "endAddress": "52.127.255.255",
+          "country": "US",
+          "entities": [
+            {
+              "roles": [ "registrant" ],
+              "vcardArray": [ "vcard", [ [ "fn", {}, "text", "Microsoft Corporation" ] ] ]
+            }
+          ]
+        }
+        """;
+
+        // Act
+        var details = RdapResponseParser.ExtractOwnerDetails(json);
+
+        // Assert
+        details.Should().NotBeNull();
+        details!.Organization.Should().Be("Microsoft Corporation");
+        details.Country.Should().Be("US");
+        details.NetworkRange.Should().Be("52.112.0.0 - 52.127.255.255");
+        details.Handle.Should().Be("NET-52-112-0-0-1");
+    }
+
+    [Fact]
     public void ExtractOrganization_WhenJsonHasOnlyNameProperty_ReturnsName()
     {
         // Arrange
@@ -115,7 +146,9 @@ public sealed class RdapResponseParserTests
     public void ExtractOrganization_WhenJsonIsNullOrEmptyOrInvalid_ReturnsNull(string? invalidJson)
     {
         // Act
-        var result = RdapResponseParser.ExtractOrganization(invalidJson!);
+        var result = invalidJson is not null
+            ? RdapResponseParser.ExtractOrganization(invalidJson)
+            : RdapResponseParser.ExtractOrganization(string.Empty);
 
         // Assert
         result.Should().BeNull();
