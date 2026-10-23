@@ -107,7 +107,7 @@ public sealed partial class FlowAuditDashboardRenderer
     public FlowAuditDashboardRenderer(
         int scanIntervalSeconds,
         string outputCsvPath,
-        INetworkFlowFilter? networkFlowFilter = null,
+        INetworkFlowFilter? networkFlowFilter,
         ProcessExclusionFilter? processExclusionFilter = null,
         IReadOnlySet<IPAddress>? localHostAddresses = null)
     {

@@ -21,7 +21,7 @@ namespace NetFlowAudit.Cli;
 public static class Program
 {
     /// <summary>
-    /// Fonction principale démarrant le scanneur de flux.
+    /// Fonction principale démarrant le scanneur de flux ou le générateur de cartographie.
     /// </summary>
     public static async Task Main(string[] args)
     {
@@ -34,6 +34,7 @@ public static class Program
         {
             // Environnement sans contrôle de terminal
         }
+
         if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "help"))
         {
             ConsoleHelpPrinter.PrintHelp();
@@ -49,8 +50,31 @@ public static class Program
                 configPath = baseConfig;
             }
         }
+
         var config = LoadConfiguration(configPath);
         config = ApplyCommandLineOverrides(config, args);
+        config = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(config, args);
+
+        var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
+        var topologyMapper = new AuditTopologyMapper();
+
+        if (args.Any(a => a.Equals("--map-only", StringComparison.OrdinalIgnoreCase)))
+        {
+            var targetHtml = string.IsNullOrWhiteSpace(config.OutputHtmlMapPath)
+                ? "netflow_topology.html"
+                : config.OutputHtmlMapPath;
+            var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+            var graph = await topologyMapper.GenerateHtmlMapFromCsvAsync(
+                config.OutputCsvPath,
+                targetHtml,
+                mapFilters,
+                delimiter,
+                "Cartographie des Serveurs & Flux Réseau",
+                CancellationToken.None).ConfigureAwait(false);
+
+            Console.WriteLine($"Cartographie générée : {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} serveurs, {graph.Edges.Count} flux)");
+            return;
+        }
 
         IReadOnlyList<AuditCsvColumn> selectedColumns;
         try
@@ -84,6 +108,11 @@ public static class Program
             Console.WriteLine($"Serveur hôte    : {host.HostName} ({host.OperatingSystemDescription})");
             Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
             Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
+            if (!string.IsNullOrWhiteSpace(config.OutputHtmlMapPath))
+            {
+                Console.WriteLine($"Carte HTML      : {config.OutputHtmlMapPath}");
+            }
+
             Console.WriteLine($"Colonnes CSV    : {selectedColumns.Count} colonnes actives");
             Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? $"Activé (cache: {config.DnsCacheFilePath})" : "Désactivé")}");
             Console.WriteLine($"Propriétaires IP: {(config.ResolveIpOwners && !config.IsolatedMode ? "Activé (RDAP avec disjoncteur)" : (config.IsolatedMode ? "Désactivé (Mode isolé)" : "Désactivé"))}");
@@ -93,6 +122,7 @@ public static class Program
             {
                 Console.WriteLine($"IPs exclues     : {string.Join(", ", config.ExcludedRemoteIps)}");
             }
+
             Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
         }
 
@@ -123,7 +153,6 @@ public static class Program
 
         var deduplicationRegister = new ConnectionDeduplicationRegister();
 
-        var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
         var csvOptions = new AuditCsvOptions
         {
             SelectedColumns = selectedColumns,
@@ -169,6 +198,21 @@ public static class Program
             dashboard.ClearScreen();
             engine.ScanCycleCompleted += (_, e) => dashboard.Render(e.Result, host);
             hostNameResolver.HostNameResolved += (_, e) => dashboard.UpdateRemoteHostName(e.Address, e.HostName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(config.OutputHtmlMapPath))
+        {
+            engine.ScanCycleCompleted += (_, _) =>
+            {
+                var currentEntries = deduplicationRegister.GetAllEntries();
+                var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+                _ = topologyMapper.GenerateHtmlMapFromEntriesAsync(
+                    currentEntries,
+                    config.OutputHtmlMapPath,
+                    mapFilters,
+                    $"Cartographie Réseau - {host.HostName}",
+                    cts.Token);
+            };
         }
 
         System.Runtime.InteropServices.PosixSignalRegistration? posixSigInt = null;
@@ -227,6 +271,19 @@ public static class Program
                             {
                                 dashboard?.ForceRedraw();
                             }
+                            else if (key.KeyChar is 'm' or 'M')
+                            {
+                                var targetHtml = string.IsNullOrWhiteSpace(config.OutputHtmlMapPath)
+                                    ? "netflow_topology.html"
+                                    : config.OutputHtmlMapPath;
+                                var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+                                await topologyMapper.GenerateHtmlMapFromEntriesAsync(
+                                    deduplicationRegister.GetAllEntries(),
+                                    targetHtml,
+                                    mapFilters,
+                                    $"Cartographie Réseau - {host.HostName}",
+                                    cts.Token).ConfigureAwait(false);
+                            }
                             else if (dashboard is not null)
                             {
                                 switch (key.Key)
@@ -260,6 +317,7 @@ public static class Program
                                         {
                                             dashboard.ApplyExclusionAtSelection(exclusionConfigurator);
                                         }
+
                                         break;
                                 }
                             }

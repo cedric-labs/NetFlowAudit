@@ -59,6 +59,18 @@ Options :
   --columns <col1,col2,...>           Liste personnalisée ordonnée des colonnes CSV à exporter.
   --resolve-dns <true|false>          Active ou désactive la résolution DNS inverse des IP distantes.
   --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
+  --map <chemin.html>                 Génère une carte topologique HTML5 autonome hors-ligne (TopologyForge).
+  --map-only                          Génère immédiatement la carte HTML à partir du CSV (--output) et quitte.
+  --include-ports <p1,p2-p3,...>      Inclut uniquement ces ports ou plages de service (ex: 80,443,1433,8000-8080).
+  --exclude-ports <p1,p2-p3,...>      Exclut ces ports ou plages de service de la carte (ex: 53,123,135-139).
+  --include-hosts <m1,m2,...>         Inclut uniquement les serveurs correspondant aux motifs (ex: SRV-*,*SQL*).
+  --exclude-hosts <m1,m2,...>         Exclut les serveurs correspondant aux motifs (ex: *.local,SRV-MON-*).
+  --include-ips <ip1,cidr2,...>       Inclut uniquement ces adresses IP ou sous-réseaux CIDR (ex: 10.0.0.0/8).
+  --exclude-ips <ip1,cidr2,...>       Exclut ces adresses IP ou sous-réseaux CIDR (ex: 169.254.0.0/16).
+  --include-processes <proc1,...>     Inclut uniquement ces processus ou cibles applicatives.
+  --exclude-processes <proc1,...>     Exclut ces processus ou cibles applicatives.
+  --listeners-only                    Cartographie uniquement les ports en écoute passive.
+  --include-ephemeral-ports           Désactive l'exclusion par défaut des ports éphémères (49152-65535).
 ```
 
 ### 2.2. Exécution sous Windows

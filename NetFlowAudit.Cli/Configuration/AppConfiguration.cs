@@ -16,6 +16,61 @@ public sealed record AppConfiguration
     public string OutputCsvPath { get; init; } = "netflow_audit.csv";
 
     /// <summary>
+    /// Chemin du fichier HTML de cartographie topologique (vide si désactivé par défaut).
+    /// </summary>
+    public string OutputHtmlMapPath { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Exclut les ports éphémères (49152-65535) lors de la génération de la cartographie HTML.
+    /// </summary>
+    public bool MapExcludeEphemeralPorts { get; init; } = true;
+
+    /// <summary>
+    /// Limite la cartographie uniquement aux ports en écoute passive.
+    /// </summary>
+    public bool MapListenersOnly { get; init; } = false;
+
+    /// <summary>
+    /// Liste des ports ou plages de ports (ex: "80", "443", "8000-8080") à inclure dans la carte.
+    /// </summary>
+    public List<string> MapIncludedPorts { get; init; } = [];
+
+    /// <summary>
+    /// Liste des ports ou plages de ports à exclure de la carte.
+    /// </summary>
+    public List<string> MapExcludedPorts { get; init; } = [];
+
+    /// <summary>
+    /// Liste des motifs de noms d'hôtes à inclure dans la carte (supporte '*').
+    /// </summary>
+    public List<string> MapIncludedHosts { get; init; } = [];
+
+    /// <summary>
+    /// Liste des motifs de noms d'hôtes à exclure de la carte (supporte '*').
+    /// </summary>
+    public List<string> MapExcludedHosts { get; init; } = [];
+
+    /// <summary>
+    /// Liste des adresses IP ou sous-réseaux CIDR à inclure dans la carte.
+    /// </summary>
+    public List<string> MapIncludedIps { get; init; } = [];
+
+    /// <summary>
+    /// Liste des adresses IP ou sous-réseaux CIDR à exclure de la carte.
+    /// </summary>
+    public List<string> MapExcludedIps { get; init; } = [];
+
+    /// <summary>
+    /// Liste des processus ou cibles applicatives à inclure dans la carte.
+    /// </summary>
+    public List<string> MapIncludedProcesses { get; init; } = [];
+
+    /// <summary>
+    /// Liste des processus ou cibles applicatives à exclure de la carte.
+    /// </summary>
+    public List<string> MapExcludedProcesses { get; init; } = [];
+
+    /// <summary>
     /// Colonnes ordonnées à exporter dans le fichier CSV.
     /// Si la liste est vide, l'ensemble des 20 colonnes par défaut est exporté.
     /// </summary>

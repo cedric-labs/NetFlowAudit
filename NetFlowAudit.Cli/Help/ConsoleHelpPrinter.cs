@@ -37,9 +37,24 @@ OPTIONS DE LIGNE DE COMMANDE :
   --isolated, --offline               Mode serveur isolé d'Internet : désactive les résolutions réseau sortantes.
   --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
 
+OPTIONS DE CARTOGRAPHIE TOPOLOGIQUE (TopologyForge - HTML Autonome Hors-Ligne) :
+  --map <chemin.html>                 Fichier HTML autonome de la carte des serveurs et ports non éphémères.
+  --map-only                          Génère immédiatement la carte HTML à partir du CSV (--output) et quitte.
+  --include-ports <p1,p2-p3,...>      Inclut uniquement ces ports ou plages de service (ex: 80,443,1433,8000-8080).
+  --exclude-ports <p1,p2-p3,...>      Exclut ces ports ou plages de service de la carte (ex: 53,123,135-139).
+  --include-hosts <m1,m2,...>         Inclut uniquement les serveurs correspondant aux motifs (ex: SRV-*,*SQL*).
+  --exclude-hosts <m1,m2,...>         Exclut les serveurs correspondant aux motifs (ex: *.local,SRV-MON-*).
+  --include-ips <ip1,cidr2,...>       Inclut uniquement ces adresses IP ou sous-réseaux CIDR (ex: 10.0.0.0/8).
+  --exclude-ips <ip1,cidr2,...>       Exclut ces adresses IP ou sous-réseaux CIDR (ex: 169.254.0.0/16).
+  --include-processes <proc1,...>     Inclut uniquement ces processus ou cibles applicatives.
+  --exclude-processes <proc1,...>     Exclut ces processus ou cibles applicatives.
+  --listeners-only                    Cartographie uniquement les ports en écoute passive.
+  --include-ephemeral-ports           Désactive l'exclusion par défaut des ports éphémères (49152-65535).
+
 TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   [Q]                        Arrêt propre et synchronisation du fichier CSV.
   [C]                        Effacement de l'écran et réaffichage forcé du tableau de bord.
+  [M]                        Génère instantanément la carte topologique HTML (netflow_topology.html).
 
 ========================================================================================
   CATALOGUE DES COLONNES CSV DISPONIBLES (--columns ou "CsvColumns" dans netflowaudit.json)
@@ -69,6 +84,17 @@ TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
 {
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
+  "OutputHtmlMapPath": "netflow_topology.html",
+  "MapExcludeEphemeralPorts": true,
+  "MapListenersOnly": false,
+  "MapIncludedPorts": [],
+  "MapExcludedPorts": [ "53", "123" ],
+  "MapIncludedHosts": [],
+  "MapExcludedHosts": [],
+  "MapIncludedIps": [],
+  "MapExcludedIps": [],
+  "MapIncludedProcesses": [],
+  "MapExcludedProcesses": [],
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,

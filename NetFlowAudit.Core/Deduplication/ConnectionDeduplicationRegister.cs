@@ -98,6 +98,24 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
+    /// Retourne un instantané de l'ensemble des entrées d'audit actives enregistrées en mémoire.
+    /// </summary>
+    /// <returns>Liste en lecture seule des entrées d'audit.</returns>
+    public IReadOnlyList<NetworkAuditEntry> GetAllEntries()
+    {
+        var list = new List<NetworkAuditEntry>(_activeFlows.Count);
+        foreach (var (_, entry) in _activeFlows)
+        {
+            if (entry is not null)
+            {
+                list.Add(entry);
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>
     /// Nombre total de flux uniques répertoriés.
     /// </summary>
     public int UniqueCount => _activeFlows.Count;

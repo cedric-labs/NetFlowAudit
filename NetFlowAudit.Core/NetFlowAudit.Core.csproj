@@ -4,6 +4,7 @@
     <ProjectReference Include="..\..\Framework\FileForge\FileForge.Core\FileForge.Core.csproj" />
     <ProjectReference Include="..\..\Framework\ProcessForge\ProcessForge\ProcessForge.csproj" />
     <ProjectReference Include="..\..\Framework\SocketForge\SocketForge\SocketForge.csproj" />
+    <ProjectReference Include="..\..\Framework\TopologyForge\TopologyForge\TopologyForge.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -13,8 +14,3 @@
   </PropertyGroup>
 
 </Project>
-
-
-
-
-

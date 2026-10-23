@@ -58,7 +58,7 @@ public sealed class CachedHostNameResolver(
     {
         if (Interlocked.CompareExchange(ref _workerStarted, 1, 0) == 0)
         {
-            _backgroundWorker = Task.Run(() => ProcessQueueAsync(_cts.Token));
+            _backgroundWorker = Task.Run(() => ProcessQueueAsync(_cts.Token), _cts.Token);
         }
     }
 
@@ -324,7 +324,7 @@ public sealed class CachedHostNameResolver(
         {
             _ = Task.Run(async () =>
             {
-                await Task.Delay(500).ConfigureAwait(false);
+                await Task.Delay(500, CancellationToken.None).ConfigureAwait(false);
                 Interlocked.Exchange(ref _pendingSaves, 0);
 
                 var snapshot = new Dictionary<string, DnsCacheEntry>(_cache.Count, StringComparer.OrdinalIgnoreCase);
@@ -333,8 +333,8 @@ public sealed class CachedHostNameResolver(
                     snapshot[kvp.Key.ToString()] = kvp.Value;
                 }
 
-                await _cacheStore.SaveAsync(snapshot).ConfigureAwait(false);
-            });
+                await _cacheStore.SaveAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
+            }, CancellationToken.None);
         }
     }
 
@@ -387,7 +387,7 @@ public sealed class CachedHostNameResolver(
                 snapshot[kvp.Key.ToString()] = kvp.Value;
             }
 
-            await _cacheStore.SaveAsync(snapshot).ConfigureAwait(false);
+            await _cacheStore.SaveAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
         }
     }
 }
