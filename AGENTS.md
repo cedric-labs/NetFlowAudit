@@ -102,7 +102,7 @@ Ce document consacre les standards de qualité logicielle, les protocoles d'outi
 - **Zéro bruit sur le code interne** : Ne pas polluer les méthodes privées, locales ou évidentes avec des commentaires XML mécaniques. Réserver la documentation XML aux points d'entrée et abstractions du système.
 
 ### Règle 13 : Couverture E2E & Tests IHM obligatoires avec Playwright (Projets Web)
-- **Périmètre d'application** : Dès lors qu'un projet est de nature Web (Blazor, ASP.NET Core MVC / Razor Pages, ou UI Web servie par .NET), l'installation automatique de **Playwright** et la mise en place d'une suite de tests E2E dédiée sont obligatoires.
+- **Périmètre d'application** : Dès lors qu'un projet est de nature Web (Blazor, ASP.NET Core MVC / Razor Pages, ou UI Web servie par .NET), l'installation automatique de **Playwright** et la mise en place d'une suite de tests E2E dédiée adossée à la skill `e2e-testing` sont obligatoires.
 - **Exhaustivité du périmètre IHM couvert** :
   - **Affichage & Rendu structurel** : Vérification de la présence, de la visibilité et du bon agencement des conteneurs, tableaux, formulaires, barres de navigation et éléments visuels.
   - **Interactivité complète** : Déclenchement et validation du bon fonctionnement de 100 % des boutons, liens de navigation, champs de saisie, cases à cocher, menus déroulants et fenêtres modales.
@@ -114,7 +114,7 @@ Ce document consacre les standards de qualité logicielle, les protocoles d'outi
 - **Exécution automatisée** : Les tests Playwright doivent pouvoir s'exécuter de façon autonome en mode headless (sans interface graphique visible) lors du pipeline `./verify.ps1`.
 
 ### Règle 14 : Réutilisation systématique & Capitalisation dans les Frameworks partagés
-- **Réflexe préalable d'inspection** : Avant d'implémenter un composant technique, un utilitaire, une opération d'I/O, du hachage, un algorithme ou du rendu terminal non spécifique au métier, inspecter le catalogue central des frameworks partagés (`D:\Dev\Framework\FRAMEWORKS_INDEX.md`).
+- **Réflexe préalable d'inspection** : Avant d'implémenter un composant technique, un utilitaire, une opération d'I/O, du hachage, un algorithme ou du rendu terminal non spécifique au métier, inspecter le catalogue central des frameworks partagés (`D:\Dev\Framework\FRAMEWORKS_INDEX.md`) en s'appuyant sur la skill `dotnet-framework-reuse`.
 - **Interdiction formelle de duplication** : Ne jamais réécrire localement une brique déjà présente dans un framework partagé. Référencer le projet concerné (`<ProjectReference>`).
 - **Évolution rétrocompatible & Surcharges** : Si une fonctionnalité d'un framework doit être enrichie ou adaptée :
   1. Faire évoluer le composant directement dans le framework hôte via des surcharges de méthodes ou des paramètres optionnels.
@@ -123,6 +123,14 @@ Ce document consacre les standards de qualité logicielle, les protocoles d'outi
 - **Mise à jour documentaire & Validation obligatoire** :
   1. Mettre à jour immédiatement le fichier `FRAMEWORK.md` du framework concerné dès qu'une capacité est ajoutée ou modifiée.
   2. Exécuter `./verify.ps1` à la racine du framework et s'assurer que la Quality Gate SonarQube est **PASSED** avant d'intégrer le composant dans l'application cliente.
+
+### Règle 15 : Développement piloté par les tests (TDD Systématique)
+- **Cycle Red-Green-Refactor obligatoire** : Tout développement d'une nouvelle capacité métier, d'un endpoint d'API ou d'une correction d'anomalie doit obligatoirement débuter par l'écriture du test unitaire rouge défaillant avant le code d'implémentation, en s'appuyant sur la skill `tdd-workflow`.
+- **Structure AAA & Assertions expressives** : Structurer chaque test selon le triptyque *Arrange-Act-Assert* et employer la syntaxe lisible de `FluentAssertions` conformément à la skill `csharp-testing`. Ne jamais introduire de logique applicative sans preuve préalable de l'échec du test.
+
+### Règle 16 : Boucle de vérification & Clôture rigoureuse
+- **Discipline pré-commit** : Avant de valider un commit, de clore une tâche ou de soumettre une modification, exécuter la séquence complète de la skill `verification-loop` : compilation stricte sans warnings, conformité du formatage (`dotnet format --verify-no-changes`), couverture de tests, audit du diff et détection des failles.
+- **Condition d'acceptation unique** : L'étape ne peut être considérée comme terminée qu'après validation sans réserve du pipeline `./verify.ps1` et l'obtention du statut Quality Gate SonarQube **PASSED**.
 
 ---
 
@@ -150,3 +158,21 @@ Le projet s'appuie sur une suite automatisée de contrôles stricts déclarés a
    - [4/6] Compilation Release sans incrémentation avec avertissements traités en erreurs (`-warnaserror`).
    - [5/6] Exécution de 100 % des tests unitaires, d'architecture et E2E Playwright (mode headless) avec couverture OpenCover.
    - [6/6] Téléversement SonarQube et attente du Quality Gate (`PASSED`).
+
+---
+
+## 4. Matrice d'Activation des Compétences IA (*Skills*) & Sous-Agents
+
+Pour garantir une exécution prévisible, économique et conforme aux règles d'ingénierie, tout agent IA doit mobiliser les compétences spécialisées déployées dans `~/.gemini/config/skills/` et déléguer aux sous-agents dédiés de `~/.gemini/config/agents/` selon la matrice suivante :
+
+| Phase & Domaine d'Intervention | Compétences Obligatoires (*Skills*) | Sous-Agents Délégués | Objectif Opérationnel & Règle Associée |
+| :--- | :--- | :--- | :--- |
+| **Conception C# & .NET** | `dotnet-patterns` | `code-architect` | Respect de l'immutabilité (`record`, `init`), constructeurs primaires C# 12, types Nullable stricts, injection DI et typage fort (Règles 5, 8, 9, 11). |
+| **IHM Web & Blazor** | `blazor-aspnet-patterns`, `design-system` | — | Découpage composants conteneurs/présentationnels, render modes .NET 8 explicites, désabonnement (`IAsyncDisposable`), variables CSS OKLCH (Règles 13). |
+| **Implémentation & TDD** | `tdd-workflow`, `csharp-testing` | `tdd-guide` | Cycle rouge-vert-refactor, zéro code produit sans test unitaire préalable, structure AAA et FluentAssertions (Règles 7, 15). |
+| **Interface Web & E2E** | `e2e-testing` (Playwright) | `e2e-runner` | Couverture 100 % des boutons/liens, architecture Page Object Model (POM), assertions d'exactitude sur les valeurs calculées (Règle 13). |
+| **Capitalisation Frameworks** | `dotnet-framework-reuse` | — | Inspection de `FRAMEWORKS_INDEX.md`, enrichissement rétrocompatible sans réinventer la roue, validation continue (Règle 14). |
+| **Sécurité Applicative** | `security-review` | `security-reviewer` | Détection OWASP, prévention des injections SQL/commandes, contrôle strict des entrées, zéro secret en clair. |
+| **Revue de Code & Nettoyage** | `verification-loop` | `csharp-reviewer`, `refactor-cleaner` | Traque des exceptions muettes, asynchronisme sans blocage, élimination de la dette technique sans modifier le comportement (Règles 1, 2, 4, 10). |
+| **Documentation & Décisions** | `documentation-writer`, `api-design`, `architecture-decision-records` | — | Rédaction Diátaxis, contrats Minimal APIs / OpenAPI, traçabilité des choix dans `docs/adr/` (Règle 12). |
+| **Gestion du Contexte & Tokens**| `strategic-compact` | — | Compaction raisonnée du contexte IA aux jalons clés (fin d'exploration, avant implémentation) pour maîtriser les coûts financiers. |
