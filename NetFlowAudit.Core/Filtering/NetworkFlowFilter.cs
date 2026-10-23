@@ -4,40 +4,80 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Moteur de filtrage des flux réseau selon les ports configurés, les adresses IP distantes et les adresses intra-machine.
+/// Moteur de filtrage des flux réseau selon les ports configurés, les adresses IP distantes et les adresses intra-machine avec mises à jour dynamiques thread-safe.
 /// </summary>
 public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetworkFlowFilter
 {
     private readonly NetworkFlowFilterOptions _options = options ?? throw new ArgumentNullException(nameof(options));
-    private readonly IpAddressRangeMatcher _remoteIpMatcher = new(options?.ExcludedRemoteIps);
+    private readonly HashSet<int> _excludedLocalPorts = options?.ExcludedLocalPorts is not null ? new(options.ExcludedLocalPorts) : [];
+    private readonly HashSet<int> _excludedRemotePorts = options?.ExcludedRemotePorts is not null ? new(options.ExcludedRemotePorts) : [];
+    private readonly List<string> _currentRemoteIps = options?.ExcludedRemoteIps is not null ? new(options.ExcludedRemoteIps) : [];
+    private readonly object _syncLock = new();
+    private IpAddressRangeMatcher _remoteIpMatcher = new(options?.ExcludedRemoteIps);
+
+    /// <inheritdoc />
+    public void ExcludeLocalPort(int port)
+    {
+        lock (_syncLock)
+        {
+            _excludedLocalPorts.Add(port);
+        }
+    }
+
+    /// <inheritdoc />
+    public void ExcludeRemotePort(int port)
+    {
+        lock (_syncLock)
+        {
+            _excludedRemotePorts.Add(port);
+        }
+    }
+
+    /// <inheritdoc />
+    public void ExcludeRemoteIp(string ipOrCidr)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ipOrCidr);
+        lock (_syncLock)
+        {
+            var trimmed = ipOrCidr.Trim();
+            if (!_currentRemoteIps.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+            {
+                _currentRemoteIps.Add(trimmed);
+                _remoteIpMatcher = new IpAddressRangeMatcher(_currentRemoteIps);
+            }
+        }
+    }
 
     /// <inheritdoc />
     public bool ShouldExclude(ActiveSocketConnection connection, IReadOnlySet<IPAddress> localHostAddresses)
     {
         ArgumentNullException.ThrowIfNull(connection);
 
-        if (_options.ExcludedLocalPorts.Contains(connection.LocalEndpoint.Port))
+        lock (_syncLock)
         {
-            return true;
-        }
+            if (_excludedLocalPorts.Contains(connection.LocalEndpoint.Port))
+            {
+                return true;
+            }
 
-        if (connection.RemoteEndpoint.Port > 0 && _options.ExcludedRemotePorts.Contains(connection.RemoteEndpoint.Port))
-        {
-            return true;
-        }
+            if (connection.RemoteEndpoint.Port > 0 && _excludedRemotePorts.Contains(connection.RemoteEndpoint.Port))
+            {
+                return true;
+            }
 
-        if (_options.ExcludeLoopbackFlows && IsInternalFlow(connection, localHostAddresses))
-        {
-            return true;
-        }
+            if (_options.ExcludeLoopbackFlows && IsInternalFlow(connection, localHostAddresses))
+            {
+                return true;
+            }
 
-        if (_remoteIpMatcher.HasRules &&
-            connection.Direction != SocketFlowDirection.Listening &&
-            !connection.RemoteEndpoint.Address.Equals(IPAddress.Any) &&
-            !connection.RemoteEndpoint.Address.Equals(IPAddress.IPv6Any) &&
-            _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
-        {
-            return true;
+            if (_remoteIpMatcher.HasRules &&
+                connection.Direction != SocketFlowDirection.Listening &&
+                !connection.RemoteEndpoint.Address.Equals(IPAddress.Any) &&
+                !connection.RemoteEndpoint.Address.Equals(IPAddress.IPv6Any) &&
+                _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
+            {
+                return true;
+            }
         }
 
         return false;

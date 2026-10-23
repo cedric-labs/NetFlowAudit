@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Core.Models;
 using SocketForge.Models;
 
@@ -19,6 +20,8 @@ public sealed partial class FlowAuditDashboardRenderer
     private const string AnsiMagenta = "\x1b[35m";
     private const string AnsiDarkGray = "\x1b[90m";
     private const string AnsiWhite = "\x1b[97m";
+    private const string AnsiReverseVideo = "\x1b[7m";
+    private const string AnsiNormalVideo = "\x1b[27m";
     private const string AnsiHome = "\x1b[H";
     private const string AnsiClearLine = "\x1b[K";
     private const string AnsiEnterAltBuffer = "\x1b[?1049h\x1b[H\x1b[2J";
@@ -41,6 +44,54 @@ public sealed partial class FlowAuditDashboardRenderer
     private int _lastWindowHeight = -1;
     private int _lastWindowTop = -1;
     private int _lastWindowLeft = -1;
+
+    private bool _isSelectionActive;
+    private int _selectedRowIndex;
+    private InteractiveExclusionColumn _selectedColumn = InteractiveExclusionColumn.Local;
+    private string? _statusBannerMessage;
+    private DateTime _statusBannerExpiresUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Indique si le mode de sélection interactive est actuellement actif.
+    /// </summary>
+    public bool IsSelectionActive
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _isSelectionActive;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Index de la ligne actuellement sélectionnée dans la liste des découvertes.
+    /// </summary>
+    public int SelectedRowIndex
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _selectedRowIndex;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Colonne interactive actuellement sélectionnée.
+    /// </summary>
+    public InteractiveExclusionColumn SelectedColumn
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _selectedColumn;
+            }
+        }
+    }
 
     /// <summary>
     /// Initialise le moteur de rendu du tableau de bord.
@@ -102,6 +153,218 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
+    /// Déplace le curseur de sélection vers le haut.
+    /// </summary>
+    public void MoveSelectionUp()
+    {
+        lock (_syncLock)
+        {
+            if (_recentDiscoveries.Count == 0)
+            {
+                return;
+            }
+
+            if (!_isSelectionActive)
+            {
+                _isSelectionActive = true;
+                _selectedRowIndex = 0;
+            }
+            else if (_selectedRowIndex > 0)
+            {
+                _selectedRowIndex--;
+            }
+
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Déplace le curseur de sélection vers le bas.
+    /// </summary>
+    public void MoveSelectionDown()
+    {
+        lock (_syncLock)
+        {
+            if (_recentDiscoveries.Count == 0)
+            {
+                return;
+            }
+
+            if (!_isSelectionActive)
+            {
+                _isSelectionActive = true;
+                _selectedRowIndex = 0;
+            }
+            else if (_selectedRowIndex < _recentDiscoveries.Count - 1)
+            {
+                _selectedRowIndex++;
+            }
+
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Déplace la colonne de sélection vers la gauche.
+    /// </summary>
+    public void MoveSelectionLeft()
+    {
+        lock (_syncLock)
+        {
+            if (_recentDiscoveries.Count == 0)
+            {
+                return;
+            }
+
+            if (!_isSelectionActive)
+            {
+                _isSelectionActive = true;
+                _selectedRowIndex = 0;
+                _selectedColumn = InteractiveExclusionColumn.Local;
+            }
+            else
+            {
+                _selectedColumn = _selectedColumn > InteractiveExclusionColumn.Local
+                    ? _selectedColumn - 1
+                    : InteractiveExclusionColumn.Target;
+            }
+
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Déplace la colonne de sélection vers la droite.
+    /// </summary>
+    public void MoveSelectionRight()
+    {
+        lock (_syncLock)
+        {
+            if (_recentDiscoveries.Count == 0)
+            {
+                return;
+            }
+
+            if (!_isSelectionActive)
+            {
+                _isSelectionActive = true;
+                _selectedRowIndex = 0;
+                _selectedColumn = InteractiveExclusionColumn.Local;
+            }
+            else
+            {
+                _selectedColumn = _selectedColumn < InteractiveExclusionColumn.Target
+                    ? _selectedColumn + 1
+                    : InteractiveExclusionColumn.Local;
+            }
+
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Annule le mode de sélection interactive.
+    /// </summary>
+    public void CancelSelection()
+    {
+        lock (_syncLock)
+        {
+            _isSelectionActive = false;
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Applique l'exclusion correspondant à la cellule sélectionnée et met à jour l'affichage.
+    /// </summary>
+    /// <param name="configurator">Configurateur d'exclusions.</param>
+    /// <returns>Vrai si l'exclusion a été appliquée, sinon faux.</returns>
+    public bool ApplyExclusionAtSelection(IFlowExclusionConfigurator configurator)
+    {
+        ArgumentNullException.ThrowIfNull(configurator);
+
+        lock (_syncLock)
+        {
+            if (!_isSelectionActive || _recentDiscoveries.Count == 0)
+            {
+                return false;
+            }
+
+            if (_selectedRowIndex < 0 || _selectedRowIndex >= _recentDiscoveries.Count)
+            {
+                return false;
+            }
+
+            var entry = _recentDiscoveries[_selectedRowIndex];
+            string actionDescription;
+
+            switch (_selectedColumn)
+            {
+                case InteractiveExclusionColumn.Local:
+                    var localPort = entry.Socket.LocalEndpoint.Port;
+                    actionDescription = configurator.ExcludeLocalPort(localPort);
+                    _recentDiscoveries.RemoveAll(e => e.Socket.LocalEndpoint.Port == localPort);
+                    break;
+
+                case InteractiveExclusionColumn.Remote:
+                    var remoteAddress = entry.Socket.RemoteEndpoint.Address;
+                    if (!remoteAddress.Equals(System.Net.IPAddress.Any) &&
+                        !remoteAddress.Equals(System.Net.IPAddress.IPv6Any) &&
+                        !remoteAddress.Equals(System.Net.IPAddress.Loopback) &&
+                        !remoteAddress.Equals(System.Net.IPAddress.IPv6Loopback) &&
+                        !remoteAddress.Equals(System.Net.IPAddress.None))
+                    {
+                        var ipString = remoteAddress.ToString();
+                        actionDescription = configurator.ExcludeRemoteIp(ipString);
+                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Address.Equals(remoteAddress));
+                    }
+                    else
+                    {
+                        var remotePort = entry.Socket.RemoteEndpoint.Port;
+                        actionDescription = configurator.ExcludeRemotePort(remotePort);
+                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Port == remotePort);
+                    }
+                    break;
+
+                case InteractiveExclusionColumn.Process:
+                    var procName = entry.Socket.Process.ProcessName;
+                    actionDescription = configurator.ExcludeProcess(procName);
+                    _recentDiscoveries.RemoveAll(e => string.Equals(e.Socket.Process.ProcessName, procName, StringComparison.OrdinalIgnoreCase));
+                    break;
+
+                case InteractiveExclusionColumn.Target:
+                    var targetName = !string.IsNullOrWhiteSpace(entry.Socket.Process.TargetExecutable)
+                        ? entry.Socket.Process.TargetExecutable
+                        : entry.Socket.Process.ProcessName;
+                    actionDescription = configurator.ExcludeTarget(targetName);
+                    _recentDiscoveries.RemoveAll(e =>
+                        string.Equals(e.Socket.Process.TargetExecutable, targetName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(e.Socket.Process.ProcessName, targetName, StringComparison.OrdinalIgnoreCase));
+                    break;
+
+                default:
+                    return false;
+            }
+
+            _statusBannerMessage = actionDescription;
+            _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(4);
+
+            if (_recentDiscoveries.Count == 0)
+            {
+                _isSelectionActive = false;
+                _selectedRowIndex = 0;
+            }
+            else
+            {
+                _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, _recentDiscoveries.Count - 1);
+            }
+
+            RenderInternal(forceClear: false);
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Met à jour les métadonnées et affiche la trame courante du tableau de bord.
     /// </summary>
     /// <param name="result">Synthèse métrique du dernier scan.</param>
@@ -118,9 +381,16 @@ public sealed partial class FlowAuditDashboardRenderer
 
             if (result.NewlyDiscoveredEntries.Count > 0)
             {
+                var newCount = 0;
                 foreach (var entry in result.NewlyDiscoveredEntries)
                 {
                     _recentDiscoveries.Insert(0, entry);
+                    newCount++;
+                }
+
+                if (_isSelectionActive)
+                {
+                    _selectedRowIndex = Math.Min(_recentDiscoveries.Count - 1, _selectedRowIndex + newCount);
                 }
 
                 while (_recentDiscoveries.Count > 100)
@@ -133,9 +403,6 @@ public sealed partial class FlowAuditDashboardRenderer
         }
     }
 
-    /// <summary>
-    /// Vérifie si la fenêtre a été redimensionnée ou si l'ascenseur a bougé, et redessine immédiatement le tableau de bord.
-    /// </summary>
     /// <summary>
     /// Met à jour le nom d'hôte distant dans la liste des découvertes récentes si l'adresse IP correspond.
     /// </summary>
@@ -166,6 +433,9 @@ public sealed partial class FlowAuditDashboardRenderer
         }
     }
 
+    /// <summary>
+    /// Vérifie si la fenêtre a été redimensionnée ou si l'ascenseur a bougé, et redessine immédiatement le tableau de bord.
+    /// </summary>
     public void CheckAndRedrawIfWindowChanged()
     {
         if (Console.IsOutputRedirected || _lastResult is null || _lastHost is null)
@@ -419,20 +689,35 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine($"{AnsiCyan}├{new string('─', trafficColWidth)}┴{new string('─', topProcColWidth)}┤{AnsiReset}{AnsiClearLine}");
 
         // 5. Titre et colonnes du tableau des découvertes
-        var tableTitle = $" {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}";
+        var hasActiveBanner = !string.IsNullOrEmpty(_statusBannerMessage) && DateTime.UtcNow < _statusBannerExpiresUtc;
+        var tableTitle = hasActiveBanner
+            ? $" {AnsiBold}{AnsiGreen}✔ {_statusBannerMessage}{AnsiReset}"
+            : $" {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}";
         sb.AppendLine(FormatRow(tableTitle, interiorWidth));
 
         // Calcul dynamique des largeurs des colonnes du tableau
+        // Structure de préfixe fixe (21 caractères) :
+        // " " (1) + "HEURE   " (8) + " " (1) + "PROTO" (5) + " " (1) + "DIR " (4) + " " (1) = 21 chars
         var extraWidth = Math.Max(0, interiorWidth - 100);
         var localWidth = Math.Clamp(21 + (extraWidth / 4), 21, 32);
         var remoteWidth = Math.Clamp(21 + (extraWidth / 4), 21, 32);
         var procWidth = Math.Clamp(12 + (extraWidth / 6), 12, 22);
         var targetWidth = Math.Max(15, interiorWidth - (21 + localWidth + 1 + remoteWidth + 1 + procWidth + 1));
 
-        var headerColLocal = "LOCAL".PadRight(localWidth);
-        var headerColRemote = "DISTANT".PadRight(remoteWidth);
-        var headerColProc = "PROCESSUS".PadRight(procWidth);
-        var tableHeader = $" {AnsiDarkGray}HEURE (UTC)  PROTO DIR  {headerColLocal} {headerColRemote} {headerColProc} CIBLE / CMD{AnsiReset}";
+        var rawLocalHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Local ? $"{AnsiYellow}{AnsiBold}[LOCAL]{AnsiReset}" : "LOCAL";
+        var headerColLocal = PadRightVisible(rawLocalHeader, localWidth);
+
+        var rawRemoteHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Remote ? $"{AnsiYellow}{AnsiBold}[DISTANT]{AnsiReset}" : "DISTANT";
+        var headerColRemote = PadRightVisible(rawRemoteHeader, remoteWidth);
+
+        var rawProcHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Process ? $"{AnsiYellow}{AnsiBold}[PROCESSUS]{AnsiReset}" : "PROCESSUS";
+        var headerColProc = PadRightVisible(rawProcHeader, procWidth);
+
+        var rawTargetHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Target ? $"{AnsiYellow}{AnsiBold}[CIBLE / CMD]{AnsiReset}" : "CIBLE / CMD";
+        var headerColTarget = PadRightVisible(rawTargetHeader, targetWidth);
+
+        var headerPrefix = $" {AnsiDarkGray}{"HEURE",-8} {"PROTO",-5} {"DIR",-4} ";
+        var tableHeader = $"{headerPrefix}{headerColLocal} {headerColRemote} {headerColProc} {headerColTarget}{AnsiReset}";
         sb.AppendLine(FormatRow(tableHeader, interiorWidth));
 
         // Calcul du nombre de lignes disponibles pour les découvertes selon la hauteur de la fenêtre
@@ -444,13 +729,15 @@ public sealed partial class FlowAuditDashboardRenderer
             if (i < _recentDiscoveries.Count)
             {
                 var entry = _recentDiscoveries[i];
+                var isRowSelected = _isSelectionActive && i == _selectedRowIndex;
+
                 var time = entry.FirstSeenUtc.ToString("HH:mm:ss");
-                var proto = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? "TCP " : "UDP ";
+                var proto = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? "TCP" : "UDP";
                 var dir = entry.Socket.Direction switch
                 {
                     SocketFlowDirection.Listening => "LIST",
-                    SocketFlowDirection.Inbound => "IN  ",
-                    SocketFlowDirection.Outbound => "OUT ",
+                    SocketFlowDirection.Inbound => "IN",
+                    SocketFlowDirection.Outbound => "OUT",
                     _ => "UNKN"
                 };
 
@@ -464,8 +751,42 @@ public sealed partial class FlowAuditDashboardRenderer
                     ? entry.Socket.Process.TargetExecutable
                     : entry.Socket.Process.CommandLine, targetWidth);
 
+                var localText = local.PadRight(localWidth);
+                if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Local)
+                {
+                    localText = $"{AnsiReverseVideo}{AnsiBold}{localText}{AnsiNormalVideo}";
+                }
+
+                var remoteText = remote.PadRight(remoteWidth);
+                if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Remote)
+                {
+                    remoteText = $"{AnsiReverseVideo}{AnsiBold}{remoteText}{AnsiNormalVideo}";
+                }
+
+                var procText = proc.PadRight(procWidth);
+                if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Process)
+                {
+                    procText = $"{AnsiReverseVideo}{AnsiBold}{procText}{AnsiNormalVideo}";
+                }
+                else
+                {
+                    procText = $"{AnsiMagenta}{procText}{AnsiReset}";
+                }
+
+                var targetText = target.PadRight(targetWidth);
+                if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Target)
+                {
+                    targetText = $"{AnsiReverseVideo}{AnsiBold}{targetText}{AnsiNormalVideo}";
+                }
+                else
+                {
+                    targetText = $"{AnsiWhite}{targetText}{AnsiReset}";
+                }
+
                 var color = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? AnsiGreen : AnsiYellow;
-                var row = $" {AnsiDarkGray}{time}{AnsiReset}  {color}{proto}{AnsiReset} {dir} {local.PadRight(localWidth)} {remote.PadRight(remoteWidth)} {AnsiMagenta}{proc.PadRight(procWidth)}{AnsiReset} {AnsiWhite}{target.PadRight(targetWidth)}{AnsiReset}";
+                var rowPrefixStr = isRowSelected ? $"{AnsiYellow}►{AnsiReset}" : " ";
+                var rowPrefix = $"{rowPrefixStr}{AnsiDarkGray}{time,-8}{AnsiReset} {color}{proto,-5}{AnsiReset} {dir,-4} ";
+                var row = $"{rowPrefix}{localText} {remoteText} {procText} {targetText}";
                 sb.AppendLine(FormatRow(row, interiorWidth));
             }
             else
@@ -476,7 +797,24 @@ public sealed partial class FlowAuditDashboardRenderer
 
         // 6. Pied de page
         sb.AppendLine($"{AnsiCyan}└{new string('─', interiorWidth)}┘{AnsiReset}{AnsiClearLine}");
-        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
+
+        if (_isSelectionActive)
+        {
+            var colLabel = _selectedColumn switch
+            {
+                InteractiveExclusionColumn.Local => "LOCAL",
+                InteractiveExclusionColumn.Remote => "DISTANT",
+                InteractiveExclusionColumn.Process => "PROCESSUS",
+                InteractiveExclusionColumn.Target => "CIBLE",
+                _ => "FLUX"
+            };
+
+            sb.Append($" {AnsiBold}{AnsiYellow}[↑↓←→]{AnsiReset} Naviguer  {AnsiBold}{AnsiYellow}[Entrée/X]{AnsiReset} Exclure {colLabel}  {AnsiBold}{AnsiYellow}[Échap]{AnsiReset} Annuler  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter{AnsiClearLine}");
+        }
+        else
+        {
+            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclure flux  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
+        }
 
         return sb.ToString();
     }

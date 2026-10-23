@@ -1,8 +1,11 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Dashboard;
+using NetFlowAudit.Core.Filtering;
 using NetFlowAudit.Core.Models;
+using ProcessForge.Filtering;
 using ProcessForge.Models;
 using SocketForge.Models;
 using Xunit;
@@ -238,6 +241,201 @@ public sealed class FlowAuditDashboardRendererTests
 
         // Assert
         frame.Should().Contain("github.com:443");
+    }
+
+    [Fact]
+    public void BuildDashboardFrame_WhenDiscoveriesTableRendered_AlignsHeadersStrictlyWithRowValues()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 54321),
+            new SocketEndpoint(IPAddress.Parse("140.82.121.4"), 443),
+            "Established",
+            new ProcessMetadata(1234, "sampleproc", "/usr/bin/sampleproc", "sampleproc run", "targetapp.dll", "user"));
+
+        var entry = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            SampleHost,
+            socket,
+            "github.com");
+
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 1,
+            ExcludedSocketsCount: 0,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 1,
+            NewlyDiscoveredEntries: [entry],
+            ActiveSockets: [socket]);
+
+        renderer.Render(result, SampleHost);
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost, 110, 25);
+        var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
+        var headerLineIndex = Array.FindIndex(lines, l => l.Contains("PROTO") && l.Contains("LOCAL"));
+        headerLineIndex.Should().BeGreaterThan(-1);
+
+        var dataLineIndex = headerLineIndex + 1;
+        dataLineIndex.Should().BeLessThan(lines.Length);
+
+        var headerClean = StripAnsi(lines[headerLineIndex]);
+        var dataClean = StripAnsi(lines[dataLineIndex]);
+
+        // Assert column alignment
+        headerClean.IndexOf("LOCAL").Should().Be(dataClean.IndexOf("192.168.1.10:54321"), "LOCAL header must align with local endpoint");
+        headerClean.IndexOf("DISTANT").Should().Be(dataClean.IndexOf("github.com:443"), "DISTANT header must align with remote endpoint");
+        headerClean.IndexOf("PROCESSUS").Should().Be(dataClean.IndexOf("sampleproc"), "PROCESSUS header must align with process name");
+        headerClean.IndexOf("CIBLE / CMD").Should().Be(dataClean.IndexOf("targetapp.dll"), "CIBLE / CMD header must align with target executable");
+    }
+
+    [Fact]
+    public void MoveSelectionDown_WhenTriggered_ActivatesSelectionAndNavigatesRows()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket1 = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+            new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+            "Established",
+            new ProcessMetadata(100, "curl", "", "", "", "user"));
+        var socket2 = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50002),
+            new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 443),
+            "Established",
+            new ProcessMetadata(200, "wget", "", "", "", "user"));
+
+        var entry1 = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket1);
+        var entry2 = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket2);
+
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            2, 0, 2, 2,
+            [entry1, entry2],
+            [socket1, socket2]);
+
+        renderer.Render(result, SampleHost);
+        renderer.IsSelectionActive.Should().BeFalse();
+
+        // Act - 1ère pression flèche bas active la sélection sur ligne 0
+        renderer.MoveSelectionDown();
+        renderer.IsSelectionActive.Should().BeTrue();
+        renderer.SelectedRowIndex.Should().Be(0);
+
+        // Act - 2ème pression descend à la ligne 1
+        renderer.MoveSelectionDown();
+        renderer.SelectedRowIndex.Should().Be(1);
+
+        // Act - Flèche haut remonte à la ligne 0
+        renderer.MoveSelectionUp();
+        renderer.SelectedRowIndex.Should().Be(0);
+
+        // Act - Échap annule
+        renderer.CancelSelection();
+        renderer.IsSelectionActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public void MoveSelectionRight_WhenTriggered_CyclesThroughInteractiveColumns()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+            new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+            "Established",
+            new ProcessMetadata(100, "curl", "", "", "", "user"));
+
+        var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+        renderer.Render(result, SampleHost);
+
+        // Act & Assert
+        renderer.MoveSelectionRight();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Local);
+
+        renderer.MoveSelectionRight();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Remote);
+
+        renderer.MoveSelectionRight();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Process);
+
+        renderer.MoveSelectionRight();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Target);
+
+        // Cycle back to Local
+        renderer.MoveSelectionRight();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Local);
+
+        // Cycle left to Target
+        renderer.MoveSelectionLeft();
+        renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Target);
+    }
+
+    [Fact]
+    public void ApplyExclusionAtSelection_WhenProcessSelected_InvokesConfiguratorAndPurgesRow()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"test_render_ex_{Guid.NewGuid():N}.json");
+        try
+        {
+            var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+            var socket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+                new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+                "Established",
+                new ProcessMetadata(100, "noisy-service", "", "", "", "user"));
+
+            var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+            var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+            renderer.Render(result, SampleHost);
+
+            var configurator = new FlowExclusionConfigurator(
+                new AppConfiguration(),
+                tempFile,
+                new NetworkFlowFilter(new NetworkFlowFilterOptions()),
+                new ProcessExclusionFilter(new ProcessExclusionOptions()));
+
+            // Act - Select Process column and apply
+            renderer.MoveSelectionDown();
+            renderer.MoveSelectionRight(); // Remote
+            renderer.MoveSelectionRight(); // Process
+            renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Process);
+
+            var applied = renderer.ApplyExclusionAtSelection(configurator);
+
+            // Assert
+            applied.Should().BeTrue();
+            configurator.CurrentConfiguration.ExcludedExactNames.Should().Contain("noisy-service");
+
+            // Frame should now be cleared of this entry and contain confirmation banner
+            var frame = renderer.BuildDashboardFrame(result, SampleHost);
+            frame.Should().Contain("noisy-service");
+            frame.Should().Contain("✔");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch (IOException) { }
+            }
+        }
     }
 
     private static string StripAnsi(string text)

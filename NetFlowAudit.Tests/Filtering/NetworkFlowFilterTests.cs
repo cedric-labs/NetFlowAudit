@@ -291,4 +291,70 @@ public sealed class NetworkFlowFilterTests
         // Act & Assert
         filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
     }
+
+    [Fact]
+    public void ExcludeLocalPort_WhenAddedDynamically_ExcludesSubsequentMatchingFlow()
+    {
+        // Arrange
+        var filter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Listening,
+            new SocketEndpoint(IPAddress.Any, 9200),
+            new SocketEndpoint(IPAddress.Any, 0),
+            "Listen",
+            DefaultProc);
+
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+
+        // Act
+        filter.ExcludeLocalPort(9200);
+
+        // Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ExcludeRemotePort_WhenAddedDynamically_ExcludesSubsequentMatchingFlow()
+    {
+        // Arrange
+        var filter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
+            new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 8443),
+            "Established",
+            DefaultProc);
+
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+
+        // Act
+        filter.ExcludeRemotePort(8443);
+
+        // Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ExcludeRemoteIp_WhenAddedDynamically_ExcludesSubsequentMatchingFlow()
+    {
+        // Arrange
+        var filter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50123),
+            new SocketEndpoint(IPAddress.Parse("52.123.242.181"), 443),
+            "Established",
+            DefaultProc);
+
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+
+        // Act
+        filter.ExcludeRemoteIp("52.123.242.181");
+
+        // Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
 }

@@ -138,6 +138,8 @@ public static class Program
             hostNameResolver,
             TimeSpan.FromSeconds(config.ScanIntervalSeconds));
 
+        var exclusionConfigurator = new FlowExclusionConfigurator(config, configPath, networkFlowFilter, exclusionFilter);
+
         FlowAuditDashboardRenderer? dashboard = null;
         if (useDashboard)
         {
@@ -202,6 +204,42 @@ public static class Program
                             if (key.KeyChar is 'c' or 'C')
                             {
                                 dashboard?.ForceRedraw();
+                            }
+                            else if (dashboard is not null)
+                            {
+                                switch (key.Key)
+                                {
+                                    case ConsoleKey.UpArrow:
+                                        dashboard.MoveSelectionUp();
+                                        break;
+
+                                    case ConsoleKey.DownArrow:
+                                        dashboard.MoveSelectionDown();
+                                        break;
+
+                                    case ConsoleKey.LeftArrow:
+                                        dashboard.MoveSelectionLeft();
+                                        break;
+
+                                    case ConsoleKey.RightArrow:
+                                        dashboard.MoveSelectionRight();
+                                        break;
+
+                                    case ConsoleKey.Enter:
+                                        dashboard.ApplyExclusionAtSelection(exclusionConfigurator);
+                                        break;
+
+                                    case ConsoleKey.Escape:
+                                        dashboard.CancelSelection();
+                                        break;
+
+                                    default:
+                                        if (key.KeyChar is 'x' or 'X' or 'e' or 'E')
+                                        {
+                                            dashboard.ApplyExclusionAtSelection(exclusionConfigurator);
+                                        }
+                                        break;
+                                }
                             }
                         }
 
