@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using NetFlowAudit.Core.Filtering;
 using ProcessForge.Filtering;
@@ -58,6 +59,11 @@ public sealed class FlowExclusionConfigurator(
         lock (_syncLock)
         {
             var cleanIp = ipOrCidr.Trim();
+            if (IPAddress.TryParse(cleanIp, out var parsedIp) && parsedIp.IsIPv4MappedToIPv6)
+            {
+                cleanIp = parsedIp.MapToIPv4().ToString();
+            }
+
             _networkFlowFilter.ExcludeRemoteIp(cleanIp);
 
             if (!_currentConfiguration.ExcludedRemoteIps.Contains(cleanIp, StringComparer.OrdinalIgnoreCase))
@@ -99,9 +105,28 @@ public sealed class FlowExclusionConfigurator(
             var cleanName = processName.Trim();
             _processExclusionFilter.ExcludeExactName(cleanName);
 
-            if (!_currentConfiguration.ExcludedExactNames.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
+            var updatedNames = new List<string>(_currentConfiguration.ExcludedExactNames);
+            var changed = false;
+
+            if (!updatedNames.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
             {
-                var updatedNames = new List<string>(_currentConfiguration.ExcludedExactNames) { cleanName };
+                updatedNames.Add(cleanName);
+                changed = true;
+            }
+
+            var baseName = Path.GetFileNameWithoutExtension(cleanName);
+            if (!string.IsNullOrWhiteSpace(baseName) && !baseName.Equals(cleanName, StringComparison.OrdinalIgnoreCase))
+            {
+                _processExclusionFilter.ExcludeExactName(baseName);
+                if (!updatedNames.Contains(baseName, StringComparer.OrdinalIgnoreCase))
+                {
+                    updatedNames.Add(baseName);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
                 _currentConfiguration = _currentConfiguration with { ExcludedExactNames = updatedNames };
                 SaveConfigurationFile(_currentConfiguration);
             }
@@ -129,9 +154,28 @@ public sealed class FlowExclusionConfigurator(
 
             _processExclusionFilter.ExcludeExactName(cleanTarget);
 
-            if (!_currentConfiguration.ExcludedExactNames.Contains(cleanTarget, StringComparer.OrdinalIgnoreCase))
+            var updatedNames = new List<string>(_currentConfiguration.ExcludedExactNames);
+            var changed = false;
+
+            if (!updatedNames.Contains(cleanTarget, StringComparer.OrdinalIgnoreCase))
             {
-                var updatedNames = new List<string>(_currentConfiguration.ExcludedExactNames) { cleanTarget };
+                updatedNames.Add(cleanTarget);
+                changed = true;
+            }
+
+            var baseName = Path.GetFileNameWithoutExtension(cleanTarget);
+            if (!string.IsNullOrWhiteSpace(baseName) && !baseName.Equals(cleanTarget, StringComparison.OrdinalIgnoreCase))
+            {
+                _processExclusionFilter.ExcludeExactName(baseName);
+                if (!updatedNames.Contains(baseName, StringComparer.OrdinalIgnoreCase))
+                {
+                    updatedNames.Add(baseName);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
                 _currentConfiguration = _currentConfiguration with { ExcludedExactNames = updatedNames };
                 SaveConfigurationFile(_currentConfiguration);
             }

@@ -84,4 +84,26 @@ public sealed class IpAddressRangeMatcherTests
         // Act & Assert
         matcher.HasRules.Should().BeTrue();
     }
+
+    [Fact]
+    public void IsMatch_WhenAddressIsIPv4MappedToIPv6_MatchesIPv4Rule()
+    {
+        // Arrange
+        var matcher = new IpAddressRangeMatcher(["52.123.242.181"]);
+        var mappedAddress = IPAddress.Parse("::ffff:52.123.242.181");
+
+        // Act & Assert
+        matcher.IsMatch(mappedAddress).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsMatch_WhenRuleIsIPv4MappedToIPv6_MatchesPureIPv4Address()
+    {
+        // Arrange
+        var matcher = new IpAddressRangeMatcher(["::ffff:52.123.242.181"]);
+        var address = IPAddress.Parse("52.123.242.181");
+
+        // Act & Assert
+        matcher.IsMatch(address).Should().BeTrue();
+    }
 }

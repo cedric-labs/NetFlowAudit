@@ -438,6 +438,193 @@ public sealed class FlowAuditDashboardRendererTests
         }
     }
 
+    [Fact]
+    public void Render_WhenFlowMatchesNetworkFlowFilterRemoteIp_DoesNotAddToRecentDiscoveries()
+    {
+        // Arrange
+        var flowFilter = new NetworkFlowFilter(new NetworkFlowFilterOptions
+        {
+            ExcludedRemoteIps = ["52.123.242.181"]
+        });
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv", flowFilter, null, null);
+
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+            new SocketEndpoint(IPAddress.Parse("52.123.242.181"), 443),
+            "Established",
+            new ProcessMetadata(100, "code", "", "", "", "user"));
+
+        var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+        // Act
+        renderer.Render(result, SampleHost);
+
+        // Assert
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+        frame.Should().NotContain("52.123.242.181");
+    }
+
+    [Fact]
+    public void Render_WhenFlowMatchesProcessExclusionFilter_DoesNotAddToRecentDiscoveries()
+    {
+        // Arrange
+        var procFilter = new ProcessExclusionFilter(new ProcessExclusionOptions
+        {
+            ExcludedExactNames = ["excluded_proc"]
+        });
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv", null, procFilter, null);
+
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+            new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 443),
+            "Established",
+            new ProcessMetadata(100, "excluded_proc", "", "", "", "user"));
+
+        var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+        // Act
+        renderer.Render(result, SampleHost);
+
+        // Assert
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+        frame.Should().NotContain("excluded_proc");
+    }
+
+    [Fact]
+    public void ApplyExclusionAtSelection_WhenRemoteIpSelectedWithIpv4MappedIpv6_NormalizesAndPurgesAllMatchingEntries()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"test_render_mapped_{Guid.NewGuid():N}.json");
+        try
+        {
+            var flowFilter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+            var procFilter = new ProcessExclusionFilter(new ProcessExclusionOptions());
+            var configurator = new FlowExclusionConfigurator(new AppConfiguration(), tempFile, flowFilter, procFilter);
+
+            var renderer = new FlowAuditDashboardRenderer(5, "output.csv", flowFilter, procFilter, null);
+
+            var mappedIp = IPAddress.Parse("::ffff:52.123.242.181");
+            var socket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+                new SocketEndpoint(mappedIp, 443),
+                "Established",
+                new ProcessMetadata(100, "code", "", "", "", "user"));
+
+            var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+            var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+            renderer.Render(result, SampleHost);
+
+            // Select Remote column (Col index 1)
+            renderer.MoveSelectionDown();
+            renderer.MoveSelectionRight();
+            renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Remote);
+
+            // Act
+            var applied = renderer.ApplyExclusionAtSelection(configurator);
+
+            // Assert
+            applied.Should().BeTrue();
+            configurator.CurrentConfiguration.ExcludedRemoteIps.Should().Contain("52.123.242.181");
+
+            // Subsequent render with matching pure IPv4 or mapped IPv6 should be dropped
+            var pureIpSocket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50002),
+                new SocketEndpoint(IPAddress.Parse("52.123.242.181"), 443),
+                "Established",
+                new ProcessMetadata(100, "code", "", "", "", "user"));
+            var nextEntry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 2, SampleHost, pureIpSocket);
+            var nextResult = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 2, [nextEntry], [pureIpSocket]);
+
+            renderer.Render(nextResult, SampleHost);
+            var frame = renderer.BuildDashboardFrame(nextResult, SampleHost);
+            frame.Should().Contain("52.123.242.181");
+            frame.Should().NotContain("50002");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch (IOException) { }
+            }
+        }
+    }
+
+    [Fact]
+    public void ApplyExclusionAtSelection_WhenTargetSelected_PurgesMatchingEntriesAndFiltersSubsequentRenderCycles()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"test_render_target_{Guid.NewGuid():N}.json");
+        try
+        {
+            var flowFilter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+            var procFilter = new ProcessExclusionFilter(new ProcessExclusionOptions());
+            var configurator = new FlowExclusionConfigurator(new AppConfiguration(), tempFile, flowFilter, procFilter);
+
+            var renderer = new FlowAuditDashboardRenderer(5, "output.csv", flowFilter, procFilter, null);
+
+            var socket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+                new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+                "Established",
+                new ProcessMetadata(100, "node", "C:\\node.exe", "node server.js", "server.js", "user"));
+
+            var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+            var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+            renderer.Render(result, SampleHost);
+
+            // Select Target column (Col index 3)
+            renderer.MoveSelectionDown();
+            renderer.MoveSelectionRight();
+            renderer.MoveSelectionRight();
+            renderer.MoveSelectionRight();
+            renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Target);
+
+            // Act
+            var applied = renderer.ApplyExclusionAtSelection(configurator);
+
+            // Assert
+            applied.Should().BeTrue();
+            configurator.CurrentConfiguration.ExcludedExactNames.Should().Contain("server.js");
+
+            // Subsequent render with matching target should be dropped
+            var nextSocket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50002),
+                new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+                "Established",
+                new ProcessMetadata(101, "node", "C:\\node.exe", "node server.js", "server.js", "user"));
+            var nextEntry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 2, SampleHost, nextSocket);
+            var nextResult = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 2, [nextEntry], [nextSocket]);
+
+            renderer.Render(nextResult, SampleHost);
+            var frame = renderer.BuildDashboardFrame(nextResult, SampleHost);
+            frame.Should().Contain("server.js");
+            frame.Should().NotContain("50002");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch (IOException) { }
+            }
+        }
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

@@ -40,6 +40,11 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
         lock (_syncLock)
         {
             var trimmed = ipOrCidr.Trim();
+            if (IPAddress.TryParse(trimmed, out var parsed) && parsed.IsIPv4MappedToIPv6)
+            {
+                trimmed = parsed.MapToIPv4().ToString();
+            }
+
             if (!_currentRemoteIps.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
             {
                 _currentRemoteIps.Add(trimmed);
@@ -71,7 +76,6 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
             }
 
             if (_remoteIpMatcher.HasRules &&
-                connection.Direction != SocketFlowDirection.Listening &&
                 !connection.RemoteEndpoint.Address.Equals(IPAddress.Any) &&
                 !connection.RemoteEndpoint.Address.Equals(IPAddress.IPv6Any) &&
                 _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))

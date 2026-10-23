@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using NetFlowAudit.Cli.Configuration;
+using NetFlowAudit.Core.Filtering;
 using NetFlowAudit.Core.Models;
+using ProcessForge.Filtering;
 using SocketForge.Models;
 
 namespace NetFlowAudit.Cli.Dashboard;
@@ -37,6 +40,9 @@ public sealed partial class FlowAuditDashboardRenderer
     private readonly object _syncLock = new();
     private readonly int _scanIntervalSeconds;
     private readonly string _outputCsvPath;
+    private readonly INetworkFlowFilter? _networkFlowFilter;
+    private readonly ProcessExclusionFilter? _processExclusionFilter;
+    private readonly IReadOnlySet<IPAddress>? _localHostAddresses;
 
     private FlowAuditCycleResult? _lastResult;
     private ServerHostMetadata? _lastHost;
@@ -98,10 +104,18 @@ public sealed partial class FlowAuditDashboardRenderer
     /// </summary>
     /// <param name="scanIntervalSeconds">Intervalle de scan configuré.</param>
     /// <param name="outputCsvPath">Chemin du fichier CSV de sortie.</param>
-    public FlowAuditDashboardRenderer(int scanIntervalSeconds, string outputCsvPath)
+    public FlowAuditDashboardRenderer(
+        int scanIntervalSeconds,
+        string outputCsvPath,
+        INetworkFlowFilter? networkFlowFilter = null,
+        ProcessExclusionFilter? processExclusionFilter = null,
+        IReadOnlySet<IPAddress>? localHostAddresses = null)
     {
         _scanIntervalSeconds = scanIntervalSeconds;
         _outputCsvPath = outputCsvPath;
+        _networkFlowFilter = networkFlowFilter;
+        _processExclusionFilter = processExclusionFilter;
+        _localHostAddresses = localHostAddresses;
 
         try
         {
@@ -116,6 +130,16 @@ public sealed partial class FlowAuditDashboardRenderer
         {
             // Environnement sans contrôle de terminal
         }
+    }
+
+    /// <summary>
+    /// Constructeur de compatibilité sans filtres d'exclusion explicites.
+    /// </summary>
+    /// <param name="scanIntervalSeconds">Intervalle de scan configuré.</param>
+    /// <param name="outputCsvPath">Chemin du fichier CSV de sortie.</param>
+    public FlowAuditDashboardRenderer(int scanIntervalSeconds, string outputCsvPath)
+        : this(scanIntervalSeconds, outputCsvPath, null, null, null)
+    {
     }
 
     /// <summary>
@@ -303,33 +327,33 @@ public sealed partial class FlowAuditDashboardRenderer
                 case InteractiveExclusionColumn.Local:
                     var localPort = entry.Socket.LocalEndpoint.Port;
                     actionDescription = configurator.ExcludeLocalPort(localPort);
-                    _recentDiscoveries.RemoveAll(e => e.Socket.LocalEndpoint.Port == localPort);
+                    _recentDiscoveries.RemoveAll(e => e.Socket.LocalEndpoint.Port == localPort || IsEntryExcluded(e));
                     break;
 
                 case InteractiveExclusionColumn.Remote:
                     var remoteAddress = entry.Socket.RemoteEndpoint.Address;
-                    if (!remoteAddress.Equals(System.Net.IPAddress.Any) &&
-                        !remoteAddress.Equals(System.Net.IPAddress.IPv6Any) &&
-                        !remoteAddress.Equals(System.Net.IPAddress.Loopback) &&
-                        !remoteAddress.Equals(System.Net.IPAddress.IPv6Loopback) &&
-                        !remoteAddress.Equals(System.Net.IPAddress.None))
+                    if (!remoteAddress.Equals(IPAddress.Any) &&
+                        !remoteAddress.Equals(IPAddress.IPv6Any) &&
+                        !remoteAddress.Equals(IPAddress.Loopback) &&
+                        !remoteAddress.Equals(IPAddress.IPv6Loopback) &&
+                        !remoteAddress.Equals(IPAddress.None))
                     {
-                        var ipString = remoteAddress.ToString();
-                        actionDescription = configurator.ExcludeRemoteIp(ipString);
-                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Address.Equals(remoteAddress));
+                        var normalizedIp = (remoteAddress.IsIPv4MappedToIPv6 ? remoteAddress.MapToIPv4() : remoteAddress).ToString();
+                        actionDescription = configurator.ExcludeRemoteIp(normalizedIp);
+                        _recentDiscoveries.RemoveAll(e => AddressesEqual(e.Socket.RemoteEndpoint.Address, remoteAddress) || IsEntryExcluded(e));
                     }
                     else
                     {
                         var remotePort = entry.Socket.RemoteEndpoint.Port;
                         actionDescription = configurator.ExcludeRemotePort(remotePort);
-                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Port == remotePort);
+                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Port == remotePort || IsEntryExcluded(e));
                     }
                     break;
 
                 case InteractiveExclusionColumn.Process:
                     var procName = entry.Socket.Process.ProcessName;
                     actionDescription = configurator.ExcludeProcess(procName);
-                    _recentDiscoveries.RemoveAll(e => string.Equals(e.Socket.Process.ProcessName, procName, StringComparison.OrdinalIgnoreCase));
+                    _recentDiscoveries.RemoveAll(e => string.Equals(e.Socket.Process.ProcessName, procName, StringComparison.OrdinalIgnoreCase) || IsEntryExcluded(e));
                     break;
 
                 case InteractiveExclusionColumn.Target:
@@ -339,7 +363,8 @@ public sealed partial class FlowAuditDashboardRenderer
                     actionDescription = configurator.ExcludeTarget(targetName);
                     _recentDiscoveries.RemoveAll(e =>
                         string.Equals(e.Socket.Process.TargetExecutable, targetName, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(e.Socket.Process.ProcessName, targetName, StringComparison.OrdinalIgnoreCase));
+                        string.Equals(e.Socket.Process.ProcessName, targetName, StringComparison.OrdinalIgnoreCase) ||
+                        IsEntryExcluded(e));
                     break;
 
                 default:
@@ -384,6 +409,11 @@ public sealed partial class FlowAuditDashboardRenderer
                 var newCount = 0;
                 foreach (var entry in result.NewlyDiscoveredEntries)
                 {
+                    if (IsEntryExcluded(entry))
+                    {
+                        continue;
+                    }
+
                     _recentDiscoveries.Insert(0, entry);
                     newCount++;
                 }
@@ -591,6 +621,16 @@ public sealed partial class FlowAuditDashboardRenderer
 
         foreach (var s in result.ActiveSockets)
         {
+            if (_processExclusionFilter is not null && _processExclusionFilter.ShouldExclude(s.Process))
+            {
+                continue;
+            }
+
+            if (_networkFlowFilter is not null && _networkFlowFilter.ShouldExclude(s, _localHostAddresses ?? new HashSet<IPAddress>()))
+            {
+                continue;
+            }
+
             if (s.Protocol == SocketTransportProtocol.Tcp)
             {
                 tcpSockets++;
@@ -898,4 +938,31 @@ public sealed partial class FlowAuditDashboardRenderer
 
     [GeneratedRegex(@"\x1B\[[0-?]*[ -/]*[@-~]")]
     private static partial Regex AnsiEscapeRegex();
+
+    private static bool AddressesEqual(IPAddress a, IPAddress b)
+    {
+        if (a.Equals(b))
+        {
+            return true;
+        }
+
+        var normA = a.IsIPv4MappedToIPv6 ? a.MapToIPv4() : a;
+        var normB = b.IsIPv4MappedToIPv6 ? b.MapToIPv4() : b;
+        return normA.Equals(normB);
+    }
+
+    private bool IsEntryExcluded(NetworkAuditEntry entry)
+    {
+        if (_processExclusionFilter is not null && _processExclusionFilter.ShouldExclude(entry.Socket.Process))
+        {
+            return true;
+        }
+
+        if (_networkFlowFilter is not null && _networkFlowFilter.ShouldExclude(entry.Socket, _localHostAddresses ?? new HashSet<IPAddress>()))
+        {
+            return true;
+        }
+
+        return false;
+    }
 }

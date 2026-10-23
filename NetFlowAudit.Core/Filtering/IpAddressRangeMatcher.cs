@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 
 namespace NetFlowAudit.Core.Filtering;
 
@@ -39,6 +40,14 @@ public sealed class IpAddressRangeMatcher
             else if (IPAddress.TryParse(trimmed, out var address))
             {
                 _addresses.Add(address);
+                if (address.IsIPv4MappedToIPv6)
+                {
+                    _addresses.Add(address.MapToIPv4());
+                }
+                else if (address.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    _addresses.Add(address.MapToIPv6());
+                }
             }
         }
     }
@@ -62,9 +71,15 @@ public sealed class IpAddressRangeMatcher
             return true;
         }
 
+        var mapped = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : null;
+        if (mapped is not null && _addresses.Contains(mapped))
+        {
+            return true;
+        }
+
         for (var i = 0; i < _networks.Count; i++)
         {
-            if (_networks[i].Contains(address))
+            if (_networks[i].Contains(address) || (mapped is not null && _networks[i].Contains(mapped)))
             {
                 return true;
             }

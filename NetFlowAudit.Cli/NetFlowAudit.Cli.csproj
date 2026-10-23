@@ -5,6 +5,10 @@
     <InternalsVisibleTo Include="NetFlowAudit.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="netflowaudit.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

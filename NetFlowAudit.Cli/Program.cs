@@ -143,7 +143,12 @@ public static class Program
         FlowAuditDashboardRenderer? dashboard = null;
         if (useDashboard)
         {
-            dashboard = new FlowAuditDashboardRenderer(config.ScanIntervalSeconds, config.OutputCsvPath);
+            dashboard = new FlowAuditDashboardRenderer(
+                config.ScanIntervalSeconds,
+                config.OutputCsvPath,
+                networkFlowFilter,
+                exclusionFilter,
+                hostProvider.GetLocalIpAddresses());
             dashboard.ClearScreen();
             engine.ScanCycleCompleted += (_, e) => dashboard.Render(e.Result, host);
             hostNameResolver.HostNameResolved += (_, e) => dashboard.UpdateRemoteHostName(e.Address, e.HostName);
