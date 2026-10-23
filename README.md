@@ -69,6 +69,12 @@ Options :
   --exclude-ips <ip1,cidr2,...>       Exclut ces adresses IP ou sous-réseaux CIDR (ex: 169.254.0.0/16).
   --include-processes <proc1,...>     Inclut uniquement ces processus ou cibles applicatives.
   --exclude-processes <proc1,...>     Exclut ces processus ou cibles applicatives.
+  --map-sort <barycentric|degree|alpha|subnet>
+                                      Méthode de tri des serveurs (anti-croisement Sugiyama par défaut).
+  --map-routing <bezier|orthogonal|straight>
+                                      Mode de routage des flèches avec contournement des boîtes serveurs.
+  --map-spacing <compact|balanced|spacious>
+                                      Profil d'écartement initial entre les serveurs et les flèches.
   --listeners-only                    Cartographie uniquement les ports en écoute passive.
   --include-ephemeral-ports           Désactive l'exclusion par défaut des ports éphémères (49152-65535).
 ```
@@ -127,6 +133,20 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 {
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
+  "OutputHtmlMapPath": "netflow_topology.html",
+  "MapExcludeEphemeralPorts": true,
+  "MapListenersOnly": false,
+  "MapIncludedPorts": [],
+  "MapExcludedPorts": [ "53", "123" ],
+  "MapIncludedHosts": [],
+  "MapExcludedHosts": [],
+  "MapIncludedIps": [],
+  "MapExcludedIps": [],
+  "MapIncludedProcesses": [],
+  "MapExcludedProcesses": [],
+  "MapSortMethod": "barycentric",
+  "MapRoutingMode": "bezier",
+  "MapSpacingProfile": "balanced",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
   "DnsCacheFilePath": "netflow_dns_cache.json",
@@ -180,6 +200,10 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | :--- | :--- | :--- | :--- |
 | `ScanIntervalSeconds` | Entier | `5` | Fréquence en secondes entre deux balayages de la table des sockets actives. |
 | `OutputCsvPath` | Chaîne | `"netflow_audit.csv"` | Chemin relatif ou absolu du fichier CSV de sortie. |
+| `OutputHtmlMapPath` | Chaîne | `""` | Chemin du fichier HTML de cartographie topologique (vide si désactivé par défaut). |
+| `MapSortMethod` | Chaîne | `"barycentric"` | Méthode de tri initial des serveurs sur la carte (`"barycentric"`, `"degree"`, `"alpha"`, `"subnet"`). |
+| `MapRoutingMode` | Chaîne | `"bezier"` | Mode de routage initial des flèches (`"bezier"`, `"orthogonal"`, `"straight"`). |
+| `MapSpacingProfile` | Chaîne | `"balanced"` | Profil d'écartement initial entre serveurs et flèches (`"compact"`, `"balanced"`, `"spacious"`). |
 | `EnableDashboard` | Booléen | `true` | Active le tableau de bord interactif dans le terminal en mode interactif. |
 | `ResolveRemoteHostNames` | Booléen | `true` | Active la résolution DNS inverse asynchrone non-bloquante des IP distantes. |
 | `DnsCacheFilePath` | Chaîne | `"netflow_dns_cache.json"` | Chemin du fichier JSON de persistance du cache DNS inverse entre les redémarrages. |
@@ -286,11 +310,12 @@ nssm start NetFlowAudit
 
 ## 6. Architecture & Dépendances Partagées
 
-Le projet repose sur 3 bibliothèques partagées modulaires conformes aux règles de Clean Architecture et de SonarQube Quality Gate :
+Le projet repose sur 4 bibliothèques partagées modulaires conformes aux règles de Clean Architecture et de SonarQube Quality Gate :
 
 - [**FileForge.Core**](file:///D:/Dev/Framework/FileForge/FRAMEWORK.md) : Moteur d'I/O streaming thread-safe, écrivain délimité RFC 4180 avec verrouillage partagé non bloquant.
 - [**ProcessForge**](file:///D:/Dev/Framework/ProcessForge/FRAMEWORK.md) : Résolution des processus multiplateforme, analyseurs de lignes de commande et moteur de règles d'exclusion.
 - [**SocketForge**](file:///D:/Dev/Framework/SocketForge/FRAMEWORK.md) : Scanneur de sockets multiplateforme (Win32 IP Helper & Linux `/proc/net`).
+- [**TopologyForge**](file:///D:/Dev/Framework/TopologyForge/FRAMEWORK.md) : Moteur de cartographie topologique HTML5/SVG 100 % hors-ligne, filtrage d'inclusion/exclusion, tri anti-croisement Sugiyama, routage avec contournement des boîtes serveurs et pointes directionnelles `IN`/`OUT`.
 
 Pour lancer la chaîne complète de validation qualité (formatage, compilation Release, couverture de code et SonarQube) :
 ```powershell

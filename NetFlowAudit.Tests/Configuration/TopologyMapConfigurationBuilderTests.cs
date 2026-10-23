@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NetFlowAudit.Cli.Configuration;
 using TopologyForge.Models;
+using TopologyForge.Rendering;
 
 namespace NetFlowAudit.Tests.Configuration;
 
@@ -66,6 +67,26 @@ public sealed class TopologyMapConfigurationBuilderTests
     }
 
     [Fact]
+    public void BuildRenderingOptions_WhenSortRoutingAndSpacingConfigured_MapsToTopologyRenderingOptions()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapSortMethod = "degree",
+            MapRoutingMode = "orthogonal",
+            MapSpacingProfile = "spacious"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultSortMethod.Should().Be(TopologyNodeSortMethod.ConnectionDegree);
+        renderingOptions.DefaultRoutingMode.Should().Be(TopologyEdgeRoutingMode.OrthogonalCorridors);
+        renderingOptions.DefaultSpacingProfile.Should().Be(TopologySpacingProfile.Spacious);
+    }
+
+    [Fact]
     public void ApplyCommandLineOverrides_WhenMapArgumentsProvided_UpdatesAppConfiguration()
     {
         // Arrange
@@ -81,6 +102,9 @@ public sealed class TopologyMapConfigurationBuilderTests
             "--exclude-ips", "10.99.0.0/16",
             "--include-processes", "sqlservr",
             "--exclude-processes", "svchost",
+            "--map-sort", "alpha",
+            "--map-routing", "orthogonal",
+            "--map-spacing", "compact",
             "--listeners-only",
             "--include-ephemeral-ports"
         };
@@ -98,6 +122,9 @@ public sealed class TopologyMapConfigurationBuilderTests
         updated.MapExcludedIps.Should().Equal("10.99.0.0/16");
         updated.MapIncludedProcesses.Should().Equal("sqlservr");
         updated.MapExcludedProcesses.Should().Equal("svchost");
+        updated.MapSortMethod.Should().Be("alpha");
+        updated.MapRoutingMode.Should().Be("orthogonal");
+        updated.MapSpacingProfile.Should().Be("compact");
         updated.MapListenersOnly.Should().BeTrue();
         updated.MapExcludeEphemeralPorts.Should().BeFalse();
     }

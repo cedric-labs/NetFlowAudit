@@ -48,6 +48,12 @@ OPTIONS DE CARTOGRAPHIE TOPOLOGIQUE (TopologyForge - HTML Autonome Hors-Ligne) :
   --exclude-ips <ip1,cidr2,...>       Exclut ces adresses IP ou sous-réseaux CIDR (ex: 169.254.0.0/16).
   --include-processes <proc1,...>     Inclut uniquement ces processus ou cibles applicatives.
   --exclude-processes <proc1,...>     Exclut ces processus ou cibles applicatives.
+  --map-sort <barycentric|degree|alpha|subnet>
+                                      Méthode de tri des serveurs (anti-croisement Sugiyama par défaut).
+  --map-routing <bezier|orthogonal|straight>
+                                      Mode de routage des flèches avec contournement des boîtes serveurs.
+  --map-spacing <compact|balanced|spacious>
+                                      Profil d'écartement initial entre les serveurs et les flèches.
   --listeners-only                    Cartographie uniquement les ports en écoute passive.
   --include-ephemeral-ports           Désactive l'exclusion par défaut des ports éphémères (49152-65535).
 
@@ -95,6 +101,9 @@ TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   "MapExcludedIps": [],
   "MapIncludedProcesses": [],
   "MapExcludedProcesses": [],
+  "MapSortMethod": "barycentric",
+  "MapRoutingMode": "bezier",
+  "MapSpacingProfile": "balanced",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,

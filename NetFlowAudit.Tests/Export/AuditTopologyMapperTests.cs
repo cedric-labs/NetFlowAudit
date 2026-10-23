@@ -6,6 +6,7 @@ using ProcessForge.Models;
 using SocketForge.Models;
 using TopologyForge.Filtering;
 using TopologyForge.Models;
+using TopologyForge.Rendering;
 
 namespace NetFlowAudit.Tests.Export;
 
@@ -95,6 +96,46 @@ public sealed class AuditTopologyMapperTests
             html.Should().Contain("SRV-WEB-01");
             html.Should().Contain("SRV-SQL-01");
             html.Should().NotContain("SRV-DNS-01");
+        }
+        finally
+        {
+            if (File.Exists(tempHtml))
+            {
+                File.Delete(tempHtml);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GenerateHtmlMapFromEntriesAsync_WhenRenderingOptionsProvided_EmbedsSelectedOptionsInHtml()
+    {
+        // Arrange
+        var mapper = new AuditTopologyMapper();
+        var entries = new[]
+        {
+            CreateSampleAuditEntry(localPort: 52100, remoteIp: "10.0.2.20", remotePort: 1433, remoteHost: "SRV-SQL-01", direction: SocketFlowDirection.Outbound, processName: "w3wp")
+        };
+
+        var filterOptions = new TopologyFilterOptions();
+        var renderingOptions = new TopologyRenderingOptions
+        {
+            DefaultSortMethod = TopologyNodeSortMethod.Alphabetical,
+            DefaultRoutingMode = TopologyEdgeRoutingMode.OrthogonalCorridors,
+            DefaultSpacingProfile = TopologySpacingProfile.Spacious
+        };
+
+        var tempHtml = Path.Combine(Path.GetTempPath(), $"netflow_map_opts_{Guid.NewGuid():N}.html");
+
+        try
+        {
+            // Act
+            await mapper.GenerateHtmlMapFromEntriesAsync(entries, tempHtml, filterOptions, renderingOptions, "Carte Options Test");
+
+            // Assert
+            var html = await File.ReadAllTextAsync(tempHtml);
+            html.Should().Contain("\"defaultSort\":\"alpha\"");
+            html.Should().Contain("\"defaultRouting\":\"orthogonal\"");
+            html.Should().Contain("\"defaultSpacing\":\"spacious\"");
         }
         finally
         {

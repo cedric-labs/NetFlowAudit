@@ -1,11 +1,12 @@
 using System.Globalization;
 using TopologyForge.Filtering;
 using TopologyForge.Models;
+using TopologyForge.Rendering;
 
 namespace NetFlowAudit.Cli.Configuration;
 
 /// <summary>
-/// Constructeur d'options de filtrage topologique à partir de la configuration applicative et des arguments CLI.
+/// Constructeur d'options de filtrage et de rendu topologique à partir de la configuration applicative et des arguments CLI.
 /// </summary>
 public static class TopologyMapConfigurationBuilder
 {
@@ -56,6 +57,45 @@ public static class TopologyMapConfigurationBuilder
     }
 
     /// <summary>
+    /// Convertit la configuration globale en options d'agencement, de tri et de routage pour <see cref="TopologyForge"/>.
+    /// </summary>
+    /// <param name="config">Configuration applicative.</param>
+    /// <returns>Options de rendu topologique.</returns>
+    public static TopologyRenderingOptions BuildRenderingOptions(AppConfiguration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        var sortMethod = config.MapSortMethod.Trim().ToUpperInvariant() switch
+        {
+            "DEGREE" or "CONNECTIONDEGREE" => TopologyNodeSortMethod.ConnectionDegree,
+            "ALPHA" or "ALPHABETICAL" or "NAME" => TopologyNodeSortMethod.Alphabetical,
+            "SUBNET" or "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
+            _ => TopologyNodeSortMethod.BarycentricSugiyama
+        };
+
+        var routingMode = config.MapRoutingMode.Trim().ToUpperInvariant() switch
+        {
+            "ORTHOGONAL" or "ORTHOGONALCORRIDORS" => TopologyEdgeRoutingMode.OrthogonalCorridors,
+            "STRAIGHT" or "DIRECT" or "DIRECTSTRAIGHT" => TopologyEdgeRoutingMode.DirectStraight,
+            _ => TopologyEdgeRoutingMode.BezierCurved
+        };
+
+        var spacingProfile = config.MapSpacingProfile.Trim().ToUpperInvariant() switch
+        {
+            "COMPACT" => TopologySpacingProfile.Compact,
+            "SPACIOUS" or "LARGE" or "WIDE" => TopologySpacingProfile.Spacious,
+            _ => TopologySpacingProfile.Balanced
+        };
+
+        return new TopologyRenderingOptions
+        {
+            DefaultSortMethod = sortMethod,
+            DefaultRoutingMode = routingMode,
+            DefaultSpacingProfile = spacingProfile
+        };
+    }
+
+    /// <summary>
     /// Applique les surcharges de ligne de commande relatives à la cartographie et aux filtres d'inclusion/exclusion.
     /// </summary>
     /// <param name="config">Configuration initiale.</param>
@@ -75,6 +115,9 @@ public static class TopologyMapConfigurationBuilder
         var excludeIps = ParseCsvArgument(args, "--exclude-ips", config.MapExcludedIps);
         var includeProcesses = ParseCsvArgument(args, "--include-processes", config.MapIncludedProcesses);
         var excludeProcesses = ParseCsvArgument(args, "--exclude-processes", config.MapExcludedProcesses);
+        var sortMethod = GetArgumentValue(args, "--map-sort") ?? config.MapSortMethod;
+        var routingMode = GetArgumentValue(args, "--map-routing") ?? config.MapRoutingMode;
+        var spacingProfile = GetArgumentValue(args, "--map-spacing") ?? config.MapSpacingProfile;
 
         var listenersOnly = config.MapListenersOnly ||
                             args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase));
@@ -93,6 +136,9 @@ public static class TopologyMapConfigurationBuilder
             MapExcludedIps = excludeIps,
             MapIncludedProcesses = includeProcesses,
             MapExcludedProcesses = excludeProcesses,
+            MapSortMethod = sortMethod,
+            MapRoutingMode = routingMode,
+            MapSpacingProfile = spacingProfile,
             MapListenersOnly = listenersOnly,
             MapExcludeEphemeralPorts = excludeEphemeral
         };

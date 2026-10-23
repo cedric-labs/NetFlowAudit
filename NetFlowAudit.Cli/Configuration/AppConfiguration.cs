@@ -71,6 +71,21 @@ public sealed record AppConfiguration
     public List<string> MapExcludedProcesses { get; init; } = [];
 
     /// <summary>
+    /// Méthode de tri initial des serveurs sur la carte ("barycentric", "degree", "alpha", "subnet").
+    /// </summary>
+    public string MapSortMethod { get; init; } = "barycentric";
+
+    /// <summary>
+    /// Mode de routage initial des flèches sur la carte ("bezier", "orthogonal", "straight").
+    /// </summary>
+    public string MapRoutingMode { get; init; } = "bezier";
+
+    /// <summary>
+    /// Profil d'écartement initial entre serveurs et flèches ("compact", "balanced", "spacious").
+    /// </summary>
+    public string MapSpacingProfile { get; init; } = "balanced";
+
+    /// <summary>
     /// Colonnes ordonnées à exporter dans le fichier CSV.
     /// Si la liste est vide, l'ensemble des 20 colonnes par défaut est exporté.
     /// </summary>

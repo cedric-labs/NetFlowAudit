@@ -64,10 +64,12 @@ public static class Program
                 ? "netflow_topology.html"
                 : config.OutputHtmlMapPath;
             var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+            var mapRendering = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
             var graph = await topologyMapper.GenerateHtmlMapFromCsvAsync(
                 config.OutputCsvPath,
                 targetHtml,
                 mapFilters,
+                mapRendering,
                 delimiter,
                 "Cartographie des Serveurs & Flux Réseau",
                 CancellationToken.None).ConfigureAwait(false);
@@ -206,10 +208,12 @@ public static class Program
             {
                 var currentEntries = deduplicationRegister.GetAllEntries();
                 var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+                var mapRendering = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
                 _ = topologyMapper.GenerateHtmlMapFromEntriesAsync(
                     currentEntries,
                     config.OutputHtmlMapPath,
                     mapFilters,
+                    mapRendering,
                     $"Cartographie Réseau - {host.HostName}",
                     cts.Token);
             };
@@ -277,10 +281,12 @@ public static class Program
                                     ? "netflow_topology.html"
                                     : config.OutputHtmlMapPath;
                                 var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+                                var mapRendering = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
                                 await topologyMapper.GenerateHtmlMapFromEntriesAsync(
                                     deduplicationRegister.GetAllEntries(),
                                     targetHtml,
                                     mapFilters,
+                                    mapRendering,
                                     $"Cartographie Réseau - {host.HostName}",
                                     cts.Token).ConfigureAwait(false);
                             }
