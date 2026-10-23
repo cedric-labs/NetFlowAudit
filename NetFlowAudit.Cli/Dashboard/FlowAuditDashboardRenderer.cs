@@ -43,6 +43,10 @@ public sealed partial class FlowAuditDashboardRenderer
     private readonly INetworkFlowFilter? _networkFlowFilter;
     private readonly ProcessExclusionFilter? _processExclusionFilter;
     private readonly IReadOnlySet<IPAddress>? _localHostAddresses;
+    private readonly string? _maskServerName;
+    private readonly string? _maskLocalIp;
+
+    private bool _isFilterBypassed;
 
     private FlowAuditCycleResult? _lastResult;
     private ServerHostMetadata? _lastHost;
@@ -58,6 +62,36 @@ public sealed partial class FlowAuditDashboardRenderer
     private InteractiveExclusionColumn _selectedColumn = InteractiveExclusionColumn.Local;
     private string? _statusBannerMessage;
     private DateTime _statusBannerExpiresUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Indicates whether the socket/process filters are currently bypassed for display.
+    /// </summary>
+    public bool IsFilterBypassed
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _isFilterBypassed;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Toggles the filter bypass mode for the dashboard display.
+    /// </summary>
+    public void ToggleFilterBypass()
+    {
+        lock (_syncLock)
+        {
+            _isFilterBypassed = !_isFilterBypassed;
+            _statusBannerMessage = _isFilterBypassed
+                ? "Filter BYPASSED: Displaying all active processes and sockets"
+                : "Filter RESTORED: Displaying audited flows only";
+            _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(3);
+            RenderInternal(forceClear: false);
+        }
+    }
 
     /// <summary>
     /// Indicates whether interactive row/column selection mode is currently active.
@@ -157,13 +191,17 @@ public sealed partial class FlowAuditDashboardRenderer
         string outputCsvPath,
         INetworkFlowFilter? networkFlowFilter,
         ProcessExclusionFilter? processExclusionFilter = null,
-        IReadOnlySet<IPAddress>? localHostAddresses = null)
+        IReadOnlySet<IPAddress>? localHostAddresses = null,
+        string? maskServerName = null,
+        string? maskLocalIp = null)
     {
         _scanIntervalSeconds = scanIntervalSeconds;
         _outputCsvPath = outputCsvPath;
         _networkFlowFilter = networkFlowFilter;
         _processExclusionFilter = processExclusionFilter;
         _localHostAddresses = localHostAddresses;
+        _maskServerName = string.IsNullOrWhiteSpace(maskServerName) ? null : maskServerName.Trim();
+        _maskLocalIp = string.IsNullOrWhiteSpace(maskLocalIp) ? null : maskLocalIp.Trim();
 
         try
         {
@@ -759,14 +797,17 @@ public sealed partial class FlowAuditDashboardRenderer
 
         foreach (var s in result.ActiveSockets)
         {
-            if (_processExclusionFilter is not null && _processExclusionFilter.ShouldExclude(s.Process))
+            if (!_isFilterBypassed)
             {
-                continue;
-            }
+                if (_processExclusionFilter is not null && _processExclusionFilter.ShouldExclude(s.Process))
+                {
+                    continue;
+                }
 
-            if (_networkFlowFilter is not null && _networkFlowFilter.ShouldExclude(s, _localHostAddresses ?? new HashSet<IPAddress>()))
-            {
-                continue;
+                if (_networkFlowFilter is not null && _networkFlowFilter.ShouldExclude(s, _localHostAddresses ?? new HashSet<IPAddress>()))
+                {
+                    continue;
+                }
             }
 
             if (s.Protocol == SocketTransportProtocol.Tcp)
@@ -812,14 +853,17 @@ public sealed partial class FlowAuditDashboardRenderer
         const int subCol3W = 20;
         var subCol2W = Math.Max(10, infoColWidth - (subCol1W + subCol3W + 6));
 
-        var srv1 = $" Server  : {AnsiWhite}{Truncate(host.HostName, 10),-10}{AnsiReset}";
+        var effectiveServerName = !string.IsNullOrWhiteSpace(_maskServerName) ? _maskServerName : host.HostName;
+        var effectiveHostIp = !string.IsNullOrWhiteSpace(_maskLocalIp) ? _maskLocalIp : host.PrimaryIpAddress;
+
+        var srv1 = $" Server  : {AnsiWhite}{Truncate(effectiveServerName, 10),-10}{AnsiReset}";
         var srv2 = $"OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, subCol2W - 5),-5}{AnsiReset}";
         var srv3 = $"Uptime : {AnsiYellow}{uptimeStr,7}{AnsiReset}";
         var srvPart = FormatThreeSubColumns(srv1, subCol1W, srv2, subCol2W, srv3, subCol3W);
         var sockPart = $" Active sockets  : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}";
         sb.AppendLine(FormatSplitRow(srvPart, infoColWidth, sockPart, metricsColWidth));
 
-        var ip1 = $" Host IP : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 10),-10}{AnsiReset}";
+        var ip1 = $" Host IP : {AnsiWhite}{Truncate(effectiveHostIp, 10),-10}{AnsiReset}";
         var ip2 = $"Scan : {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset} (auto)";
         var ip3 = $"Time   : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
         var ipPart = FormatThreeSubColumns(ip1, subCol1W, ip2, subCol2W, ip3, subCol3W);
@@ -827,7 +871,7 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine(FormatSplitRow(ipPart, infoColWidth, flowsPart, metricsColWidth));
 
         var st1 = $" Status  : {AnsiGreen}Active{AnsiReset}";
-        var st2 = "Filter: Ports/Loopback";
+        var st2 = _isFilterBypassed ? $"{AnsiYellow}Filter: OFF (All){AnsiReset}" : "Filter: Ports/Loopback";
         var st3 = $"Ignored: {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flows";
         var stPart = FormatThreeSubColumns(st1, subCol1W, st2, subCol2W, st3, subCol3W);
         var newPart = $" New flows       : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
@@ -842,7 +886,9 @@ public sealed partial class FlowAuditDashboardRenderer
 
         // 3. Middle panes (Traffic Breakdown vs Top Active Processes)
         var titleTrafic = $" {AnsiBold}{AnsiWhite}NETWORK TRAFFIC BREAKDOWN{AnsiReset}";
-        var titleProc = $" {AnsiBold}{AnsiWhite}TOP ACTIVE PROCESSES (SOCKETS){AnsiReset}";
+        var titleProc = _isFilterBypassed
+            ? $" {AnsiBold}{AnsiWhite}ALL ACTIVE PROCESSES (RAW){AnsiReset}"
+            : $" {AnsiBold}{AnsiWhite}TOP ACTIVE PROCESSES (SOCKETS){AnsiReset}";
         sb.AppendLine(FormatSplitRow(titleTrafic, trafficColWidth, titleProc, topProcColWidth));
 
         var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Listen: {listeningCount,3}, Outbound: {outboundCount,3})";
@@ -866,28 +912,54 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine($"{AnsiCyan}├{new string('─', trafficColWidth)}┴{new string('─', topProcColWidth)}┤{AnsiReset}{AnsiClearLine}");
 
         // 5. Discoveries table title & pagination status
+        IReadOnlyList<NetworkAuditEntry> displayEntries;
+        if (_isFilterBypassed)
+        {
+            var rawList = new List<NetworkAuditEntry>(result.ActiveSockets.Count);
+            for (var i = 0; i < result.ActiveSockets.Count; i++)
+            {
+                var s = result.ActiveSockets[i];
+                rawList.Add(new NetworkAuditEntry(
+                    FirstSeenUtc: result.TimestampUtc,
+                    LastSeenUtc: result.TimestampUtc,
+                    ObservationCount: 1,
+                    Server: host,
+                    Socket: s));
+            }
+            displayEntries = rawList;
+        }
+        else
+        {
+            displayEntries = _recentDiscoveries;
+        }
+
         var maxVisibleDiscoveries = Math.Max(3, totalHeight - 15);
-        var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)maxVisibleDiscoveries));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(displayEntries.Count / (double)maxVisibleDiscoveries));
         if (_currentPageIndex >= totalPages)
         {
             _currentPageIndex = totalPages - 1;
         }
 
         var pageStartIndex = _currentPageIndex * maxVisibleDiscoveries;
-        var visibleOnPage = Math.Clamp(_recentDiscoveries.Count - pageStartIndex, 0, maxVisibleDiscoveries);
+        var visibleOnPage = Math.Clamp(displayEntries.Count - pageStartIndex, 0, maxVisibleDiscoveries);
         if (_isSelectionActive && visibleOnPage > 0)
         {
             _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, visibleOnPage - 1);
         }
 
-        var startRowNum = _recentDiscoveries.Count == 0 ? 0 : pageStartIndex + 1;
+        var startRowNum = displayEntries.Count == 0 ? 0 : pageStartIndex + 1;
         var endRowNum = pageStartIndex + visibleOnPage;
-        var capLabel = _maxStoredDiscoveries >= UnlimitedDiscoveriesCapacity ? "ALL" : _maxStoredDiscoveries.ToString();
+        var capLabel = _isFilterBypassed
+            ? "LIVE ACTIVE"
+            : (_maxStoredDiscoveries >= UnlimitedDiscoveriesCapacity ? "ALL" : _maxStoredDiscoveries.ToString());
 
         var hasActiveBanner = !string.IsNullOrEmpty(_statusBannerMessage) && DateTime.UtcNow < _statusBannerExpiresUtc;
+        var tableTitlePrefix = _isFilterBypassed
+            ? $" {AnsiBold}{AnsiWhite}ALL ACTIVE SOCKETS (RAW){AnsiReset}"
+            : $" {AnsiBold}{AnsiWhite}RECENT FLOW DISCOVERIES (LIVE){AnsiReset}";
         var tableTitle = hasActiveBanner
-            ? $" {AnsiBold}{AnsiGreen}✔ {_statusBannerMessage}{AnsiReset}"
-            : $" {AnsiBold}{AnsiWhite}RECENT FLOW DISCOVERIES (LIVE){AnsiReset} {AnsiDarkGray}[Page {_currentPageIndex + 1}/{totalPages} | Rows {startRowNum}-{endRowNum} of {_recentDiscoveries.Count} | Max: {capLabel}]{AnsiReset}";
+            ? $" {AnsiBold}{AnsiGreen}\u2714 {_statusBannerMessage}{AnsiReset}"
+            : $"{tableTitlePrefix} {AnsiDarkGray}[Page {_currentPageIndex + 1}/{totalPages} | Rows {startRowNum}-{endRowNum} of {displayEntries.Count} | Max: {capLabel}]{AnsiReset}";
         sb.AppendLine(FormatRow(tableTitle, interiorWidth));
 
         // Fixed prefix width (21 chars): " " (1) + "TIME    " (8) + " " (1) + "PROTO" (5) + " " (1) + "DIR " (4) + " " (1) = 21 chars
@@ -916,9 +988,9 @@ public sealed partial class FlowAuditDashboardRenderer
         for (var i = 0; i < maxVisibleDiscoveries; i++)
         {
             var dataIdx = pageStartIndex + i;
-            if (dataIdx < _recentDiscoveries.Count)
+            if (dataIdx < displayEntries.Count)
             {
-                var entry = _recentDiscoveries[dataIdx];
+                var entry = displayEntries[dataIdx];
                 var isRowSelected = _isSelectionActive && i == _selectedRowIndex;
 
                 var time = entry.FirstSeenUtc.ToString("HH:mm:ss");
@@ -931,7 +1003,12 @@ public sealed partial class FlowAuditDashboardRenderer
                     _ => "UNKN"
                 };
 
-                var local = Truncate($"{entry.Socket.LocalEndpoint.Address}:{entry.Socket.LocalEndpoint.Port}", localWidth);
+                var localAddressStr = entry.Socket.LocalEndpoint.Address.ToString();
+                if (!string.IsNullOrWhiteSpace(_maskLocalIp) && (localAddressStr == host.PrimaryIpAddress || localAddressStr == "0.0.0.0"))
+                {
+                    localAddressStr = _maskLocalIp;
+                }
+                var local = Truncate($"{localAddressStr}:{entry.Socket.LocalEndpoint.Port}", localWidth);
                 var remoteTarget = !string.IsNullOrWhiteSpace(entry.RemoteHostName)
                     ? $"{entry.RemoteHostName}:{entry.Socket.RemoteEndpoint.Port}"
                     : $"{entry.Socket.RemoteEndpoint.Address}:{entry.Socket.RemoteEndpoint.Port}";
@@ -986,8 +1063,9 @@ public sealed partial class FlowAuditDashboardRenderer
         }
 
         // 6. Footer bar
-        sb.AppendLine($"{AnsiCyan}└{new string('─', interiorWidth)}┘{AnsiReset}{AnsiClearLine}");
+        sb.AppendLine($"{AnsiCyan}\u2514{new string('\u2500', interiorWidth)}\u2518{AnsiReset}{AnsiClearLine}");
 
+        var filterLabel = _isFilterBypassed ? "OFF" : "ON";
         if (_isSelectionActive)
         {
             var colLabel = _selectedColumn switch
@@ -999,13 +1077,12 @@ public sealed partial class FlowAuditDashboardRenderer
                 _ => "FLOW"
             };
 
-            sb.Append($" {AnsiBold}{AnsiYellow}[↑↓←→]{AnsiReset} Navigate  {AnsiBold}{AnsiYellow}[Enter/X]{AnsiReset} Exclude {colLabel}  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Page  {AnsiBold}{AnsiYellow}[Esc]{AnsiReset} Cancel  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[\u2191\u2193\u2190\u2192]{AnsiReset} Navigate  {AnsiBold}{AnsiYellow}[Enter/X]{AnsiReset} Exclude {colLabel}  {AnsiBold}{AnsiYellow}[F]{AnsiReset} Filter: {filterLabel}  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Page  {AnsiBold}{AnsiYellow}[Esc]{AnsiReset} Cancel  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
         }
         else
         {
-            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Clear  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Refresh Map  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Next/Prev Page  {AnsiBold}{AnsiYellow}[L/A]{AnsiReset} +100/All  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclude{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Clear  {AnsiBold}{AnsiYellow}[F]{AnsiReset} Filter: {filterLabel}  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Refresh Map  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Next/Prev Page  {AnsiBold}{AnsiYellow}[L/A]{AnsiReset} +100/All  {AnsiBold}{AnsiYellow}[\u2191\u2193]{AnsiReset} Exclude{AnsiClearLine}");
         }
-
         return sb.ToString();
     }
 

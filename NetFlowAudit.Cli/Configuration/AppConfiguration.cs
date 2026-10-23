@@ -183,4 +183,14 @@ public sealed record AppConfiguration
     /// Active l'interface terminal dynamique (TUI style btop) en mode interactif.
     /// </summary>
     public bool EnableDashboard { get; init; } = true;
+
+    /// <summary>
+    /// Nom de serveur fictif affichÃ© dans le tableau de bord (pour captures d'Ã©cran anonymisÃ©es).
+    /// </summary>
+    public string MaskServerName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Adresse IP locale fictive affichÃ©e dans le tableau de bord (pour captures d'Ã©cran anonymisÃ©es).
+    /// </summary>
+    public string MaskLocalIp { get; init; } = string.Empty;
 }

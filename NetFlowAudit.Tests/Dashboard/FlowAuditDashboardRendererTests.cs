@@ -897,6 +897,115 @@ public sealed class FlowAuditDashboardRendererTests
         frame.Should().Contain("\x1b[30;43;1m");
     }
 
+    [Fact]
+    public void BuildDashboardFrame_WhenMaskServerAndIpProvided_DisplaysMaskedValuesInHeaderAndRows()
+    {
+        // Arrange
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 5000),
+            new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 443),
+            "Established",
+            new ProcessMetadata(101, "dotnet", "/bin/dotnet", "", "", "user"));
+        var realHost = new ServerHostMetadata("REAL-SRV-01", "Linux 6.8.0", "192.168.1.10");
+        var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, realHost, socket);
+        var result = new FlowAuditCycleResult(
+            TimestampUtc: DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 1,
+            ExcludedSocketsCount: 0,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 1,
+            NewlyDiscoveredEntries: [entry],
+            ActiveSockets: [socket]);
+
+        var renderer = new FlowAuditDashboardRenderer(
+            scanIntervalSeconds: 5,
+            outputCsvPath: "test.csv",
+            networkFlowFilter: null,
+            processExclusionFilter: null,
+            localHostAddresses: null,
+            maskServerName: "MASKED-SRV",
+            maskLocalIp: "10.99.88.77");
+
+        renderer.Render(result, realHost);
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, realHost);
+
+        // Assert
+        frame.Should().Contain("MASKED-SRV");
+        frame.Should().NotContain("REAL-SRV-01");
+        frame.Should().Contain("10.99.88.77");
+    }
+
+    [Fact]
+    public void ToggleFilterBypass_WhenToggled_SwitchesBetweenFilteredAndRawAllProcesses()
+    {
+        // Arrange
+        var allowedSocket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("127.0.0.1"), 5000),
+            new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 443),
+            "Established",
+            new ProcessMetadata(101, "dotnet", "/bin/dotnet", "", "", "user"));
+        var excludedSocket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("127.0.0.1"), 5001),
+            new SocketEndpoint(IPAddress.Parse("10.0.0.2"), 443),
+            "Established",
+            new ProcessMetadata(102, "ExcludedProc", "/bin/proc", "", "", "user"));
+
+        var exclusionFilter = new ProcessExclusionFilter(new ProcessExclusionOptions
+        {
+            ExcludedExactNames = ["ExcludedProc"]
+        });
+
+        var renderer = new FlowAuditDashboardRenderer(
+            scanIntervalSeconds: 5,
+            outputCsvPath: "test.csv",
+            networkFlowFilter: null,
+            processExclusionFilter: exclusionFilter,
+            localHostAddresses: null);
+
+        var result = new FlowAuditCycleResult(
+            TimestampUtc: DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 2,
+            ExcludedSocketsCount: 1,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 1,
+            NewlyDiscoveredEntries: [new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, allowedSocket)],
+            ActiveSockets: [allowedSocket, excludedSocket]);
+
+        renderer.Render(result, SampleHost);
+
+        // Act 1: Initial state (filtered)
+        renderer.IsFilterBypassed.Should().BeFalse();
+        var initialFrame = renderer.BuildDashboardFrame(result, SampleHost);
+        initialFrame.Should().Contain("Filter: Ports/Loopback");
+        initialFrame.Should().Contain("TOP ACTIVE PROCESSES (SOCKETS)");
+        initialFrame.Should().Contain("Filter: ON");
+        initialFrame.Should().NotContain("ExcludedProc");
+
+        // Act 2: Toggle filter bypass
+        renderer.ToggleFilterBypass();
+
+        // Assert 2: Raw / All processes view
+        renderer.IsFilterBypassed.Should().BeTrue();
+        var bypassedFrame = renderer.BuildDashboardFrame(result, SampleHost);
+        bypassedFrame.Should().Contain("Filter: OFF (All)");
+        bypassedFrame.Should().Contain("ALL ACTIVE PROCESSES (RAW)");
+        bypassedFrame.Should().Contain("Filter BYPASSED");
+        bypassedFrame.Should().Contain("Filter: OFF");
+        bypassedFrame.Should().Contain("ExcludedProc");
+
+        // Act 3: Toggle back
+        renderer.ToggleFilterBypass();
+        renderer.IsFilterBypassed.Should().BeFalse();
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

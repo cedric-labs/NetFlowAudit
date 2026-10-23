@@ -36,6 +36,9 @@ COMMAND-LINE OPTIONS:
   --resolve-ip-owners <true|false>    Enable or disable RDAP IP organization fallback when PTR is missing.
   --isolated, --offline               Air-gapped / offline server mode: disable external resolution queries.
   --exclude-remote-ips <ip1,cidr2,..> Comma-separated remote IP addresses or CIDR subnets to exclude.
+  --mask-server <name>                Fictitious server name for dashboard display/screenshots.
+  --mask-ip <ip>                      Fictitious local IP for dashboard display/screenshots.
+  --obfuscate, --anonymize            Mask both server name (SRV-AUDIT-01) and local IP (10.0.0.10).
 
 TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
   --map <path.html>                   Generate a self-contained HTML5 topology map of servers and service ports.
@@ -60,6 +63,7 @@ TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
 INTERACTIVE DASHBOARD SHORTCUTS (TUI):
   [Q]                        Graceful shutdown and CSV flush.
   [C]                        Clear screen and force full dashboard redraw.
+  [F]                        Toggle filter bypass for display (Show All / Filtered).
   [M]                        Immediately generate/refresh the HTML topology map (netflow_topology.html).
   [N / PageDown]             Go to next page of flow discoveries.
   [P / PageUp]               Go to previous page of flow discoveries.
