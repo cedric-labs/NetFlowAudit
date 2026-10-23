@@ -824,8 +824,8 @@ public sealed partial class FlowAuditDashboardRenderer
                 }
 
                 var color = entry.Socket.Protocol == SocketTransportProtocol.Tcp ? AnsiGreen : AnsiYellow;
-                var rowPrefixStr = isRowSelected ? $"{AnsiYellow}►{AnsiReset}" : " ";
-                var rowPrefix = $"{rowPrefixStr}{AnsiDarkGray}{time,-8}{AnsiReset} {color}{proto,-5}{AnsiReset} {dir,-4} ";
+                var timeColor = isRowSelected ? $"{AnsiYellow}{AnsiBold}" : AnsiDarkGray;
+                var rowPrefix = $" {timeColor}{time,-8}{AnsiReset} {color}{proto,-5}{AnsiReset} {dir,-4} ";
                 var row = $"{rowPrefix}{localText} {remoteText} {procText} {targetText}";
                 sb.AppendLine(FormatRow(row, interiorWidth));
             }

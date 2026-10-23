@@ -625,6 +625,69 @@ public sealed class FlowAuditDashboardRendererTests
         }
     }
 
+    [Fact]
+    public void BuildDashboardFrame_WhenRowIsSelected_MaintainsIdenticalLeftPaddingAndColumnAlignment()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket1 = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.68.81"), 64026),
+            new SocketEndpoint(IPAddress.Parse("172.217.118.4"), 443),
+            "Established",
+            new ProcessMetadata(100, "language_server", "", "", "", "user"));
+
+        var socket2 = new ActiveSocketConnection(
+            SocketTransportProtocol.Udp,
+            SocketFlowDirection.Listening,
+            new SocketEndpoint(IPAddress.Parse("0.0.0.0"), 61664),
+            new SocketEndpoint(IPAddress.Parse("0.0.0.0"), 0),
+            "Listen",
+            new ProcessMetadata(200, "dasHost", "", "", "", "system"));
+
+        var entry1 = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket1);
+        var entry2 = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket2);
+
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 2,
+            ExcludedSocketsCount: 0,
+            NewlyDiscoveredCount: 2,
+            TotalUniqueFlowsTracked: 2,
+            NewlyDiscoveredEntries: [entry1, entry2],
+            ActiveSockets: [socket1, socket2]);
+
+        renderer.Render(result, SampleHost);
+
+        // Frame unselected
+        var unselectedFrame = renderer.BuildDashboardFrame(result, SampleHost);
+        var unselectedLines = unselectedFrame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        var unselectedRow1 = StripAnsi(unselectedLines.First(l => l.Contains("192.168.68.81:64026", StringComparison.Ordinal)));
+        var unselectedRow2 = StripAnsi(unselectedLines.First(l => l.Contains("0.0.0.0:61664", StringComparison.Ordinal)));
+
+        // Act - Select second row
+        renderer.MoveSelectionDown();
+        renderer.MoveSelectionDown();
+        var selectedFrame = renderer.BuildDashboardFrame(result, SampleHost);
+        var selectedLines = selectedFrame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        var selectedRow1 = StripAnsi(selectedLines.First(l => l.Contains("192.168.68.81:64026", StringComparison.Ordinal)));
+        var selectedRow2 = StripAnsi(selectedLines.First(l => l.Contains("0.0.0.0:61664", StringComparison.Ordinal)));
+
+        // Assert - Both rows must start with box character followed by exact 1 space
+        selectedRow2.Should().StartWith("│ ");
+        selectedRow1.Should().StartWith("│ ");
+        unselectedRow2.Should().StartWith("│ ");
+
+        // The column positions of LOCAL endpoint must be strictly identical between unselected and selected
+        selectedRow2.IndexOf("0.0.0.0:61664", StringComparison.Ordinal)
+            .Should().Be(unselectedRow2.IndexOf("0.0.0.0:61664", StringComparison.Ordinal));
+
+        // The column positions of the process name must be strictly identical
+        selectedRow2.IndexOf("dasHost", StringComparison.Ordinal)
+            .Should().Be(unselectedRow2.IndexOf("dasHost", StringComparison.Ordinal));
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

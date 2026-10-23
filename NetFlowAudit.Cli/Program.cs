@@ -25,6 +25,15 @@ public static class Program
     /// </summary>
     public static async Task Main(string[] args)
     {
+        try
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.InputEncoding = System.Text.Encoding.UTF8;
+        }
+        catch (IOException)
+        {
+            // Environnement sans contrôle de terminal
+        }
         if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "help"))
         {
             ConsoleHelpPrinter.PrintHelp();
