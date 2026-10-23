@@ -4,13 +4,14 @@ using NetFlowAudit.Core.Export;
 using NetFlowAudit.Core.Filtering;
 using NetFlowAudit.Core.Models;
 using NetFlowAudit.Core.Providers;
+using NetFlowAudit.Core.Resolution;
 using ProcessForge.Filtering;
 using SocketForge.Contracts;
 
 namespace NetFlowAudit.Core.Engine;
 
 /// <summary>
-/// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge, le filtrage de flux réseau et la persistance FileForge.
+/// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge, le filtrage de flux réseau, la résolution de noms d'hôtes et la persistance FileForge.
 /// </summary>
 public sealed class FlowAuditEngine(
     ISocketScanner socketScanner,
@@ -20,6 +21,7 @@ public sealed class FlowAuditEngine(
     LocalServerHostProvider hostProvider,
     PersistentDelimitedFileWriter csvWriter,
     AuditCsvFormatter csvFormatter,
+    IHostNameResolver hostNameResolver,
     TimeSpan scanInterval)
 {
     private readonly ISocketScanner _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
@@ -29,12 +31,33 @@ public sealed class FlowAuditEngine(
     private readonly LocalServerHostProvider _hostProvider = hostProvider ?? throw new ArgumentNullException(nameof(hostProvider));
     private readonly PersistentDelimitedFileWriter _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
     private readonly AuditCsvFormatter _csvFormatter = csvFormatter ?? throw new ArgumentNullException(nameof(csvFormatter));
+    private readonly IHostNameResolver _hostNameResolver = hostNameResolver ?? throw new ArgumentNullException(nameof(hostNameResolver));
     private readonly TimeSpan _scanInterval = scanInterval;
 
     /// <summary>
-    /// Événement déclenché à la fin de chaque cycle de scan avec la synthèse métrique.
+    /// Constructeur avec filtre de flux explicite et résolveur de nom d'hôte inactif par défaut.
     /// </summary>
-    public event EventHandler<FlowAuditCycleEventArgs>? ScanCycleCompleted;
+    public FlowAuditEngine(
+        ISocketScanner socketScanner,
+        ProcessExclusionFilter exclusionFilter,
+        INetworkFlowFilter networkFlowFilter,
+        ConnectionDeduplicationRegister deduplicationRegister,
+        LocalServerHostProvider hostProvider,
+        PersistentDelimitedFileWriter csvWriter,
+        AuditCsvFormatter csvFormatter,
+        TimeSpan scanInterval)
+        : this(
+            socketScanner,
+            exclusionFilter,
+            networkFlowFilter,
+            deduplicationRegister,
+            hostProvider,
+            csvWriter,
+            csvFormatter,
+            new NoOpHostNameResolver(),
+            scanInterval)
+    {
+    }
 
     /// <summary>
     /// Constructeur de compatibilité sans filtre de flux explicite (utilise les options par défaut).
@@ -55,9 +78,15 @@ public sealed class FlowAuditEngine(
             hostProvider,
             csvWriter,
             csvFormatter,
+            new NoOpHostNameResolver(),
             scanInterval)
     {
     }
+
+    /// <summary>
+    /// Événement déclenché à la fin de chaque cycle de scan avec la synthèse métrique.
+    /// </summary>
+    public event EventHandler<FlowAuditCycleEventArgs>? ScanCycleCompleted;
 
     /// <summary>
     /// Exécute l'audit continu.
@@ -107,6 +136,13 @@ public sealed class FlowAuditEngine(
 
             if (isNew)
             {
+                var remoteHost = await _hostNameResolver.ResolveHostNameAsync(socket.RemoteEndpoint.Address, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(remoteHost))
+                {
+                    registered = registered with { RemoteHostName = remoteHost };
+                    _deduplicationRegister.UpdateRegisteredEntry(registered);
+                }
+
                 var line = _csvFormatter.FormatEntry(registered);
                 await _csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
                 newlyDiscovered.Add(registered);

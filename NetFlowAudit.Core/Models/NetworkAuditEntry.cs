@@ -10,12 +10,14 @@ namespace NetFlowAudit.Core.Models;
 /// <param name="ObservationCount">Nombre de scans successifs où la connexion était active.</param>
 /// <param name="Server">Métadonnées du serveur hôte.</param>
 /// <param name="Socket">Détails de la socket et du processus résolu via SocketForge et ProcessForge.</param>
+/// <param name="RemoteHostName">Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu).</param>
 public sealed record NetworkAuditEntry(
     DateTimeOffset FirstSeenUtc,
     DateTimeOffset LastSeenUtc,
     long ObservationCount,
     ServerHostMetadata Server,
-    ActiveSocketConnection Socket)
+    ActiveSocketConnection Socket,
+    string RemoteHostName = "")
 {
     /// <summary>
     /// Calcule la clé d'unicité logique de l'entrée d'audit.

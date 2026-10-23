@@ -219,6 +219,74 @@ public sealed class FlowAuditEngineTests : IAsyncLifetime
         deduplication.UniqueCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task ExecuteScanCycleAsync_WhenHostNameResolverInjected_ResolvesAndStoresRemoteHostNameForNewFlow()
+    {
+        // Arrange
+        var testCsv = Path.Combine(_testDir, "dns_output.csv");
+        var options = new AuditCsvOptions
+        {
+            SelectedColumns = [AuditCsvColumn.RemoteIp, AuditCsvColumn.RemotePort, AuditCsvColumn.RemoteHostName]
+        };
+        var csvFormatter = new AuditCsvFormatter(options);
+        await using var csvWriter = new FileForge.IO.PersistentDelimitedFileWriter(testCsv, csvFormatter.BuildHeaderLine());
+        await csvWriter.InitializeAsync();
+
+        var hostProvider = new LocalServerHostProvider();
+        var deduplication = new ConnectionDeduplicationRegister();
+        var exclusion = new ProcessExclusionFilter(new ProcessExclusionOptions());
+        var networkFilter = new NetworkFlowFilter(new NetworkFlowFilterOptions { ExcludeLoopbackFlows = false });
+
+        var remoteIp = IPAddress.Parse("140.82.121.4");
+        var mockScanner = new FakeSocketScanner([
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000),
+                new SocketEndpoint(remoteIp, 443),
+                "Established",
+                new ProcessMetadata(1234, "git", "git.exe", "git fetch", "", "User"))
+        ]);
+
+        var fakeResolver = new FakeHostNameResolver("github.com");
+
+        var engine = new FlowAuditEngine(
+            mockScanner,
+            exclusion,
+            networkFilter,
+            deduplication,
+            hostProvider,
+            csvWriter,
+            csvFormatter,
+            fakeResolver,
+            TimeSpan.FromSeconds(1));
+
+        FlowAuditCycleResult? cycleResult = null;
+        engine.ScanCycleCompleted += (_, e) => cycleResult = e.Result;
+
+        // Act
+        var count = await engine.ExecuteScanCycleAsync();
+
+        // Assert
+        count.Should().Be(1);
+        cycleResult.Should().NotBeNull();
+        cycleResult!.NewlyDiscoveredEntries.Should().HaveCount(1);
+        cycleResult.NewlyDiscoveredEntries[0].RemoteHostName.Should().Be("github.com");
+
+        await csvWriter.DisposeAsync();
+        var lines = await File.ReadAllLinesAsync(testCsv);
+        lines.Length.Should().Be(2); // Header + 1 entry
+        lines[1].Should().Be("140.82.121.4,443,github.com");
+    }
+
+    private sealed class FakeHostNameResolver(string resolvedHost) : NetFlowAudit.Core.Resolution.IHostNameResolver
+    {
+        public Task<string> ResolveHostNameAsync(IPAddress address, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(resolvedHost);
+        }
+    }
+
     private sealed class FakeSocketScanner(IReadOnlyList<ActiveSocketConnection> connections) : ISocketScanner
     {
         public Task<IReadOnlyList<ActiveSocketConnection>> ScanSocketsAsync(CancellationToken cancellationToken = default)

@@ -71,6 +71,11 @@ public enum AuditCsvColumn
     RemotePort,
 
     /// <summary>
+    /// Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu).
+    /// </summary>
+    RemoteHostName,
+
+    /// <summary>
     /// Identifiant numérique du processus (PID).
     /// </summary>
     ProcessId,

@@ -60,4 +60,37 @@ public sealed class AuditCsvFormatterTests
         // Assert
         line.Should().Be("java,\"java -jar \"\"app,with,comma.jar\"\" --port 8080\"");
     }
+
+    [Fact]
+    public void FormatEntry_WhenRemoteHostNameIsIncluded_FormatsValueAccurately()
+    {
+        // Arrange
+        var options = new AuditCsvOptions
+        {
+            SelectedColumns = [AuditCsvColumn.RemoteIp, AuditCsvColumn.RemotePort, AuditCsvColumn.RemoteHostName]
+        };
+        var formatter = new AuditCsvFormatter(options);
+
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("10.10.10.2"), 54321),
+            new SocketEndpoint(IPAddress.Parse("140.82.121.4"), 443),
+            "Established",
+            new ProcessMetadata(1234, "curl", @"C:\curl.exe", "curl https://github.com", "", "appuser"));
+
+        var entry = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            DummyServer,
+            socket,
+            "github.com");
+
+        // Act
+        var line = formatter.FormatEntry(entry);
+
+        // Assert
+        line.Should().Be("140.82.121.4,443,github.com");
+    }
 }

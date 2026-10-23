@@ -16,6 +16,22 @@ public sealed record AppConfiguration
     public string OutputCsvPath { get; init; } = "netflow_audit.csv";
 
     /// <summary>
+    /// Colonnes ordonnées à exporter dans le fichier CSV.
+    /// Si la liste est vide, l'ensemble des 20 colonnes par défaut est exporté.
+    /// </summary>
+    public List<string> CsvColumns { get; init; } = [];
+
+    /// <summary>
+    /// Séparateur de champ pour le fichier CSV (virgule ',' par défaut).
+    /// </summary>
+    public string CsvDelimiter { get; init; } = ",";
+
+    /// <summary>
+    /// Active ou désactive la résolution DNS inverse des adresses IP distantes.
+    /// </summary>
+    public bool ResolveRemoteHostNames { get; init; } = true;
+
+    /// <summary>
     /// PIDs à exclure systématiquement.
     /// </summary>
     public List<int> ExcludedPids { get; init; } = [0, 4];

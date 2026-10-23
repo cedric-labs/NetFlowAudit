@@ -425,7 +425,10 @@ public sealed partial class FlowAuditDashboardRenderer
                 };
 
                 var local = Truncate($"{entry.Socket.LocalEndpoint.Address}:{entry.Socket.LocalEndpoint.Port}", localWidth);
-                var remote = Truncate($"{entry.Socket.RemoteEndpoint.Address}:{entry.Socket.RemoteEndpoint.Port}", remoteWidth);
+                var remoteTarget = !string.IsNullOrWhiteSpace(entry.RemoteHostName)
+                    ? $"{entry.RemoteHostName}:{entry.Socket.RemoteEndpoint.Port}"
+                    : $"{entry.Socket.RemoteEndpoint.Address}:{entry.Socket.RemoteEndpoint.Port}";
+                var remote = Truncate(remoteTarget, remoteWidth);
                 var proc = Truncate(entry.Socket.Process.ProcessName, procWidth);
                 var target = Truncate(!string.IsNullOrWhiteSpace(entry.Socket.Process.TargetExecutable)
                     ? entry.Socket.Process.TargetExecutable

@@ -201,6 +201,45 @@ public sealed class FlowAuditDashboardRendererTests
         indices2.Should().Equal(indices3, "Header row 2 and row 3 must have identical separator indices");
     }
 
+    [Fact]
+    public void BuildDashboardFrame_WhenEntryHasRemoteHostName_RendersHostNameInDistantColumn()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 54321),
+            new SocketEndpoint(IPAddress.Parse("140.82.121.4"), 443),
+            "Established",
+            new ProcessMetadata(1234, "git", "git.exe", "git fetch", "", "user"));
+
+        var entry = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            SampleHost,
+            socket,
+            "github.com");
+
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 1,
+            ExcludedSocketsCount: 0,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 1,
+            NewlyDiscoveredEntries: [entry],
+            ActiveSockets: [socket]);
+
+        renderer.Render(result, SampleHost);
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost, 120, 25);
+
+        // Assert
+        frame.Should().Contain("github.com:443");
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

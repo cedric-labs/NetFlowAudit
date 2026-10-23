@@ -62,6 +62,17 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
+    /// Met à jour une entrée déjà enregistrée dans le registre (ex: enrichissement après résolution DNS inverse).
+    /// </summary>
+    /// <param name="updated">Entrée enrichie à consigner dans le registre.</param>
+    public void UpdateRegisteredEntry(NetworkAuditEntry updated)
+    {
+        ArgumentNullException.ThrowIfNull(updated);
+        var key = updated.ComputeAuditKey();
+        _activeFlows[key] = updated;
+    }
+
+    /// <summary>
     /// Nombre total de flux uniques répertoriés.
     /// </summary>
     public int UniqueCount => _activeFlows.Count;

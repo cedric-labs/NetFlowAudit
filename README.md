@@ -14,6 +14,10 @@
   - **Sur Windows** : interrogation de l'API native IP Helper Win32 (`iphlpapi.dll`).
   - **Sur Linux / WSL** : lecture directe du pseudo-système de fichiers `/proc/net/{tcp,tcp6,udp,udp6}` et corrélation des descripteurs de fichiers `/proc/<pid>/fd`.
 - **Détection des cibles sous-jacentes (Wrappers)** : Ne se contente pas d'identifier le binaire lanceur (`java.exe`, `python`, `cmd.exe`, `powershell.exe`, `bash`), mais extrait la ligne de commande complète et isole la charge utile réelle (`.jar`, `.py`, `.bat`, `.cmd`, `.ps1`, `.sh`).
+- **Résolution DNS inverse asynchrone & non-bloquante** :
+  - Résout automatiquement les adresses IP distantes en noms d'hôtes (FQDN) à la détection de nouveaux flux.
+  - Doté d'un cache mémoire haute performance avec politique de cache négatif (évite de requêter le serveur DNS en boucle en cas d'absence d'enregistrement PTR).
+  - Affichage direct du nom d'hôte sur le tableau de bord console et consigne dans une colonne dédiée du fichier CSV.
 - **Déduplication intelligente** :
   - Pour les flux sortants, neutralise l'impact des ports clients éphémères afin de ne pas multiplier les lignes identiques pour une même destination.
   - Met à jour le compteur d'observations (`ObservationCount`) et l'horodatage de dernière vue (`LastSeenUtc`).
@@ -22,11 +26,16 @@
   - Exclusion de processus par identifiant (PID), nom exact, préfixe, suffixe, sous-chaîne ou comptes système (`SYSTEM`, `root`).
   - Exclusion automatique des flux internes intra-machine (`LocalIp == RemoteIp`, adresses loopback `127.0.0.0/8`, `::1` et IP locales de l'hôte).
   - Exclusion ciblée de ports locaux (`ExcludedLocalPorts`) ou de ports distants (`ExcludedRemotePorts`).
-- **Tableau de bord interactif style `btop`** :
-  - Interface plein écran ANSI anti-scintillement (double-buffer) affichant l'uptime, l'état global et les statistiques réseau en direct.
+- **Colonnes d'export CSV 100 % paramétrables** :
+  - Choix libre des colonnes à inclure et de leur ordre d'apparition parmi 20 colonnes disponibles, via le fichier de configuration JSON ou l'option `--columns`.
+  - Délimiteur personnalisable (virgule, point-virgule, tabulation).
+- **Tableau de bord interactif responsive (style `btop`)** :
+  - Interface plein écran ANSI s'adaptant dynamiquement à la largeur et à la hauteur de la fenêtre du terminal.
+  - Redimensionnement automatique instantané (scrutation 100 ms) sans distorsion ni décalage de séparateurs.
   - Répartition instantanée des protocoles (TCP/UDP) et directions (écoute, entrant, sortant).
   - Top des processus locaux les plus actifs en nombre de sockets.
   - Défilement en temps réel des dernières découvertes de flux réseau horodatées.
+  - Écran de garde automatique lorsque le terminal est trop petit (< 100 cols x 16 lignes).
   - Désactivation automatique ou manuelle via `--no-tui` / `--daemon` lors d'une exécution en service ou redirection de flux.
 - **Multiplateforme & Autonome** : Fonctionne sous Windows et Linux (x64 / ARM64), diffusable sous forme de binaire autonome (*self-contained single-file*) sans prérequis d'installation du SDK/Runtime .NET.
 
@@ -34,7 +43,24 @@
 
 ## 2. Guide de Démarrage Rapide
 
-### 2.1. Exécution sous Windows
+### 2.1. Options de ligne de commande
+
+NetFlowAudit propose une aide intégrée et plusieurs paramètres en ligne de commande :
+
+```
+NetFlowAudit.Cli [OPTIONS]
+
+Options :
+  -h, --help                 Affiche l'aide complète (avec le catalogue de toutes les colonnes CSV) et quitte.
+  --no-tui, --daemon         Désactive le tableau de bord interactif (recommandé en service d'arrière-plan).
+  --config <chemin>          Spécifie un fichier de configuration alternatif (par défaut : netflowaudit.json).
+  --output <chemin>          Spécifie le fichier CSV de sortie (par défaut : netflow_audit.csv).
+  --interval <secondes>      Intervalle de scan en secondes (par défaut : 5).
+  --columns <col1,col2,...>  Liste personnalisée ordonnée des colonnes CSV à exporter.
+  --resolve-dns <true|false> Active ou désactive la résolution DNS inverse des IP distantes.
+```
+
+### 2.2. Exécution sous Windows
 
 #### Option A : Depuis les sources .NET
 ```powershell
@@ -49,7 +75,7 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r win-x64 --
 
 ---
 
-### 2.2. Exécution sous Linux / WSL
+### 2.3. Exécution sous Linux / WSL
 
 #### Publication du binaire autonome Linux
 ```powershell
@@ -65,7 +91,7 @@ sudo ./NetFlowAudit.Cli
 
 ---
 
-### 2.3. Arrêt de l'agent
+### 2.4. Arrêt de l'agent
 
 L'arrêt coopératif assure la fermeture et la synchronisation propre du fichier CSV sur le disque :
 - **En mode interactif (console)** : Appuyez sur la touche `q` ou `Ctrl+C`.
@@ -80,30 +106,48 @@ L'arrêt coopératif assure la fermeture et la synchronisation propre du fichier
 
 ## 3. Configuration (`netflowaudit.json`)
 
-Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit.json` dans le répertoire d'exécution. Si ce fichier est absent, les valeurs par défaut sont appliquées.
+Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit.json` dans le répertoire d'exécution (ou spécifié via `--config`). Si ce fichier est absent, les valeurs par défaut sont appliquées.
 
-### Exemple de fichier `netflowaudit.json` :
+### Exemple complet de fichier `netflowaudit.json` :
 
 ```json
 {
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
   "EnableDashboard": true,
+  "ResolveRemoteHostNames": true,
   "ExcludeLoopbackFlows": true,
-  "ExcludedLocalPorts": [],
-  "ExcludedRemotePorts": [],
-  "ExcludedPids": [0, 4],
-  "ExcludedExactNames": [
-    "System",
-    "Idle",
-    "Registry"
-  ],
-  "ExcludedPrefixes": [
-    "svchost"
-  ],
+  "ExcludedLocalPorts": [ 22, 3389 ],
+  "ExcludedRemotePorts": [ 53 ],
+  "ExcludedPids": [ 0, 4 ],
+  "ExcludedExactNames": [ "System", "Idle" ],
+  "ExcludedPrefixes": [ "svchost" ],
   "ExcludedSuffixes": [],
   "ExcludedContains": [],
-  "ExcludeSystemAccounts": false
+  "ExcludeSystemAccounts": false,
+  "CsvDelimiter": ",",
+  "CsvColumns": [
+    "FirstSeenUtc",
+    "LastSeenUtc",
+    "ObservationCount",
+    "ServerName",
+    "ServerOsVersion",
+    "ServerPrimaryIp",
+    "Protocol",
+    "Direction",
+    "TcpState",
+    "LocalIp",
+    "LocalPort",
+    "RemoteIp",
+    "RemotePort",
+    "RemoteHostName",
+    "ProcessId",
+    "ProcessName",
+    "ExecutablePath",
+    "CommandLine",
+    "TargetExecutable",
+    "UserName"
+  ]
 }
 ```
 
@@ -114,6 +158,7 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | `ScanIntervalSeconds` | Entier | `5` | Fréquence en secondes entre deux balayages de la table des sockets actives. |
 | `OutputCsvPath` | Chaîne | `"netflow_audit.csv"` | Chemin relatif ou absolu du fichier CSV de sortie. |
 | `EnableDashboard` | Booléen | `true` | Active le tableau de bord interactif dans le terminal en mode interactif. |
+| `ResolveRemoteHostNames` | Booléen | `true` | Active la résolution DNS inverse asynchrone des adresses IP distantes avec cache mémoire. |
 | `ExcludeLoopbackFlows` | Booléen | `true` | Ignore les flux internes lorsque `LocalIp == RemoteIp`, adresses loopback (`127.0.0.0/8`, `::1`) ou interfaces locales de la machine. |
 | `ExcludedLocalPorts` | Tableau d'entiers | `[]` | Liste des ports d'écoute ou locaux à ignorer (ex: `[22, 3389]`). |
 | `ExcludedRemotePorts` | Tableau d'entiers | `[]` | Liste des ports distants cibles à ignorer (ex: `[53, 443]`). |
@@ -123,36 +168,39 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | `ExcludedSuffixes` | Tableau de chaînes | `[]` | Suffixes de noms de processus à exclure. |
 | `ExcludedContains` | Tableau de chaînes | `[]` | Sous-chaînes contenues dans le nom du processus à exclure. |
 | `ExcludeSystemAccounts` | Booléen | `true` | Exclut automatiquement les processus exécutés sous des comptes système (`SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`, `root`). |
-| `ExcludedContains` | Tableau de chaînes | `[]` | Sous-chaînes contenues dans le nom du processus à exclure. |
-| `ExcludeSystemAccounts` | Booléen | `true` | Exclut automatiquement les processus exécutés sous des comptes système (`SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`, `root`). |
+| `CsvDelimiter` | Chaîne | `","` | Caractère délimiteur de champs CSV (`","` ou `";"`). |
+| `CsvColumns` | Tableau de chaînes | `[]` | Liste ordonnée des colonnes à exporter. Si vide, l'ensemble des 20 colonnes est exporté. |
 
 ---
 
-## 4. Structure du Journal d'Audit CSV
+## 4. Structure du Journal d'Audit CSV & Catalogue des Colonnes
 
-Le fichier généré est encodé en UTF-8 conforme RFC 4180 avec séparateur virgule `,`. Il est partagé en lecture/écriture (`FileShare.ReadWrite`), ce qui permet de le consulter ou de l'importer en temps réel dans un outil tiers (SIEM, Excel, PowerBI) sans bloquer l'agent.
+Le fichier généré est encodé en UTF-8 conforme RFC 4180 avec séparateur paramétrable (virgule `,` par défaut). Il est partagé en lecture/écriture (`FileShare.ReadWrite`), ce qui permet de le consulter ou de l'importer en temps réel dans un outil tiers (SIEM, Excel, PowerBI) sans bloquer l'agent.
 
-### Liste des 19 colonnes :
+### Catalogue exhaustif des 20 colonnes disponibles :
 
-1. `FirstSeenUtc` : Date et heure ISO 8601 (UTC) de la première détection du flux.
-2. `LastSeenUtc` : Date et heure ISO 8601 (UTC) du dernier balayage ayant observé ce flux.
-3. `ObservationCount` : Nombre cumulé de balayages ayant constaté la présence active de ce flux.
-4. `ServerName` : Nom d'hôte de la machine locale auditée.
-5. `ServerOsVersion` : Version détaillée du système d'exploitation hôte.
-6. `ServerPrimaryIp` : Adresse IP principale attribuée à la machine hôte.
-7. `Protocol` : Protocole réseau (`Tcp` ou `Udp`).
-8. `Direction` : Direction déduite du flux (`Listening`, `Inbound`, `Outbound`).
-9. `TcpState` : État TCP (`Listen`, `Established`, `TimeWait`, `CloseWait`, `SynSent`, etc.).
-10. `LocalIp` : Adresse IP locale associée à la socket.
-11. `LocalPort` : Port local associé à la socket.
-12. `RemoteIp` : Adresse IP distante (ou `0.0.0.0` / `::` si écoute).
-13. `RemotePort` : Port distant (ou `0` si écoute).
-14. `ProcessId` : PID numérique du processus propriétaire.
-15. `ProcessName` : Nom court du processus hôte (`java`, `python3`, `node`, `nginx`).
-16. `ExecutablePath` : Chemin d'accès absolu au fichier binaire sur le disque.
-17. `CommandLine` : Ligne de commande complète ayant lancé le processus.
-18. `TargetExecutable` : Chemin ou nom du script / JAR cible extrait de la ligne de commande (ex: `/app/gateway.jar`, `server.py`, `backup.sh`).
-19. `UserName` : Compte utilisateur propriétaire du processus (si accessible).
+| N° | Nom technique | Catégorie | Description détaillée | Exemple |
+| :---: | :--- | :--- | :--- | :--- |
+| 1 | `FirstSeenUtc` | Horodatage | Date et heure UTC de la première détection du flux réseau (format ISO 8601). | `2026-10-23T07:15:00.0000000Z` |
+| 2 | `LastSeenUtc` | Horodatage | Date et heure UTC du dernier balayage ayant observé ce flux actif. | `2026-10-23T07:20:00.0000000Z` |
+| 3 | `ObservationCount` | Métriques | Nombre cumulé de balayages ayant constaté la présence active de ce flux. | `42` |
+| 4 | `ServerName` | Serveur | Nom d'hôte de la machine locale auditée. | `SRV-PROD-APP01` |
+| 5 | `ServerOsVersion` | Serveur | Version détaillée et description du système d'exploitation hôte. | `Microsoft Windows 10.0.26100` |
+| 6 | `ServerPrimaryIp` | Serveur | Adresse IP principale routable attribuée à la machine hôte. | `192.168.1.50` |
+| 7 | `Protocol` | Réseau | Protocole de transport réseau (`Tcp` ou `Udp`). | `Tcp` |
+| 8 | `Direction` | Réseau | Direction déduite du flux (`Listening`, `Inbound`, `Outbound`). | `Outbound` |
+| 9 | `TcpState` | Réseau | État TCP (`Listen`, `Established`, `TimeWait`, `CloseWait`, `SynSent`, etc.). | `Established` |
+| 10 | `LocalIp` | Réseau | Adresse IP locale associée à la socket. | `192.168.1.50` |
+| 11 | `LocalPort` | Réseau | Numéro de port local associé à la socket. | `52431` |
+| 12 | `RemoteIp` | Réseau | Adresse IP distante (ou `0.0.0.0` / `::` si socket en écoute). | `140.82.121.4` |
+| 13 | `RemotePort` | Réseau | Numéro de port distant (ou `0` si socket en écoute). | `443` |
+| 14 | `RemoteHostName` | Réseau | Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu). | `lb-140-82-121-4-iad.github.com` |
+| 15 | `ProcessId` | Processus | Identifiant numérique du processus propriétaire (PID). | `4812` |
+| 16 | `ProcessName` | Processus | Nom court de l'exécutable (`java`, `python3`, `node`, `nginx`, `git`). | `git` |
+| 17 | `ExecutablePath` | Processus | Chemin d'accès absolu complet au binaire exécutable sur le disque. | `C:\Program Files\Git\cmd\git.exe` |
+| 18 | `CommandLine` | Processus | Ligne de commande complète ayant lancé le processus avec tous ses arguments. | `git fetch --all` |
+| 19 | `TargetExecutable` | Processus | Cible applicative réelle sous-jacente extraite de la ligne de commande (script, `.jar`). | `app.jar` |
+| 20 | `UserName` | Processus | Compte utilisateur propriétaire du processus (si accessible). | `NT AUTHORITY\SYSTEM` |
 
 ---
 
@@ -175,7 +223,7 @@ Le fichier généré est encodé en UTF-8 conforme RFC 4180 avec séparateur vir
    [Service]
    Type=simple
    WorkingDirectory=/var/log/netflowaudit
-   ExecStart=/usr/local/bin/netflowaudit
+   ExecStart=/usr/local/bin/netflowaudit --no-tui
    Restart=always
    RestartSec=10
    KillSignal=SIGTERM
@@ -199,11 +247,11 @@ Le fichier généré est encodé en UTF-8 conforme RFC 4180 avec séparateur vir
 
 ---
 
-### 5.2. Déploiement sous Windows avec NSSM ou Service Windows
+### 5.2. Déploiement sous Windows avec NSSM
 
 Le binaire `NetFlowAudit.Cli.exe` peut être enregistré comme service Windows à l'aide de l'utilitaire standard `NSSM` (Non-Sucking Service Manager) :
 ```cmd
-nssm install NetFlowAudit "C:\NetFlowAudit\NetFlowAudit.Cli.exe"
+nssm install NetFlowAudit "C:\NetFlowAudit\NetFlowAudit.Cli.exe" --no-tui
 nssm set NetFlowAudit AppDirectory "C:\NetFlowAudit"
 nssm start NetFlowAudit
 ```
