@@ -25,7 +25,7 @@
 - **Filtrage avancé des processus & du réseau** : 
   - Exclusion de processus par identifiant (PID), nom exact, préfixe, suffixe, sous-chaîne ou comptes système (`SYSTEM`, `root`).
   - Exclusion automatique des flux internes intra-machine (`LocalIp == RemoteIp`, adresses loopback `127.0.0.0/8`, `::1` et IP locales de l'hôte).
-  - Exclusion ciblée de ports locaux (`ExcludedLocalPorts`) ou de ports distants (`ExcludedRemotePorts`).
+  - Exclusion ciblée de ports locaux (`ExcludedLocalPorts`), de ports distants (`ExcludedRemotePorts`) ou d'adresses IP / plages CIDR distantes (`ExcludedRemoteIps`).
 - **Colonnes d'export CSV 100 % paramétrables** :
   - Choix libre des colonnes à inclure et de leur ordre d'apparition parmi 20 colonnes disponibles, via le fichier de configuration JSON ou l'option `--columns`.
   - Délimiteur personnalisable (virgule, point-virgule, tabulation).
@@ -56,8 +56,9 @@ Options :
   --config <chemin>          Spécifie un fichier de configuration alternatif (par défaut : netflowaudit.json).
   --output <chemin>          Spécifie le fichier CSV de sortie (par défaut : netflow_audit.csv).
   --interval <secondes>      Intervalle de scan en secondes (par défaut : 5).
-  --columns <col1,col2,...>  Liste personnalisée ordonnée des colonnes CSV à exporter.
-  --resolve-dns <true|false> Active ou désactive la résolution DNS inverse des IP distantes.
+  --columns <col1,col2,...>           Liste personnalisée ordonnée des colonnes CSV à exporter.
+  --resolve-dns <true|false>          Active ou désactive la résolution DNS inverse des IP distantes.
+  --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
 ```
 
 ### 2.2. Exécution sous Windows
@@ -128,6 +129,7 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [ 22, 3389 ],
   "ExcludedRemotePorts": [ 53 ],
+  "ExcludedRemoteIps": [ "192.168.1.50", "10.0.0.0/8" ],
   "ExcludedPids": [ 0, 4 ],
   "ExcludedExactNames": [ "System", "Idle" ],
   "ExcludedPrefixes": [ "svchost" ],
@@ -173,6 +175,7 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | `ExcludeLoopbackFlows` | Booléen | `true` | Ignore les flux internes lorsque `LocalIp == RemoteIp`, adresses loopback (`127.0.0.0/8`, `::1`) ou interfaces locales de la machine. |
 | `ExcludedLocalPorts` | Tableau d'entiers | `[]` | Liste des ports d'écoute ou locaux à ignorer (ex: `[22, 3389]`). |
 | `ExcludedRemotePorts` | Tableau d'entiers | `[]` | Liste des ports distants cibles à ignorer (ex: `[53, 443]`). |
+| `ExcludedRemoteIps` | Tableau de chaînes | `[]` | Liste des adresses IP ou sous-réseaux distants (CIDR) à ignorer (ex: `["192.168.1.50", "10.0.0.0/8"]`). |
 | `ExcludedPids` | Tableau d'entiers | `[0, 4]` | Liste des identifiants de processus (PID) à ignorer systématiquement. |
 | `ExcludedExactNames` | Tableau de chaînes | `["System", "Idle"]` | Noms exacts de processus exclus (insensible à la casse). |
 | `ExcludedPrefixes` | Tableau de chaînes | `[]` | Préfixes de noms de processus à exclure. |

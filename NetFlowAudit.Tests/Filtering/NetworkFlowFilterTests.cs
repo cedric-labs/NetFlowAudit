@@ -207,4 +207,88 @@ public sealed class NetworkFlowFilterTests
         // Act & Assert
         filter.ShouldExclude(conn, new HashSet<IPAddress> { IPAddress.Parse("192.168.1.10") }).Should().BeFalse();
     }
+
+    [Fact]
+    public void ShouldExclude_WhenRemoteIpMatchesConfiguredExactIp_ReturnsTrue()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions
+        {
+            ExcludedRemoteIps = ["8.8.8.8", "1.1.1.1"]
+        };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000),
+            new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 443),
+            "Established",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldExclude_WhenRemoteIpMatchesConfiguredCidr_ReturnsTrue()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions
+        {
+            ExcludedRemoteIps = ["10.0.0.0/8"]
+        };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000),
+            new SocketEndpoint(IPAddress.Parse("10.50.1.20"), 8080),
+            "Established",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldExclude_WhenRemoteIpDoesNotMatchExcludedIps_ReturnsFalse()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions
+        {
+            ExcludedRemoteIps = ["10.0.0.0/8"]
+        };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000),
+            new SocketEndpoint(IPAddress.Parse("142.250.74.206"), 443),
+            "Established",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldExclude_WhenSocketIsListening_DoesNotExcludeAsRemoteIp()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions
+        {
+            ExcludedRemoteIps = ["0.0.0.0", "0.0.0.0/0"]
+        };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Listening,
+            new SocketEndpoint(IPAddress.Any, 8080),
+            new SocketEndpoint(IPAddress.Any, 0),
+            "Listen",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+    }
 }

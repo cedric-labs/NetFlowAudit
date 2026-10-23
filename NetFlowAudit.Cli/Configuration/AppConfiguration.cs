@@ -95,6 +95,11 @@ public sealed record AppConfiguration
     public List<int> ExcludedRemotePorts { get; init; } = [];
 
     /// <summary>
+    /// Liste des adresses IP ou sous-réseaux distants (CIDR) à exclure de l'audit.
+    /// </summary>
+    public List<string> ExcludedRemoteIps { get; init; } = [];
+
+    /// <summary>
     /// Active l'interface terminal dynamique (TUI style btop) en mode interactif.
     /// </summary>
     public bool EnableDashboard { get; init; } = true;

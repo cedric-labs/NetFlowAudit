@@ -71,6 +71,10 @@ public static class Program
             Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? $"Activé (cache: {config.DnsCacheFilePath})" : "Désactivé")}");
             Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
             Console.WriteLine($"Exclusion loop  : {(config.ExcludeLoopbackFlows ? "Activée" : "Désactivée")}");
+            if (config.ExcludedRemoteIps.Count > 0)
+            {
+                Console.WriteLine($"IPs exclues     : {string.Join(", ", config.ExcludedRemoteIps)}");
+            }
             Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
         }
 
@@ -93,7 +97,8 @@ public static class Program
         {
             ExcludeLoopbackFlows = config.ExcludeLoopbackFlows,
             ExcludedLocalPorts = new HashSet<int>(config.ExcludedLocalPorts),
-            ExcludedRemotePorts = new HashSet<int>(config.ExcludedRemotePorts)
+            ExcludedRemotePorts = new HashSet<int>(config.ExcludedRemotePorts),
+            ExcludedRemoteIps = config.ExcludedRemoteIps
         };
 
         var networkFlowFilter = new NetworkFlowFilter(flowFilterOptions);
@@ -259,6 +264,8 @@ public static class Program
         var intervalStr = GetCommandLineArgumentValue(args, "--interval");
         var columnsStr = GetCommandLineArgumentValue(args, "--columns");
         var dnsStr = GetCommandLineArgumentValue(args, "--resolve-dns");
+        var excludeRemoteIpsStr = GetCommandLineArgumentValue(args, "--exclude-remote-ips") ??
+                                  GetCommandLineArgumentValue(args, "--exclude-remote-ip");
 
         var interval = config.ScanIntervalSeconds;
         if (intervalStr is not null && int.TryParse(intervalStr, out var parsedInterval) && parsedInterval > 0)
@@ -278,12 +285,19 @@ public static class Program
             resolveDns = parsedDns;
         }
 
+        var excludedRemoteIps = config.ExcludedRemoteIps;
+        if (!string.IsNullOrWhiteSpace(excludeRemoteIpsStr))
+        {
+            excludedRemoteIps = excludeRemoteIpsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        }
+
         return config with
         {
             OutputCsvPath = output ?? config.OutputCsvPath,
             ScanIntervalSeconds = interval,
             CsvColumns = columns,
-            ResolveRemoteHostNames = resolveDns
+            ResolveRemoteHostNames = resolveDns,
+            ExcludedRemoteIps = excludedRemoteIps
         };
     }
 

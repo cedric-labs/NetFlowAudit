@@ -4,11 +4,12 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Moteur de filtrage des flux réseau selon les ports configurés et les adresses intra-machine.
+/// Moteur de filtrage des flux réseau selon les ports configurés, les adresses IP distantes et les adresses intra-machine.
 /// </summary>
 public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetworkFlowFilter
 {
     private readonly NetworkFlowFilterOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IpAddressRangeMatcher _remoteIpMatcher = new(options?.ExcludedRemoteIps);
 
     /// <inheritdoc />
     public bool ShouldExclude(ActiveSocketConnection connection, IReadOnlySet<IPAddress> localHostAddresses)
@@ -26,6 +27,15 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
         }
 
         if (_options.ExcludeLoopbackFlows && IsInternalFlow(connection, localHostAddresses))
+        {
+            return true;
+        }
+
+        if (_remoteIpMatcher.HasRules &&
+            connection.Direction != SocketFlowDirection.Listening &&
+            !connection.RemoteEndpoint.Address.Equals(IPAddress.Any) &&
+            !connection.RemoteEndpoint.Address.Equals(IPAddress.IPv6Any) &&
+            _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
         {
             return true;
         }

@@ -15,6 +15,7 @@
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [],
   "ExcludedRemotePorts": [],
+  "ExcludedRemoteIps": [],
   "ExcludedPids": [ 0, 4 ],
   "ExcludedExactNames": [ "System", "Idle" ],
   "ExcludedPrefixes": [],

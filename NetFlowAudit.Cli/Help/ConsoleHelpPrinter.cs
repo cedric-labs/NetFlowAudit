@@ -26,13 +26,14 @@ DESCRIPTION :
   à son processus propriétaire, résout les wrappers applicatifs et dédoublonne les flux.
 
 OPTIONS DE LIGNE DE COMMANDE :
-  -h, --help                 Affiche cette aide exhaustive et quitte l'application.
-  --no-tui, --daemon         Désactive le tableau de bord interactif plein écran (recommandé en service).
-  --config <chemin>          Chemin du fichier de configuration JSON (par défaut : netflowaudit.json).
-  --output <chemin>          Chemin du fichier CSV de sortie (par défaut : netflow_audit.csv).
-  --interval <secondes>      Intervalle en secondes entre deux balayages (par défaut : 5).
-  --columns <col1,col2,...>  Liste personnalisée ordonnée de colonnes à exporter dans le CSV.
-  --resolve-dns <true|false> Active ou désactive la résolution DNS inverse des IP distantes.
+  -h, --help                          Affiche cette aide exhaustive et quitte l'application.
+  --no-tui, --daemon                  Désactive le tableau de bord interactif plein écran (recommandé en service).
+  --config <chemin>                   Chemin du fichier de configuration JSON (par défaut : netflowaudit.json).
+  --output <chemin>                   Chemin du fichier CSV de sortie (par défaut : netflow_audit.csv).
+  --interval <secondes>               Intervalle en secondes entre deux balayages (par défaut : 5).
+  --columns <col1,col2,...>           Liste personnalisée ordonnée de colonnes à exporter dans le CSV.
+  --resolve-dns <true|false>          Active ou désactive la résolution DNS inverse des IP distantes.
+  --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
 
 TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   [Q]                        Arrêt propre et synchronisation du fichier CSV.
@@ -80,6 +81,7 @@ TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [ 22, 3389 ],
   "ExcludedRemotePorts": [ 53 ],
+  "ExcludedRemoteIps": [ "192.168.1.50", "10.0.0.0/8" ],
   "ExcludedPids": [ 0, 4 ],
   "ExcludedExactNames": [ "System", "Idle" ],
   "ExcludedPrefixes": [ "svchost" ],
