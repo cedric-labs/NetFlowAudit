@@ -840,7 +840,7 @@ public sealed partial class FlowAuditDashboardRenderer
         }
         else
         {
-            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclure flux  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Rafraîchir carte  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclure flux  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
         }
 
         return sb.ToString();

@@ -750,6 +750,21 @@ public sealed class FlowAuditDashboardRendererTests
         }
     }
 
+    [Fact]
+    public void BuildDashboardFrame_WhenDefaultFooterRendered_DisplaysMapRefreshShortcutHint()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 0, 1, [], []);
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+        var cleanFooter = StripAnsi(frame);
+
+        // Assert
+        cleanFooter.Should().Contain("[M] Rafraîchir carte");
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

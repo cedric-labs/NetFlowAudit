@@ -123,7 +123,7 @@ public static class Program
                 Console.WriteLine($"IPs exclues     : {string.Join(", ", config.ExcludedRemoteIps)}");
             }
 
-            Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
+            Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'm' pour rafraîchir la carte, 'q' pour stopper)\n");
         }
 
         var processInspector = new CrossPlatformProcessInspector();
