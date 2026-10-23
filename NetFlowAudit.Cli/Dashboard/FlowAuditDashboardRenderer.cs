@@ -23,8 +23,7 @@ public sealed partial class FlowAuditDashboardRenderer
     private const string AnsiMagenta = "\x1b[35m";
     private const string AnsiDarkGray = "\x1b[90m";
     private const string AnsiWhite = "\x1b[97m";
-    private const string AnsiReverseVideo = "\x1b[7m";
-    private const string AnsiNormalVideo = "\x1b[27m";
+    private const string AnsiSelectedCell = "\x1b[30;43;1m";
     private const string AnsiHome = "\x1b[H";
     private const string AnsiClearLine = "\x1b[K";
     private const string AnsiEnterAltBuffer = "\x1b[?1049h\x1b[H\x1b[2J";
@@ -847,19 +846,20 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine(FormatSplitRow(titleTrafic, trafficColWidth, titleProc, topProcColWidth));
 
         var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Listen: {listeningCount,3}, Outbound: {outboundCount,3})";
-        var proc1 = FormatTopProcess(topProcesses, 0, 1, topProcColWidth);
+        var totalActiveSockets = result.TotalSocketsScanned;
+        var proc1 = FormatTopProcess(topProcesses, 0, 1, topProcColWidth, totalActiveSockets);
         sb.AppendLine(FormatSplitRow(tcpLine, trafficColWidth, proc1, topProcColWidth));
 
         var udpLine = $" UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Listen: {udpSockets,3})";
-        var proc2 = FormatTopProcess(topProcesses, 1, 2, topProcColWidth);
+        var proc2 = FormatTopProcess(topProcesses, 1, 2, topProcColWidth, totalActiveSockets);
         sb.AppendLine(FormatSplitRow(udpLine, trafficColWidth, proc2, topProcColWidth));
 
         var inLine = $" Established inbound flows : {AnsiCyan}{inboundCount,4}{AnsiReset}";
-        var proc3 = FormatTopProcess(topProcesses, 2, 3, topProcColWidth);
+        var proc3 = FormatTopProcess(topProcesses, 2, 3, topProcColWidth, totalActiveSockets);
         sb.AppendLine(FormatSplitRow(inLine, trafficColWidth, proc3, topProcColWidth));
 
         var emptyLine = string.Empty;
-        var proc4 = FormatTopProcess(topProcesses, 3, 4, topProcColWidth);
+        var proc4 = FormatTopProcess(topProcesses, 3, 4, topProcColWidth, totalActiveSockets);
         sb.AppendLine(FormatSplitRow(emptyLine, trafficColWidth, proc4, topProcColWidth));
 
         // 4. Separator to discoveries table
@@ -944,19 +944,19 @@ public sealed partial class FlowAuditDashboardRenderer
                 var localText = local.PadRight(localWidth);
                 if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Local)
                 {
-                    localText = $"{AnsiReverseVideo}{AnsiBold}{localText}{AnsiNormalVideo}";
+                    localText = $"{AnsiSelectedCell}{localText}{AnsiReset}";
                 }
 
                 var remoteText = remote.PadRight(remoteWidth);
                 if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Remote)
                 {
-                    remoteText = $"{AnsiReverseVideo}{AnsiBold}{remoteText}{AnsiNormalVideo}";
+                    remoteText = $"{AnsiSelectedCell}{remoteText}{AnsiReset}";
                 }
 
                 var procText = proc.PadRight(procWidth);
                 if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Process)
                 {
-                    procText = $"{AnsiReverseVideo}{AnsiBold}{procText}{AnsiNormalVideo}";
+                    procText = $"{AnsiSelectedCell}{procText}{AnsiReset}";
                 }
                 else
                 {
@@ -966,7 +966,7 @@ public sealed partial class FlowAuditDashboardRenderer
                 var targetText = target.PadRight(targetWidth);
                 if (isRowSelected && _selectedColumn == InteractiveExclusionColumn.Target)
                 {
-                    targetText = $"{AnsiReverseVideo}{AnsiBold}{targetText}{AnsiNormalVideo}";
+                    targetText = $"{AnsiSelectedCell}{targetText}{AnsiReset}";
                 }
                 else
                 {
@@ -1029,7 +1029,7 @@ public sealed partial class FlowAuditDashboardRenderer
         return $"{AnsiCyan}│{AnsiReset}{left}{AnsiCyan}│{AnsiReset}{right}{AnsiCyan}│{AnsiReset}{AnsiClearLine}";
     }
 
-    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank, int totalColWidth)
+    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank, int totalColWidth, int totalActiveSockets)
     {
         if (index >= list.Count)
         {
@@ -1037,9 +1037,35 @@ public sealed partial class FlowAuditDashboardRenderer
         }
 
         var item = list[index];
-        var maxNameLen = Math.Max(10, totalColWidth - 19);
-        var name = Truncate(item.Key, maxNameLen);
-        return $" {rank}. {name.PadRight(maxNameLen)} ({item.Value,3} sockets)";
+        const int minWidthForBar = 28;
+        if (totalColWidth < minWidthForBar)
+        {
+            var maxNameOnlyLen = Math.Max(6, totalColWidth - 16);
+            var nameOnly = Truncate(item.Key, maxNameOnlyLen);
+            return $" {rank}. {AnsiMagenta}{nameOnly.PadRight(maxNameOnlyLen)}{AnsiReset} ({item.Value,3} sockets)";
+        }
+
+        var remainingWidth = totalColWidth - 4 - 14;
+        var procNameWidth = Math.Clamp(remainingWidth / 3, 8, 16);
+        var barWidth = Math.Clamp(remainingWidth - procNameWidth - 3, 6, 24);
+        var truncatedName = Truncate(item.Key, procNameWidth).PadRight(procNameWidth);
+
+        var ratio = totalActiveSockets > 0
+            ? Math.Clamp((double)item.Value / totalActiveSockets, 0.0, 1.0)
+            : 0.0;
+        var filledCount = (int)Math.Round(ratio * barWidth);
+        if (item.Value > 0 && filledCount == 0)
+        {
+            filledCount = 1;
+        }
+        filledCount = Math.Clamp(filledCount, 0, barWidth);
+        var emptyCount = barWidth - filledCount;
+
+        var filledBlocks = new string('█', filledCount);
+        var emptyBlocks = new string('░', emptyCount);
+
+        var barPart = $"{AnsiCyan}[{filledBlocks}{AnsiDarkGray}{emptyBlocks}{AnsiCyan}]{AnsiReset}";
+        return $" {rank}. {AnsiMagenta}{truncatedName}{AnsiReset} {barPart}  {AnsiWhite}{item.Value,3}{AnsiReset} sockets";
     }
 
     private static string FormatUptime(TimeSpan ts)

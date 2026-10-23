@@ -868,6 +868,35 @@ public sealed class FlowAuditDashboardRendererTests
         cleanFooter.Should().Contain("[M] Refresh Map");
     }
 
+    [Fact]
+    public void BuildDashboardFrame_WhenActiveProcessesRendered_DisplaysProgressBarAndYellowCellSelection()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var socket = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Outbound,
+            new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000),
+            new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 443),
+            "Established",
+            new ProcessMetadata(100, "thunderbird", "/bin/thunderbird", "", "", "user"));
+        var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 10, 0, 1, 1, [entry], [socket]);
+
+        renderer.Render(result, SampleHost);
+        renderer.MoveSelectionDown(); // Activate selection on row 0, column Local
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+
+        // Assert
+        // 1. Process progress bar characters are rendered in top processes pane
+        frame.Should().Contain("█");
+        frame.Should().Contain("░");
+        // 2. Yellow selection highlight ANSI code is used for the selected cell
+        frame.Should().Contain("\x1b[30;43;1m");
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);
