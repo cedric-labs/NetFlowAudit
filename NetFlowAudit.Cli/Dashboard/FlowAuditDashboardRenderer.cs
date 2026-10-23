@@ -846,20 +846,20 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine(FormatSplitRow(titleTrafic, trafficColWidth, titleProc, topProcColWidth));
 
         var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Listen: {listeningCount,3}, Outbound: {outboundCount,3})";
-        var totalActiveSockets = result.TotalSocketsScanned;
-        var proc1 = FormatTopProcess(topProcesses, 0, 1, topProcColWidth, totalActiveSockets);
+        var totalAuditedSockets = (tcpSockets + udpSockets) > 0 ? (tcpSockets + udpSockets) : processCounts.Values.Sum();
+        var proc1 = FormatTopProcess(topProcesses, 0, 1, topProcColWidth, totalAuditedSockets);
         sb.AppendLine(FormatSplitRow(tcpLine, trafficColWidth, proc1, topProcColWidth));
 
         var udpLine = $" UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Listen: {udpSockets,3})";
-        var proc2 = FormatTopProcess(topProcesses, 1, 2, topProcColWidth, totalActiveSockets);
+        var proc2 = FormatTopProcess(topProcesses, 1, 2, topProcColWidth, totalAuditedSockets);
         sb.AppendLine(FormatSplitRow(udpLine, trafficColWidth, proc2, topProcColWidth));
 
         var inLine = $" Established inbound flows : {AnsiCyan}{inboundCount,4}{AnsiReset}";
-        var proc3 = FormatTopProcess(topProcesses, 2, 3, topProcColWidth, totalActiveSockets);
+        var proc3 = FormatTopProcess(topProcesses, 2, 3, topProcColWidth, totalAuditedSockets);
         sb.AppendLine(FormatSplitRow(inLine, trafficColWidth, proc3, topProcColWidth));
 
         var emptyLine = string.Empty;
-        var proc4 = FormatTopProcess(topProcesses, 3, 4, topProcColWidth, totalActiveSockets);
+        var proc4 = FormatTopProcess(topProcesses, 3, 4, topProcColWidth, totalAuditedSockets);
         sb.AppendLine(FormatSplitRow(emptyLine, trafficColWidth, proc4, topProcColWidth));
 
         // 4. Separator to discoveries table
@@ -1029,7 +1029,7 @@ public sealed partial class FlowAuditDashboardRenderer
         return $"{AnsiCyan}│{AnsiReset}{left}{AnsiCyan}│{AnsiReset}{right}{AnsiCyan}│{AnsiReset}{AnsiClearLine}";
     }
 
-    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank, int totalColWidth, int totalActiveSockets)
+    private static string FormatTopProcess(List<KeyValuePair<string, int>> list, int index, int rank, int totalColWidth, int totalAuditedSockets)
     {
         if (index >= list.Count)
         {
@@ -1050,8 +1050,8 @@ public sealed partial class FlowAuditDashboardRenderer
         var barWidth = Math.Clamp(remainingWidth - procNameWidth - 3, 6, 24);
         var truncatedName = Truncate(item.Key, procNameWidth).PadRight(procNameWidth);
 
-        var ratio = totalActiveSockets > 0
-            ? Math.Clamp((double)item.Value / totalActiveSockets, 0.0, 1.0)
+        var ratio = totalAuditedSockets > 0
+            ? Math.Clamp((double)item.Value / totalAuditedSockets, 0.0, 1.0)
             : 0.0;
         var filledCount = (int)Math.Round(ratio * barWidth);
         if (item.Value > 0 && filledCount == 0)
@@ -1062,7 +1062,7 @@ public sealed partial class FlowAuditDashboardRenderer
         var emptyCount = barWidth - filledCount;
 
         var filledBlocks = new string('█', filledCount);
-        var emptyBlocks = new string('░', emptyCount);
+        var emptyBlocks = new string('─', emptyCount);
 
         var barPart = $"{AnsiCyan}[{filledBlocks}{AnsiDarkGray}{emptyBlocks}{AnsiCyan}]{AnsiReset}";
         return $" {rank}. {AnsiMagenta}{truncatedName}{AnsiReset} {barPart}  {AnsiWhite}{item.Value,3}{AnsiReset} sockets";
