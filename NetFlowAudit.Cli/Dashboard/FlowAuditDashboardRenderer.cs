@@ -332,22 +332,9 @@ public sealed partial class FlowAuditDashboardRenderer
 
                 case InteractiveExclusionColumn.Remote:
                     var remoteAddress = entry.Socket.RemoteEndpoint.Address;
-                    if (!remoteAddress.Equals(IPAddress.Any) &&
-                        !remoteAddress.Equals(IPAddress.IPv6Any) &&
-                        !remoteAddress.Equals(IPAddress.Loopback) &&
-                        !remoteAddress.Equals(IPAddress.IPv6Loopback) &&
-                        !remoteAddress.Equals(IPAddress.None))
-                    {
-                        var normalizedIp = (remoteAddress.IsIPv4MappedToIPv6 ? remoteAddress.MapToIPv4() : remoteAddress).ToString();
-                        actionDescription = configurator.ExcludeRemoteIp(normalizedIp);
-                        _recentDiscoveries.RemoveAll(e => AddressesEqual(e.Socket.RemoteEndpoint.Address, remoteAddress) || IsEntryExcluded(e));
-                    }
-                    else
-                    {
-                        var remotePort = entry.Socket.RemoteEndpoint.Port;
-                        actionDescription = configurator.ExcludeRemotePort(remotePort);
-                        _recentDiscoveries.RemoveAll(e => e.Socket.RemoteEndpoint.Port == remotePort || IsEntryExcluded(e));
-                    }
+                    var normalizedIp = (remoteAddress.IsIPv4MappedToIPv6 ? remoteAddress.MapToIPv4() : remoteAddress).ToString();
+                    actionDescription = configurator.ExcludeRemoteIp(normalizedIp);
+                    _recentDiscoveries.RemoveAll(e => AddressesEqual(e.Socket.RemoteEndpoint.Address, remoteAddress) || IsEntryExcluded(e));
                     break;
 
                 case InteractiveExclusionColumn.Process:

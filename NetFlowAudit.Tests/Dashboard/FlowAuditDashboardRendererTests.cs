@@ -688,6 +688,68 @@ public sealed class FlowAuditDashboardRendererTests
             .Should().Be(unselectedRow2.IndexOf("dasHost", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void ApplyExclusionAtSelection_WhenRemoteIpIsAny_ExcludesRemoteIp0000AndPurgesMatchingEntries()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"test_render_any_{Guid.NewGuid():N}.json");
+        try
+        {
+            var flowFilter = new NetworkFlowFilter(new NetworkFlowFilterOptions());
+            var procFilter = new ProcessExclusionFilter(new ProcessExclusionOptions());
+            var configurator = new FlowExclusionConfigurator(new AppConfiguration(), tempFile, flowFilter, procFilter);
+
+            var renderer = new FlowAuditDashboardRenderer(5, "output.csv", flowFilter, procFilter, null);
+
+            var socket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Listening,
+                new SocketEndpoint(IPAddress.Parse("0.0.0.0"), 50001),
+                new SocketEndpoint(IPAddress.Any, 0),
+                "Listen",
+                new ProcessMetadata(100, "spoolsv", "", "", "", "user"));
+
+            var entry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, socket);
+            var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 1, [entry], [socket]);
+
+            renderer.Render(result, SampleHost);
+
+            // Select Remote column (Col index 1)
+            renderer.MoveSelectionDown();
+            renderer.MoveSelectionRight();
+            renderer.SelectedColumn.Should().Be(InteractiveExclusionColumn.Remote);
+
+            // Act
+            var applied = renderer.ApplyExclusionAtSelection(configurator);
+
+            // Assert
+            applied.Should().BeTrue();
+            configurator.CurrentConfiguration.ExcludedRemoteIps.Should().Contain("0.0.0.0");
+
+            // Subsequent render with 0.0.0.0 should be dropped
+            var nextSocket = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Listening,
+                new SocketEndpoint(IPAddress.Parse("0.0.0.0"), 50002),
+                new SocketEndpoint(IPAddress.Any, 0),
+                "Listen",
+                new ProcessMetadata(100, "services", "", "", "", "user"));
+            var nextEntry = new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 2, SampleHost, nextSocket);
+            var nextResult = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 1, 0, 1, 2, [nextEntry], [nextSocket]);
+
+            renderer.Render(nextResult, SampleHost);
+            var frame = renderer.BuildDashboardFrame(nextResult, SampleHost);
+            frame.Should().NotContain("50002");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch (IOException) { }
+            }
+        }
+    }
+
     private static string StripAnsi(string text)
     {
         return Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty);

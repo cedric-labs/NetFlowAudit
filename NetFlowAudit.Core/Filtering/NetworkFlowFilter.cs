@@ -65,7 +65,7 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
                 return true;
             }
 
-            if (connection.RemoteEndpoint.Port > 0 && _excludedRemotePorts.Contains(connection.RemoteEndpoint.Port))
+            if (_excludedRemotePorts.Contains(connection.RemoteEndpoint.Port))
             {
                 return true;
             }
@@ -75,10 +75,10 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
                 return true;
             }
 
-            if (_remoteIpMatcher.HasRules &&
-                !connection.RemoteEndpoint.Address.Equals(IPAddress.Any) &&
-                !connection.RemoteEndpoint.Address.Equals(IPAddress.IPv6Any) &&
-                _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
+            if (_remoteIpMatcher.HasRules && _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
+
+
+
             {
                 return true;
             }

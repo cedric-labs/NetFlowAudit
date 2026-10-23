@@ -41,6 +41,14 @@ public static class Program
         }
 
         var configPath = GetCommandLineArgumentValue(args, "--config") ?? "netflowaudit.json";
+        if (!File.Exists(configPath))
+        {
+            var baseConfig = Path.Combine(AppContext.BaseDirectory, configPath);
+            if (File.Exists(baseConfig))
+            {
+                configPath = baseConfig;
+            }
+        }
         var config = LoadConfiguration(configPath);
         config = ApplyCommandLineOverrides(config, args);
 

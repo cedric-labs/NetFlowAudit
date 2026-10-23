@@ -272,12 +272,12 @@ public sealed class NetworkFlowFilterTests
     }
 
     [Fact]
-    public void ShouldExclude_WhenSocketIsListening_DoesNotExcludeAsRemoteIp()
+    public void ShouldExclude_WhenRemoteIpIsAnyAndConfiguredInExcludedRemoteIps_ReturnsTrue()
     {
         // Arrange
         var options = new NetworkFlowFilterOptions
         {
-            ExcludedRemoteIps = ["0.0.0.0", "0.0.0.0/0"]
+            ExcludedRemoteIps = ["0.0.0.0"]
         };
         var filter = new NetworkFlowFilter(options);
         var conn = new ActiveSocketConnection(
@@ -289,7 +289,28 @@ public sealed class NetworkFlowFilterTests
             DefaultProc);
 
         // Act & Assert
-        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeFalse();
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldExclude_WhenRemotePortIsZeroAndConfiguredInExcludedRemotePorts_ReturnsTrue()
+    {
+        // Arrange
+        var options = new NetworkFlowFilterOptions
+        {
+            ExcludedRemotePorts = new HashSet<int> { 0 }
+        };
+        var filter = new NetworkFlowFilter(options);
+        var conn = new ActiveSocketConnection(
+            SocketTransportProtocol.Tcp,
+            SocketFlowDirection.Listening,
+            new SocketEndpoint(IPAddress.Any, 8080),
+            new SocketEndpoint(IPAddress.Any, 0),
+            "Listen",
+            DefaultProc);
+
+        // Act & Assert
+        filter.ShouldExclude(conn, new HashSet<IPAddress>()).Should().BeTrue();
     }
 
     [Fact]
