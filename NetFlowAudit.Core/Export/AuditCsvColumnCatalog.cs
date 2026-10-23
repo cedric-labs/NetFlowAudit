@@ -1,13 +1,13 @@
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Description descriptive d'une colonne d'audit pour l'aide console et la documentation.
+/// Descriptive metadata for an audit CSV column used in CLI help and documentation.
 /// </summary>
-/// <param name="Column">Identifiant énuméré de la colonne.</param>
-/// <param name="Name">Nom technique utilisé dans la configuration et la ligne de commande.</param>
-/// <param name="Category">Catégorie thématique de la colonne (Horodatage, Serveur, Réseau, Processus).</param>
-/// <param name="Description">Explication détaillée du rôle et du contenu de la colonne.</param>
-/// <param name="Example">Exemple typique de valeur observée.</param>
+/// <param name="Column">Enumerated column identifier.</param>
+/// <param name="Name">Technical column name used in configuration and CLI arguments.</param>
+/// <param name="Category">Thematic category (Timestamp, Server, Network, Process).</param>
+/// <param name="Description">Detailed description of the column purpose and content.</param>
+/// <param name="Example">Typical observed value example.</param>
 public sealed record AuditCsvColumnDescriptor(
     AuditCsvColumn Column,
     string Name,
@@ -16,7 +16,7 @@ public sealed record AuditCsvColumnDescriptor(
     string Example);
 
 /// <summary>
-/// Catalogue fournissant la description exhaustive des colonnes CSV et la résolution de configuration.
+/// Catalog providing the complete list of CSV column descriptors and column name resolution.
 /// </summary>
 public static class AuditCsvColumnCatalog
 {
@@ -25,122 +25,122 @@ public static class AuditCsvColumnCatalog
         new(
             AuditCsvColumn.FirstSeenUtc,
             nameof(AuditCsvColumn.FirstSeenUtc),
-            "Horodatage",
-            "Date et heure UTC de première observation de la connexion.",
+            "Timestamp",
+            "UTC date and time when the network flow was first observed.",
             "2026-10-23T07:15:00.0000000Z"),
         new(
             AuditCsvColumn.LastSeenUtc,
             nameof(AuditCsvColumn.LastSeenUtc),
-            "Horodatage",
-            "Date et heure UTC de la plus récente observation de la connexion.",
+            "Timestamp",
+            "UTC date and time when the network flow was most recently observed.",
             "2026-10-23T07:20:00.0000000Z"),
         new(
             AuditCsvColumn.ObservationCount,
             nameof(AuditCsvColumn.ObservationCount),
-            "Métriques",
-            "Nombre cumulé de cycles d'échantillonnage où ce flux a été observé actif.",
+            "Metrics",
+            "Cumulative number of scan cycles where this flow was seen active.",
             "42"),
         new(
             AuditCsvColumn.ServerName,
             nameof(AuditCsvColumn.ServerName),
-            "Serveur",
-            "Nom d'hôte du serveur local exécutant l'agent d'audit.",
+            "Server",
+            "Hostname of the local server running the audit agent.",
             "SRV-PROD-APP01"),
         new(
             AuditCsvColumn.ServerOsVersion,
             nameof(AuditCsvColumn.ServerOsVersion),
-            "Serveur",
-            "Description et version du système d'exploitation de la machine hôte.",
+            "Server",
+            "Operating system description and version of the local host.",
             "Microsoft Windows 10.0.26100"),
         new(
             AuditCsvColumn.ServerPrimaryIp,
             nameof(AuditCsvColumn.ServerPrimaryIp),
-            "Serveur",
-            "Adresse IP principale routable de la machine hôte.",
+            "Server",
+            "Primary routable IP address assigned to the local host.",
             "192.168.1.50"),
         new(
             AuditCsvColumn.Protocol,
             nameof(AuditCsvColumn.Protocol),
-            "Réseau",
-            "Protocole de transport réseau de la socket (Tcp ou Udp).",
+            "Network",
+            "Socket transport protocol (Tcp or Udp).",
             "Tcp"),
         new(
             AuditCsvColumn.Direction,
             nameof(AuditCsvColumn.Direction),
-            "Réseau",
-            "Direction déterminée du flux réseau (Listening, Inbound, Outbound).",
+            "Network",
+            "Inferred network flow direction (Listening, Inbound, Outbound).",
             "Outbound"),
         new(
             AuditCsvColumn.TcpState,
             nameof(AuditCsvColumn.TcpState),
-            "Réseau",
-            "État de la machine à états TCP (Established, Listen, TimeWait, CloseWait, etc.).",
+            "Network",
+            "TCP state machine status (Established, Listen, TimeWait, CloseWait, etc.).",
             "Established"),
         new(
             AuditCsvColumn.LocalIp,
             nameof(AuditCsvColumn.LocalIp),
-            "Réseau",
-            "Adresse IP locale liée à la socket.",
+            "Network",
+            "Local IP address bound to the socket.",
             "192.168.1.50"),
         new(
             AuditCsvColumn.LocalPort,
             nameof(AuditCsvColumn.LocalPort),
-            "Réseau",
-            "Numéro de port local lié à la socket.",
+            "Network",
+            "Local port number bound to the socket.",
             "52431"),
         new(
             AuditCsvColumn.RemoteIp,
             nameof(AuditCsvColumn.RemoteIp),
-            "Réseau",
-            "Adresse IP distante de l'interlocuteur (0.0.0.0 si écoute).",
+            "Network",
+            "Remote peer IP address (0.0.0.0 when listening).",
             "140.82.121.4"),
         new(
             AuditCsvColumn.RemotePort,
             nameof(AuditCsvColumn.RemotePort),
-            "Réseau",
-            "Numéro de port distant de l'interlocuteur (0 si écoute).",
+            "Network",
+            "Remote peer port number (0 when listening).",
             "443"),
         new(
             AuditCsvColumn.RemoteHostName,
             nameof(AuditCsvColumn.RemoteHostName),
-            "Réseau",
-            "Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu).",
+            "Network",
+            "Remote hostname resolved via reverse DNS or RDAP organization fallback.",
             "lb-140-82-121-4-iad.github.com"),
         new(
             AuditCsvColumn.ProcessId,
             nameof(AuditCsvColumn.ProcessId),
-            "Processus",
-            "Identifiant numérique du processus propriétaire (PID).",
+            "Process",
+            "Numeric process identifier (PID) owning the socket.",
             "4812"),
         new(
             AuditCsvColumn.ProcessName,
             nameof(AuditCsvColumn.ProcessName),
-            "Processus",
-            "Nom de l'exécutable du processus propriétaire.",
+            "Process",
+            "Short executable name of the owning process.",
             "git"),
         new(
             AuditCsvColumn.ExecutablePath,
             nameof(AuditCsvColumn.ExecutablePath),
-            "Processus",
-            "Chemin d'accès absolu complet au binaire exécutable sur le disque.",
+            "Process",
+            "Full absolute path to the executable binary on disk.",
             "C:\\Program Files\\Git\\cmd\\git.exe"),
         new(
             AuditCsvColumn.CommandLine,
             nameof(AuditCsvColumn.CommandLine),
-            "Processus",
-            "Ligne de commande intégrale ayant lancé le processus avec ses arguments.",
+            "Process",
+            "Full command line with arguments used to launch the process.",
             "git fetch --all"),
         new(
             AuditCsvColumn.TargetExecutable,
             nameof(AuditCsvColumn.TargetExecutable),
-            "Processus",
-            "Cible applicative réelle sous-jacente (ex: archive JAR, script python/shell).",
+            "Process",
+            "Underlying application target extracted from wrappers (e.g. .jar, .py, .ps1, .sh).",
             "app.jar"),
         new(
             AuditCsvColumn.UserName,
             nameof(AuditCsvColumn.UserName),
-            "Processus",
-            "Compte utilisateur ou compte de service exécutant le processus.",
+            "Process",
+            "User or service account running the owning process.",
             "NT AUTHORITY\\SYSTEM")
     ];
 
@@ -148,17 +148,17 @@ public static class AuditCsvColumnCatalog
         .ToDictionary(d => d.Name, d => d.Column, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Retourne l'ensemble des descripteurs de colonnes disponibles pour l'aide et la documentation.
+    /// Returns all available column descriptors for help output and documentation.
     /// </summary>
     public static IReadOnlyList<AuditCsvColumnDescriptor> GetAllDescriptors() => Descriptors;
 
     /// <summary>
-    /// Résout une liste de noms de colonnes demandés en énumérations <see cref="AuditCsvColumn"/>.
-    /// Si la liste est nulle ou vide, renvoie la sélection par défaut de toutes les colonnes.
+    /// Resolves a list of requested column names into <see cref="AuditCsvColumn"/> values.
+    /// If the list is null or empty, returns the default selection of all 20 columns.
     /// </summary>
-    /// <param name="requestedColumnNames">Liste optionnelle de noms de colonnes insensibles à la casse.</param>
-    /// <returns>La liste ordonnée des colonnes résolues.</returns>
-    /// <exception cref="ArgumentException">Lancée lorsqu'un nom de colonne spécifié est inconnu.</exception>
+    /// <param name="requestedColumnNames">Optional case-insensitive column names.</param>
+    /// <returns>Ordered list of resolved columns.</returns>
+    /// <exception cref="ArgumentException">Thrown when an unknown column name is provided.</exception>
     public static IReadOnlyList<AuditCsvColumn> ResolveColumns(IEnumerable<string>? requestedColumnNames)
     {
         if (requestedColumnNames is null)
@@ -187,7 +187,7 @@ public static class AuditCsvColumnCatalog
             {
                 var availableNames = string.Join(", ", Descriptors.Select(d => d.Name));
                 throw new ArgumentException(
-                    $"La colonne d'audit '{name}' est inconnue. Colonnes disponibles : {availableNames}",
+                    $"Unknown audit column '{name}'. Available columns: {availableNames}",
                     nameof(requestedColumnNames));
             }
         }

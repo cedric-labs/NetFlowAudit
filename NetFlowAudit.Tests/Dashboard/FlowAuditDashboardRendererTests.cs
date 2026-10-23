@@ -205,7 +205,7 @@ public sealed class FlowAuditDashboardRendererTests
     }
 
     [Fact]
-    public void BuildDashboardFrame_WhenEntryHasRemoteHostName_RendersHostNameInDistantColumn()
+    public void BuildDashboardFrame_WhenEntryHasRemoteHostName_RendersHostNameInRemoteColumn()
     {
         // Arrange
         var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
@@ -290,9 +290,9 @@ public sealed class FlowAuditDashboardRendererTests
 
         // Assert column alignment
         headerClean.IndexOf("LOCAL").Should().Be(dataClean.IndexOf("192.168.1.10:54321"), "LOCAL header must align with local endpoint");
-        headerClean.IndexOf("DISTANT").Should().Be(dataClean.IndexOf("github.com:443"), "DISTANT header must align with remote endpoint");
-        headerClean.IndexOf("PROCESSUS").Should().Be(dataClean.IndexOf("sampleproc"), "PROCESSUS header must align with process name");
-        headerClean.IndexOf("CIBLE / CMD").Should().Be(dataClean.IndexOf("targetapp.dll"), "CIBLE / CMD header must align with target executable");
+        headerClean.IndexOf("REMOTE").Should().Be(dataClean.IndexOf("github.com:443"), "REMOTE header must align with remote endpoint");
+        headerClean.IndexOf("PROCESS").Should().Be(dataClean.IndexOf("sampleproc"), "PROCESS header must align with process name");
+        headerClean.IndexOf("TARGET / CMD").Should().Be(dataClean.IndexOf("targetapp.dll"), "TARGET / CMD header must align with target executable");
     }
 
     [Fact]
@@ -327,22 +327,125 @@ public sealed class FlowAuditDashboardRendererTests
         renderer.Render(result, SampleHost);
         renderer.IsSelectionActive.Should().BeFalse();
 
-        // Act - 1ère pression flèche bas active la sélection sur ligne 0
+        // Act - 1st down arrow activates selection on row 0
         renderer.MoveSelectionDown();
         renderer.IsSelectionActive.Should().BeTrue();
         renderer.SelectedRowIndex.Should().Be(0);
 
-        // Act - 2ème pression descend à la ligne 1
+        // Act - 2nd down arrow moves to row 1
         renderer.MoveSelectionDown();
         renderer.SelectedRowIndex.Should().Be(1);
 
-        // Act - Flèche haut remonte à la ligne 0
+        // Act - 3rd down arrow stops at last row (index 1)
+        renderer.MoveSelectionDown();
+        renderer.SelectedRowIndex.Should().Be(1);
+
+        // Act - Up arrow moves back to row 0
         renderer.MoveSelectionUp();
         renderer.SelectedRowIndex.Should().Be(0);
 
-        // Act - Échap annule
+        // Act - Esc cancels selection
         renderer.CancelSelection();
         renderer.IsSelectionActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public void MoveSelectionDown_WhenAtBottomOfVisiblePage_StopsAtLastVisibleRow()
+    {
+        // Arrange: 25 entries, default fallback height 30 -> 15 visible rows per page (indices 0..14)
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var entries = new List<NetworkAuditEntry>();
+        var sockets = new List<ActiveSocketConnection>();
+
+        for (var i = 0; i < 25; i++)
+        {
+            var sock = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000 + i),
+                new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+                "Established",
+                new ProcessMetadata(100 + i, $"proc-{i}", "", "", "", "user"));
+            sockets.Add(sock);
+            entries.Add(new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, sock));
+        }
+
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 25, 0, 25, 25, entries, sockets);
+        renderer.Render(result, SampleHost);
+
+        // Act: press down 40 times
+        for (var i = 0; i < 40; i++)
+        {
+            renderer.MoveSelectionDown();
+        }
+
+        // Assert: stopped strictly at last visible row on page 1 (index 14 for 15 visible rows)
+        renderer.SelectedRowIndex.Should().Be(14);
+
+        // Pressing up once immediately goes to row 13 without lag
+        renderer.MoveSelectionUp();
+        renderer.SelectedRowIndex.Should().Be(13);
+    }
+
+    [Fact]
+    public void NextPage_WhenMultiplePagesExist_NavigatesBetweenPagesAndClampsSelection()
+    {
+        // Arrange: 20 entries, 15 visible per page -> Page 1 has 15 rows (0..14), Page 2 has 5 rows (0..4)
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var entries = new List<NetworkAuditEntry>();
+        var sockets = new List<ActiveSocketConnection>();
+
+        for (var i = 0; i < 20; i++)
+        {
+            var sock = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 51000 + i),
+                new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 443),
+                "Established",
+                new ProcessMetadata(200 + i, $"app-{i}", "", "", "", "user"));
+            sockets.Add(sock);
+            entries.Add(new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, sock));
+        }
+
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 20, 0, 20, 20, entries, sockets);
+        renderer.Render(result, SampleHost);
+
+        // Act & Assert
+        renderer.CurrentPageIndex.Should().Be(0);
+        renderer.TotalPages.Should().Be(2);
+
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(1);
+
+        // On page 2, there are only 5 items (indices 0..4)
+        for (var i = 0; i < 10; i++)
+        {
+            renderer.MoveSelectionDown();
+        }
+
+        renderer.SelectedRowIndex.Should().Be(4);
+
+        renderer.PreviousPage();
+        renderer.CurrentPageIndex.Should().Be(0);
+    }
+
+    [Fact]
+    public void LoadNextBatch_WhenInvoked_IncreasesMaxStoredDiscoveriesBy100AndAllowsAll()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        renderer.MaxStoredDiscoveries.Should().Be(100);
+
+        // Act
+        renderer.LoadNextBatch();
+
+        // Assert
+        renderer.MaxStoredDiscoveries.Should().Be(200);
+
+        // Act - Show all
+        renderer.ShowAllDiscoveries();
+        renderer.MaxStoredDiscoveries.Should().BeGreaterThanOrEqualTo(10000);
     }
 
     [Fact]
@@ -762,7 +865,7 @@ public sealed class FlowAuditDashboardRendererTests
         var cleanFooter = StripAnsi(frame);
 
         // Assert
-        cleanFooter.Should().Contain("[M] Rafraîchir carte");
+        cleanFooter.Should().Contain("[M] Refresh Map");
     }
 
     private static string StripAnsi(string text)

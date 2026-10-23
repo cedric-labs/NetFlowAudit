@@ -16,12 +16,12 @@ using SocketForge.Factories;
 namespace NetFlowAudit.Cli;
 
 /// <summary>
-/// Point d'entrée principal de l'utilitaire d'audit réseau NetFlowAudit.
+/// Main entry point for the NetFlowAudit network flow auditing utility.
 /// </summary>
 public static class Program
 {
     /// <summary>
-    /// Fonction principale démarrant le scanneur de flux ou le générateur de cartographie.
+    /// Starts continuous network flow auditing or standalone topology map generation.
     /// </summary>
     public static async Task Main(string[] args)
     {
@@ -32,7 +32,7 @@ public static class Program
         }
         catch (IOException)
         {
-            // Environnement sans contrôle de terminal
+            // Environment without terminal control
         }
 
         if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "help"))
@@ -71,10 +71,10 @@ public static class Program
                 mapFilters,
                 mapRendering,
                 delimiter,
-                "Cartographie des Serveurs & Flux Réseau",
+                "Network Flow & Server Topology Map",
                 CancellationToken.None).ConfigureAwait(false);
 
-            Console.WriteLine($"Cartographie générée : {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} serveurs, {graph.Edges.Count} flux)");
+            Console.WriteLine($"Topology map generated: {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
             return;
         }
 
@@ -86,7 +86,7 @@ public static class Program
         catch (ArgumentException ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"Erreur de configuration des colonnes : {ex.Message}");
+            Console.WriteLine($"Column configuration error: {ex.Message}");
             Console.ResetColor();
             return;
         }
@@ -105,27 +105,27 @@ public static class Program
         if (!useDashboard)
         {
             Console.WriteLine("==================================================");
-            Console.WriteLine("  NetFlowAudit - Agent d'audit des flux réseau");
+            Console.WriteLine("  NetFlowAudit - Continuous Network Flow Auditor");
             Console.WriteLine("==================================================");
-            Console.WriteLine($"Serveur hôte    : {host.HostName} ({host.OperatingSystemDescription})");
-            Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
-            Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
+            Console.WriteLine($"Host server     : {host.HostName} ({host.OperatingSystemDescription})");
+            Console.WriteLine($"Primary IP      : {host.PrimaryIpAddress}");
+            Console.WriteLine($"CSV output      : {config.OutputCsvPath}");
             if (!string.IsNullOrWhiteSpace(config.OutputHtmlMapPath))
             {
-                Console.WriteLine($"Carte HTML      : {config.OutputHtmlMapPath}");
+                Console.WriteLine($"HTML map        : {config.OutputHtmlMapPath}");
             }
 
-            Console.WriteLine($"Colonnes CSV    : {selectedColumns.Count} colonnes actives");
-            Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? $"Activé (cache: {config.DnsCacheFilePath})" : "Désactivé")}");
-            Console.WriteLine($"Propriétaires IP: {(config.ResolveIpOwners && !config.IsolatedMode ? "Activé (RDAP avec disjoncteur)" : (config.IsolatedMode ? "Désactivé (Mode isolé)" : "Désactivé"))}");
-            Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
-            Console.WriteLine($"Exclusion loop  : {(config.ExcludeLoopbackFlows ? "Activée" : "Désactivée")}");
+            Console.WriteLine($"CSV columns     : {selectedColumns.Count} active columns");
+            Console.WriteLine($"Reverse DNS     : {(config.ResolveRemoteHostNames ? $"Enabled (cache: {config.DnsCacheFilePath})" : "Disabled")}");
+            Console.WriteLine($"IP owners (RDAP): {(config.ResolveIpOwners && !config.IsolatedMode ? "Enabled (RDAP with circuit breaker)" : (config.IsolatedMode ? "Disabled (Isolated mode)" : "Disabled"))}");
+            Console.WriteLine($"Scan interval   : every {config.ScanIntervalSeconds} second(s)");
+            Console.WriteLine($"Loopback filter : {(config.ExcludeLoopbackFlows ? "Enabled" : "Disabled")}");
             if (config.ExcludedRemoteIps.Count > 0)
             {
-                Console.WriteLine($"IPs exclues     : {string.Join(", ", config.ExcludedRemoteIps)}");
+                Console.WriteLine($"Excluded IPs    : {string.Join(", ", config.ExcludedRemoteIps)}");
             }
 
-            Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'm' pour rafraîchir la carte, 'q' pour stopper)\n");
+            Console.WriteLine("Starting continuous audit... (Press 'm' to refresh topology map, 'q' to stop)\n");
         }
 
         var processInspector = new CrossPlatformProcessInspector();
@@ -214,7 +214,7 @@ public static class Program
                     config.OutputHtmlMapPath,
                     mapFilters,
                     mapRendering,
-                    $"Cartographie Réseau - {host.HostName}",
+                    $"Network Topology Map - {host.HostName}",
                     cts.Token);
             };
         }
@@ -262,13 +262,13 @@ public static class Program
                     {
                         dashboard?.CheckAndRedrawIfWindowChanged();
 
-                        if (Console.KeyAvailable)
+                        while (Console.KeyAvailable)
                         {
                             var key = Console.ReadKey(intercept: true);
                             if (key.KeyChar is 'q' or 'Q')
                             {
                                 await cts.CancelAsync().ConfigureAwait(false);
-                                break;
+                                return;
                             }
 
                             if (key.KeyChar is 'c' or 'C')
@@ -287,7 +287,7 @@ public static class Program
                                     targetHtml,
                                     mapFilters,
                                     mapRendering,
-                                    $"Cartographie Réseau - {host.HostName}",
+                                    $"Network Topology Map - {host.HostName}",
                                     cts.Token).ConfigureAwait(false);
                             }
                             else if (dashboard is not null)
@@ -310,6 +310,14 @@ public static class Program
                                         dashboard.MoveSelectionRight();
                                         break;
 
+                                    case ConsoleKey.PageDown:
+                                        dashboard.NextPage();
+                                        break;
+
+                                    case ConsoleKey.PageUp:
+                                        dashboard.PreviousPage();
+                                        break;
+
                                     case ConsoleKey.Enter:
                                         dashboard.ApplyExclusionAtSelection(exclusionConfigurator);
                                         break;
@@ -323,22 +331,38 @@ public static class Program
                                         {
                                             dashboard.ApplyExclusionAtSelection(exclusionConfigurator);
                                         }
+                                        else if (key.KeyChar is 'n' or 'N')
+                                        {
+                                            dashboard.NextPage();
+                                        }
+                                        else if (key.KeyChar is 'p' or 'P')
+                                        {
+                                            dashboard.PreviousPage();
+                                        }
+                                        else if (key.KeyChar is 'l' or 'L' or '+')
+                                        {
+                                            dashboard.LoadNextBatch();
+                                        }
+                                        else if (key.KeyChar is 'a' or 'A')
+                                        {
+                                            dashboard.ShowAllDiscoveries();
+                                        }
 
                                         break;
                                 }
                             }
                         }
 
-                        await Task.Delay(100, cts.Token).ConfigureAwait(false);
+                        await Task.Delay(20, cts.Token).ConfigureAwait(false);
                     }
                 }
                 catch (InvalidOperationException)
                 {
-                    // Environnement non interactif sans terminal
+                    // Non-interactive environment without terminal
                 }
                 catch (OperationCanceledException)
                 {
-                    // Fin coopérative
+                    // Cooperative cancellation
                 }
             }, cts.Token);
         }
@@ -352,7 +376,7 @@ public static class Program
             dashboard?.RestoreCursor();
             if (!useDashboard)
             {
-                Console.WriteLine("Arrêt propre de l'audit de flux.");
+                Console.WriteLine("Graceful shutdown of network flow audit.");
             }
         }
         finally
@@ -380,7 +404,7 @@ public static class Program
             }
             catch (Exception ex) when (ex is IOException or JsonException)
             {
-                Console.WriteLine($"Avertissement: Impossible de charger {configFile}, utilisation des valeurs par défaut.");
+                Console.WriteLine($"Warning: Could not load {configFile}, using default settings.");
             }
         }
 

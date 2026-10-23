@@ -6,7 +6,7 @@ using ProcessForge.Filtering;
 namespace NetFlowAudit.Cli.Configuration;
 
 /// <summary>
-/// Gestionnaire d'exclusion dynamique de flux et de persistance des règles dans le fichier de configuration JSON.
+/// Dynamic flow exclusion configurator that updates in-memory filters and persists rules to JSON configuration.
 /// </summary>
 public sealed class FlowExclusionConfigurator(
     AppConfiguration initialConfiguration,
@@ -47,7 +47,7 @@ public sealed class FlowExclusionConfigurator(
                 SaveConfigurationFile(_currentConfiguration);
             }
 
-            return $"Port local {port} exclu";
+            return $"Excluded local port {port}";
         }
     }
 
@@ -73,7 +73,7 @@ public sealed class FlowExclusionConfigurator(
                 SaveConfigurationFile(_currentConfiguration);
             }
 
-            return $"IP distante {cleanIp} exclue";
+            return $"Excluded remote IP {cleanIp}";
         }
     }
 
@@ -91,7 +91,7 @@ public sealed class FlowExclusionConfigurator(
                 SaveConfigurationFile(_currentConfiguration);
             }
 
-            return $"Port distant {port} exclu";
+            return $"Excluded remote port {port}";
         }
     }
 
@@ -131,7 +131,7 @@ public sealed class FlowExclusionConfigurator(
                 SaveConfigurationFile(_currentConfiguration);
             }
 
-            return $"Processus '{cleanName}' exclu";
+            return $"Excluded process '{cleanName}'";
         }
     }
 
@@ -180,7 +180,7 @@ public sealed class FlowExclusionConfigurator(
                 SaveConfigurationFile(_currentConfiguration);
             }
 
-            return $"Cible '{cleanTarget}' exclue";
+            return $"Excluded target '{cleanTarget}'";
         }
     }
 
@@ -198,8 +198,8 @@ public sealed class FlowExclusionConfigurator(
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // L'échec d'écriture sur disque (droits restreints, fichier verrouillé) ne doit pas interrompre
-            // la surveillance continue en cours d'exécution ; l'exclusion demeure effective en mémoire vive.
+            // Disk write failure (restricted permissions or locked file) must not interrupt live monitoring;
+            // the exclusion remains active in memory.
         }
     }
 }

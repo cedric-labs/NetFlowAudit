@@ -1,92 +1,89 @@
-# NetFlowAudit - Agent d'Audit Continu des Flux Réseau
+# NetFlowAudit - Continuous Network Flow Auditing Agent
 
 <p align="center">
   <img src="assets/netflowaudit-icon.png" alt="NetFlowAudit Logo" width="200" />
 </p>
 
-**NetFlowAudit** est un agent d'audit réseau multiplateforme (Windows et Linux) conçu pour fonctionner en continu sous la forme d'un service ou d'un daemon d'arrière-plan. Il inspecte l'intégralité du trafic réseau entrant et sortant (TCP et UDP), identifie les processus locaux responsables des communications et journalise ces informations dans un fichier CSV horodaté et dédupliqué.
+**NetFlowAudit** is a cross-platform (Windows and Linux) network flow auditing agent designed to run either interactively in the terminal or continuously as a background service/daemon. It inspects all inbound, outbound, and listening TCP/UDP sockets, identifies the local processes and application targets responsible for network activity, logs deduplicated flows to an RFC 4180 CSV file, and generates self-contained offline HTML5 topology maps.
 
 ---
 
-## 1. Caractéristiques Principales
+## 1. Key Features
 
-- **Zéro pilote de capture tiers** : N'utilise ni Npcap, ni WinPcap, ni libpcap. 
-  - **Sur Windows** : interrogation de l'API native IP Helper Win32 (`iphlpapi.dll`).
-  - **Sur Linux / WSL** : lecture directe du pseudo-système de fichiers `/proc/net/{tcp,tcp6,udp,udp6}` et corrélation des descripteurs de fichiers `/proc/<pid>/fd`.
-- **Détection des cibles sous-jacentes (Wrappers)** : Ne se contente pas d'identifier le binaire lanceur (`java.exe`, `python`, `cmd.exe`, `powershell.exe`, `bash`), mais extrait la ligne de commande complète et isole la charge utile réelle (`.jar`, `.py`, `.bat`, `.cmd`, `.ps1`, `.sh`).
-- **Résolution DNS inverse asynchrone & non-bloquante** :
-  - Résout automatiquement les adresses IP distantes en noms d'hôtes (FQDN) à la détection de nouveaux flux.
-  - Doté d'un cache mémoire haute performance avec politique de cache négatif (évite de requêter le serveur DNS en boucle en cas d'absence d'enregistrement PTR).
-  - Affichage direct du nom d'hôte sur le tableau de bord console et consigne dans une colonne dédiée du fichier CSV.
-- **Déduplication intelligente** :
-  - Pour les flux sortants, neutralise l'impact des ports clients éphémères afin de ne pas multiplier les lignes identiques pour une même destination.
-  - Met à jour le compteur d'observations (`ObservationCount`) et l'horodatage de dernière vue (`LastSeenUtc`).
-  - Reprise automatique : recharge le fichier CSV existant au démarrage pour conserver l'historique sans doublon.
-- **Filtrage avancé des processus & du réseau** : 
-  - Exclusion de processus par identifiant (PID), nom exact, préfixe, suffixe, sous-chaîne ou comptes système (`SYSTEM`, `root`).
-  - Exclusion automatique des flux internes intra-machine (`LocalIp == RemoteIp`, adresses loopback `127.0.0.0/8`, `::1` et IP locales de l'hôte).
-  - Exclusion ciblée de ports locaux (`ExcludedLocalPorts`), de ports distants (`ExcludedRemotePorts`) ou d'adresses IP / plages CIDR distantes (`ExcludedRemoteIps`).
-- **Colonnes d'export CSV 100 % paramétrables** :
-  - Choix libre des colonnes à inclure et de leur ordre d'apparition parmi 20 colonnes disponibles, via le fichier de configuration JSON ou l'option `--columns`.
-  - Délimiteur personnalisable (virgule, point-virgule, tabulation).
-- **Tableau de bord interactif responsive (style `btop`)** :
-  - Interface plein écran ANSI s'adaptant dynamiquement à la largeur et à la hauteur de la fenêtre du terminal.
-  - Redimensionnement automatique instantané (scrutation 100 ms) sans distorsion ni décalage de séparateurs.
-  - Répartition instantanée des protocoles (TCP/UDP) et directions (écoute, entrant, sortant).
-  - Top des processus locaux les plus actifs en nombre de sockets.
-  - Défilement en temps réel des dernières découvertes de flux réseau horodatées.
-  - Écran de garde automatique lorsque le terminal est trop petit (< 100 cols x 16 lignes).
-  - Désactivation automatique ou manuelle via `--no-tui` / `--daemon` lors d'une exécution en service ou redirection de flux.
-- **Multiplateforme & Autonome** : Fonctionne sous Windows et Linux (x64 / ARM64), diffusable sous forme de binaire autonome (*self-contained single-file*) sans prérequis d'installation du SDK/Runtime .NET.
+- **Zero Third-Party Packet Capture Drivers**: Requires neither Npcap, WinPcap, nor libpcap.
+  - **Windows**: Queries native Win32 IP Helper APIs (`iphlpapi.dll`).
+  - **Linux / WSL**: Reads `/proc/net/{tcp,tcp6,udp,udp6}` and correlates socket inodes across `/proc/<pid>/fd`.
+- **Underlying Application Target Detection (Wrapper Unwrapping)**: Goes beyond identifying generic launcher binaries (`java.exe`, `python`, `cmd.exe`, `powershell.exe`, `bash`, `dotnet`) by parsing the full command line and extracting the real payload (`.jar`, `.py`, `.bat`, `.cmd`, `.ps1`, `.sh`, `.dll`).
+- **Non-Blocking Asynchronous Reverse DNS & RDAP Fallback**:
+  - Automatically resolves remote IP addresses to hostnames (FQDN) in the background.
+  - Persistent disk cache (`netflow_dns_cache.json`) with negative-caching policy and RDAP organization fallback when PTR records are absent.
+  - Supports `--isolated` / `--offline` mode for air-gapped environments.
+- **Smart Flow Deduplication**:
+  - Neutralizes ephemeral client ports on outbound connections so repeated connections to the same remote service port do not flood the audit log.
+  - Tracks `FirstSeenUtc`, `LastSeenUtc`, and cumulative `ObservationCount`.
+  - Automatically reloads existing CSV history on startup to preserve continuity across restarts.
+- **Process & Network Filtering**:
+  - Exclude processes by PID, exact name, prefix, suffix, substring, or system accounts (`SYSTEM`, `root`).
+  - Automatic exclusion of loopback/intra-host traffic (`LocalIp == RemoteIp`, `127.0.0.0/8`, `::1`).
+  - Interactive live exclusion of Local Ports, Remote IPs/CIDRs, Processes, and Targets directly from the terminal dashboard.
+- **Responsive `btop`-Style Terminal Dashboard (TUI) with Pagination**:
+  - Full-screen ANSI interface adapting dynamically to terminal width and height.
+  - Paginated live flow discovery table with clamped row navigation (`[N/P]` or `[PgDn/PgUp]` for Next/Previous page, `[L]` to load +100 rows, `[A]` to load all).
+- **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
+  - Generates a 100% standalone single-file HTML5/SVG interactive map (`--map` or press `[M]` in the dashboard).
+  - Priority-ranked server pagination (`100` most active/audited servers per page by default, with `◀ Prev`, `Next ▶`, `+100 Servers`, and `Show All` buttons).
+  - Sugiyama barycentric anti-crossing sort, obstacle-avoiding Bezier/Orthogonal edge routing, border-anchored directional `IN` / `OUT` arrowheads, and real-time spacing sliders.
 
 ---
 
-## 2. Guide de Démarrage Rapide
+## 2. Quick Start
 
-### 2.1. Options de ligne de commande
+### 2.1. Command-Line Options
 
-NetFlowAudit propose une aide intégrée et plusieurs paramètres en ligne de commande :
-
-```
+```text
 NetFlowAudit.Cli [OPTIONS]
 
-Options :
-  -h, --help                 Affiche l'aide complète (avec le catalogue de toutes les colonnes CSV) et quitte.
-  --no-tui, --daemon         Désactive le tableau de bord interactif (recommandé en service d'arrière-plan).
-  --config <chemin>          Spécifie un fichier de configuration alternatif (par défaut : netflowaudit.json).
-  --output <chemin>          Spécifie le fichier CSV de sortie (par défaut : netflow_audit.csv).
-  --interval <secondes>      Intervalle de scan en secondes (par défaut : 5).
-  --columns <col1,col2,...>           Liste personnalisée ordonnée des colonnes CSV à exporter.
-  --resolve-dns <true|false>          Active ou désactive la résolution DNS inverse des IP distantes.
-  --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
-  --map <chemin.html>                 Génère une carte topologique HTML5 autonome hors-ligne (TopologyForge).
-  --map-only                          Génère immédiatement la carte HTML à partir du CSV (--output) et quitte.
-  --include-ports <p1,p2-p3,...>      Inclut uniquement ces ports ou plages de service (ex: 80,443,1433,8000-8080).
-  --exclude-ports <p1,p2-p3,...>      Exclut ces ports ou plages de service de la carte (ex: 53,123,135-139).
-  --include-hosts <m1,m2,...>         Inclut uniquement les serveurs correspondant aux motifs (ex: SRV-*,*SQL*).
-  --exclude-hosts <m1,m2,...>         Exclut les serveurs correspondant aux motifs (ex: *.local,SRV-MON-*).
-  --include-ips <ip1,cidr2,...>       Inclut uniquement ces adresses IP ou sous-réseaux CIDR (ex: 10.0.0.0/8).
-  --exclude-ips <ip1,cidr2,...>       Exclut ces adresses IP ou sous-réseaux CIDR (ex: 169.254.0.0/16).
-  --include-processes <proc1,...>     Inclut uniquement ces processus ou cibles applicatives.
-  --exclude-processes <proc1,...>     Exclut ces processus ou cibles applicatives.
+General Options:
+  -h, --help                          Display full help (including the 20 CSV columns catalog) and exit.
+  --no-tui, --daemon                  Disable the interactive terminal dashboard (recommended for background services).
+  --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
+  --output <path>                     Path to output CSV file (default: netflow_audit.csv).
+  --interval <seconds>                Scan interval in seconds (default: 5).
+  --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
+  --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.
+  --resolve-ip-owners <true|false>    Enable or disable RDAP IP organization fallback.
+  --isolated, --offline               Air-gapped mode: disable external resolution queries.
+  --exclude-remote-ips <ip1,cidr2,..> Comma-separated remote IP addresses or CIDR subnets to exclude.
+
+Topology Map Options (TopologyForge):
+  --map <path.html>                   Generate a self-contained offline HTML5 topology map.
+  --map-only                          Generate the HTML map immediately from the CSV (--output) and exit.
+  --include-ports <p1,p2-p3,...>      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
+  --exclude-ports <p1,p2-p3,...>      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
+  --include-hosts <m1,m2,...>         Include only servers matching wildcard patterns (e.g. SRV-*,*SQL*).
+  --exclude-hosts <m1,m2,...>         Exclude servers matching wildcard patterns (e.g. *.local,SRV-MON-*).
+  --include-ips <ip1,cidr2,...>       Include only these IP addresses or CIDR subnets (e.g. 10.0.0.0/8).
+  --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
+  --include-processes <proc1,...>     Include only these processes or application targets.
+  --exclude-processes <proc1,...>     Exclude these processes or application targets.
   --map-sort <barycentric|degree|alpha|subnet>
-                                      Méthode de tri des serveurs (anti-croisement Sugiyama par défaut).
+                                      Server sorting method (Sugiyama anti-crossing by default).
   --map-routing <bezier|orthogonal|straight>
-                                      Mode de routage des flèches avec contournement des boîtes serveurs.
+                                      Arrow routing mode with server box obstacle avoidance.
   --map-spacing <compact|balanced|spacious>
-                                      Profil d'écartement initial entre les serveurs et les flèches.
-  --listeners-only                    Cartographie uniquement les ports en écoute passive.
-  --include-ephemeral-ports           Désactive l'exclusion par défaut des ports éphémères (49152-65535).
+                                      Initial spacing profile between servers and arrows.
+  --listeners-only                    Map passive listening ports only.
+  --include-ephemeral-ports           Disable default ephemeral port exclusion (49152-65535).
 ```
 
-### 2.2. Exécution sous Windows
+### 2.2. Running on Windows
 
-#### Option A : Depuis les sources .NET
+#### Option A: From .NET Source
 ```powershell
 dotnet run --project NetFlowAudit.Cli/NetFlowAudit.Cli.csproj
 ```
 
-#### Option B : Publication en exécutable autonome
+#### Option B: Publish as a Self-Contained Single-File Executable
 ```powershell
 dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/win-x64
 .\bin\publish\win-x64\NetFlowAudit.Cli.exe
@@ -94,15 +91,13 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r win-x64 --
 
 ---
 
-### 2.3. Exécution sous Linux / WSL
+### 2.3. Running on Linux / WSL
 
-#### Publication du binaire autonome Linux
 ```powershell
 dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/linux-x64
 ```
 
-#### Lancement sous Linux / WSL
-Sur Linux, l'inspection des descripteurs de sockets `/proc/<pid>/fd` appartenant à d'autres utilisateurs ou démons système nécessite les privilèges root ou la capacité `CAP_NET_ADMIN` :
+On Linux, inspecting `/proc/<pid>/fd` socket descriptors across all system users requires root privileges or `CAP_NET_ADMIN`:
 ```bash
 chmod +x ./NetFlowAudit.Cli
 sudo ./NetFlowAudit.Cli
@@ -110,24 +105,9 @@ sudo ./NetFlowAudit.Cli
 
 ---
 
-### 2.4. Arrêt de l'agent
-
-L'arrêt coopératif assure la fermeture et la synchronisation propre du fichier CSV sur le disque :
-- **En mode interactif (console)** : Appuyez sur la touche `q` ou `Ctrl+C`.
-- **En mode service / arrière-plan (Linux)** : Envoyez un signal POSIX standard :
-  ```bash
-  kill -TERM <PID>
-  # ou
-  kill -INT <PID>
-  ```
-
----
-
 ## 3. Configuration (`netflowaudit.json`)
 
-Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit.json` dans le répertoire d'exécution (ou spécifié via `--config`). Si ce fichier est absent, les valeurs par défaut sont appliquées.
-
-### Exemple complet de fichier `netflowaudit.json` :
+On startup, `NetFlowAudit` looks for an optional `netflowaudit.json` file in the working directory (or specified via `--config`).
 
 ```json
 {
@@ -149,6 +129,8 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
   "MapSpacingProfile": "balanced",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
+  "ResolveIpOwners": true,
+  "IsolatedMode": false,
   "DnsCacheFilePath": "netflow_dns_cache.json",
   "DnsExcludedNetworks": [
     "0.0.0.0",
@@ -194,130 +176,45 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 }
 ```
 
-### Description des paramètres :
-
-| Paramètre | Type | Valeur par défaut | Description |
-| :--- | :--- | :--- | :--- |
-| `ScanIntervalSeconds` | Entier | `5` | Fréquence en secondes entre deux balayages de la table des sockets actives. |
-| `OutputCsvPath` | Chaîne | `"netflow_audit.csv"` | Chemin relatif ou absolu du fichier CSV de sortie. |
-| `OutputHtmlMapPath` | Chaîne | `""` | Chemin du fichier HTML de cartographie topologique (vide si désactivé par défaut). |
-| `MapSortMethod` | Chaîne | `"barycentric"` | Méthode de tri initial des serveurs sur la carte (`"barycentric"`, `"degree"`, `"alpha"`, `"subnet"`). |
-| `MapRoutingMode` | Chaîne | `"bezier"` | Mode de routage initial des flèches (`"bezier"`, `"orthogonal"`, `"straight"`). |
-| `MapSpacingProfile` | Chaîne | `"balanced"` | Profil d'écartement initial entre serveurs et flèches (`"compact"`, `"balanced"`, `"spacious"`). |
-| `EnableDashboard` | Booléen | `true` | Active le tableau de bord interactif dans le terminal en mode interactif. |
-| `ResolveRemoteHostNames` | Booléen | `true` | Active la résolution DNS inverse asynchrone non-bloquante des IP distantes. |
-| `DnsCacheFilePath` | Chaîne | `"netflow_dns_cache.json"` | Chemin du fichier JSON de persistance du cache DNS inverse entre les redémarrages. |
-| `DnsExcludedNetworks` | Tableau de chaînes | `["0.0.0.0", "255.255.255.255", "169.254.0.0/16", ...]` | Plages réseaux (CIDR) ou adresses IP pour lesquelles la résolution DNS est ignorée d'office. |
-| `ExcludeLoopbackFlows` | Booléen | `true` | Ignore les flux internes lorsque `LocalIp == RemoteIp`, adresses loopback (`127.0.0.0/8`, `::1`) ou interfaces locales de la machine. |
-| `ExcludedLocalPorts` | Tableau d'entiers | `[]` | Liste des ports d'écoute ou locaux à ignorer (ex: `[22, 3389]`). |
-| `ExcludedRemotePorts` | Tableau d'entiers | `[]` | Liste des ports distants cibles à ignorer (ex: `[53, 443]`). |
-| `ExcludedRemoteIps` | Tableau de chaînes | `[]` | Liste des adresses IP ou sous-réseaux distants (CIDR) à ignorer (ex: `["192.168.1.50", "10.0.0.0/8"]`). |
-| `ExcludedPids` | Tableau d'entiers | `[0, 4]` | Liste des identifiants de processus (PID) à ignorer systématiquement. |
-| `ExcludedExactNames` | Tableau de chaînes | `["System", "Idle"]` | Noms exacts de processus exclus (insensible à la casse). |
-| `ExcludedPrefixes` | Tableau de chaînes | `[]` | Préfixes de noms de processus à exclure. |
-| `ExcludedSuffixes` | Tableau de chaînes | `[]` | Suffixes de noms de processus à exclure. |
-| `ExcludedContains` | Tableau de chaînes | `[]` | Sous-chaînes contenues dans le nom du processus à exclure. |
-| `ExcludeSystemAccounts` | Booléen | `true` | Exclut automatiquement les processus exécutés sous des comptes système (`SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`, `root`). |
-| `CsvDelimiter` | Chaîne | `","` | Caractère délimiteur de champs CSV (`","` ou `";"`). |
-| `CsvColumns` | Tableau de chaînes | `[]` | Liste ordonnée des colonnes à exporter. Si vide, l'ensemble des 20 colonnes est exporté. |
-
 ---
 
-## 4. Structure du Journal d'Audit CSV & Catalogue des Colonnes
+## 4. CSV Audit Log Schema (20 Columns)
 
-Le fichier généré est encodé en UTF-8 conforme RFC 4180 avec séparateur paramétrable (virgule `,` par défaut). Il est partagé en lecture/écriture (`FileShare.ReadWrite`), ce qui permet de le consulter ou de l'importer en temps réel dans un outil tiers (SIEM, Excel, PowerBI) sans bloquer l'agent.
-
-### Catalogue exhaustif des 20 colonnes disponibles :
-
-| N° | Nom technique | Catégorie | Description détaillée | Exemple |
+| # | Column Name | Category | Description | Example |
 | :---: | :--- | :--- | :--- | :--- |
-| 1 | `FirstSeenUtc` | Horodatage | Date et heure UTC de la première détection du flux réseau (format ISO 8601). | `2026-10-23T07:15:00.0000000Z` |
-| 2 | `LastSeenUtc` | Horodatage | Date et heure UTC du dernier balayage ayant observé ce flux actif. | `2026-10-23T07:20:00.0000000Z` |
-| 3 | `ObservationCount` | Métriques | Nombre cumulé de balayages ayant constaté la présence active de ce flux. | `42` |
-| 4 | `ServerName` | Serveur | Nom d'hôte de la machine locale auditée. | `SRV-PROD-APP01` |
-| 5 | `ServerOsVersion` | Serveur | Version détaillée et description du système d'exploitation hôte. | `Microsoft Windows 10.0.26100` |
-| 6 | `ServerPrimaryIp` | Serveur | Adresse IP principale routable attribuée à la machine hôte. | `192.168.1.50` |
-| 7 | `Protocol` | Réseau | Protocole de transport réseau (`Tcp` ou `Udp`). | `Tcp` |
-| 8 | `Direction` | Réseau | Direction déduite du flux (`Listening`, `Inbound`, `Outbound`). | `Outbound` |
-| 9 | `TcpState` | Réseau | État TCP (`Listen`, `Established`, `TimeWait`, `CloseWait`, `SynSent`, etc.). | `Established` |
-| 10 | `LocalIp` | Réseau | Adresse IP locale associée à la socket. | `192.168.1.50` |
-| 11 | `LocalPort` | Réseau | Numéro de port local associé à la socket. | `52431` |
-| 12 | `RemoteIp` | Réseau | Adresse IP distante (ou `0.0.0.0` / `::` si socket en écoute). | `140.82.121.4` |
-| 13 | `RemotePort` | Réseau | Numéro de port distant (ou `0` si socket en écoute). | `443` |
-| 14 | `RemoteHostName` | Réseau | Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu). | `lb-140-82-121-4-iad.github.com` |
-| 15 | `ProcessId` | Processus | Identifiant numérique du processus propriétaire (PID). | `4812` |
-| 16 | `ProcessName` | Processus | Nom court de l'exécutable (`java`, `python3`, `node`, `nginx`, `git`). | `git` |
-| 17 | `ExecutablePath` | Processus | Chemin d'accès absolu complet au binaire exécutable sur le disque. | `C:\Program Files\Git\cmd\git.exe` |
-| 18 | `CommandLine` | Processus | Ligne de commande complète ayant lancé le processus avec tous ses arguments. | `git fetch --all` |
-| 19 | `TargetExecutable` | Processus | Cible applicative réelle sous-jacente extraite de la ligne de commande (script, `.jar`). | `app.jar` |
-| 20 | `UserName` | Processus | Compte utilisateur propriétaire du processus (si accessible). | `NT AUTHORITY\SYSTEM` |
+| 1 | `FirstSeenUtc` | Timestamp | UTC timestamp when the network flow was first detected (ISO 8601). | `2026-10-23T07:15:00.0000000Z` |
+| 2 | `LastSeenUtc` | Timestamp | UTC timestamp of the most recent scan cycle observing this flow. | `2026-10-23T07:20:00.0000000Z` |
+| 3 | `ObservationCount` | Metrics | Cumulative number of scan cycles where this flow was seen active. | `42` |
+| 4 | `ServerName` | Server | Hostname of the audited local machine. | `SRV-PROD-APP01` |
+| 5 | `ServerOsVersion` | Server | Detailed OS version and description of the local host. | `Microsoft Windows 10.0.26100` |
+| 6 | `ServerPrimaryIp` | Server | Primary routable IP address of the local host. | `192.168.1.50` |
+| 7 | `Protocol` | Network | Transport protocol (`Tcp` or `Udp`). | `Tcp` |
+| 8 | `Direction` | Network | Inferred flow direction (`Listening`, `Inbound`, `Outbound`). | `Outbound` |
+| 9 | `TcpState` | Network | TCP state (`Listen`, `Established`, `TimeWait`, `CloseWait`, `SynSent`). | `Established` |
+| 10 | `LocalIp` | Network | Local IP address bound to the socket. | `192.168.1.50` |
+| 11 | `LocalPort` | Network | Local port number bound to the socket. | `52431` |
+| 12 | `RemoteIp` | Network | Remote peer IP address (`0.0.0.0` or `::` when listening). | `140.82.121.4` |
+| 13 | `RemotePort` | Network | Remote peer port number (`0` when listening). | `443` |
+| 14 | `RemoteHostName` | Network | Remote hostname resolved via reverse DNS or RDAP fallback. | `lb-140-82-121-4-iad.github.com` |
+| 15 | `ProcessId` | Process | Owning process numeric identifier (PID). | `4812` |
+| 16 | `ProcessName` | Process | Short executable name (`java`, `python3`, `node`, `nginx`, `git`). | `git` |
+| 17 | `ExecutablePath` | Process | Full absolute path to the executable binary on disk. | `C:\Program Files\Git\cmd\git.exe` |
+| 18 | `CommandLine` | Process | Complete command line with arguments used to launch the process. | `git fetch --all` |
+| 19 | `TargetExecutable` | Process | Underlying application target extracted from command line (`.jar`, script). | `app.jar` |
+| 20 | `UserName` | Process | User or service account owning the process. | `NT AUTHORITY\SYSTEM` |
 
 ---
 
-## 5. Déploiement en Service d'Arrière-Plan
+## 5. Architecture & Shared Frameworks
 
-### 5.1. Déploiement sous Linux avec systemd
+`NetFlowAudit` builds upon 4 modular shared libraries compliant with Clean Architecture and SonarQube Quality Gate standards:
 
-1. Copier le binaire autonome dans `/usr/local/bin/` :
-   ```bash
-   sudo cp bin/publish/linux-x64/NetFlowAudit.Cli /usr/local/bin/netflowaudit
-   sudo chmod +x /usr/local/bin/netflowaudit
-   ```
+- [**FileForge.Core**](file:///D:/Dev/Framework/FileForge/FRAMEWORK.md): Thread-safe streaming I/O engine and RFC 4180 delimited file writer with non-blocking shared read/write access.
+- [**ProcessForge**](file:///D:/Dev/Framework/ProcessForge/FRAMEWORK.md): Cross-platform process inspector, command-line wrapper analyzer, and exclusion rule evaluator.
+- [**SocketForge**](file:///D:/Dev/Framework/SocketForge/FRAMEWORK.md): Cross-platform active socket scanner (Win32 IP Helper & Linux `/proc/net`).
+- [**TopologyForge**](file:///D:/Dev/Framework/TopologyForge/FRAMEWORK.md): Self-contained offline HTML5/SVG network topology engine with inclusion/exclusion filters, priority-ranked pagination, Sugiyama anti-crossing sort, obstacle-avoiding arrow routing, and `IN`/`OUT` directional markers.
 
-2. Créer le fichier d'unité `/etc/systemd/system/netflowaudit.service` :
-   ```ini
-   [Unit]
-   Description=NetFlowAudit - Agent d'audit des flux reseau
-   After=network.target
-
-   [Service]
-   Type=simple
-   WorkingDirectory=/var/log/netflowaudit
-   ExecStart=/usr/local/bin/netflowaudit --no-tui
-   Restart=always
-   RestartSec=10
-   KillSignal=SIGTERM
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-3. Créer le dossier de journalisation, activer et démarrer le service :
-   ```bash
-   sudo mkdir -p /var/log/netflowaudit
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now netflowaudit.service
-   ```
-
-4. Suivre l'activité :
-   ```bash
-   sudo systemctl status netflowaudit.service
-   tail -f /var/log/netflowaudit/netflow_audit.csv
-   ```
-
----
-
-### 5.2. Déploiement sous Windows avec NSSM
-
-Le binaire `NetFlowAudit.Cli.exe` peut être enregistré comme service Windows à l'aide de l'utilitaire standard `NSSM` (Non-Sucking Service Manager) :
-```cmd
-nssm install NetFlowAudit "C:\NetFlowAudit\NetFlowAudit.Cli.exe" --no-tui
-nssm set NetFlowAudit AppDirectory "C:\NetFlowAudit"
-nssm start NetFlowAudit
-```
-
----
-
-## 6. Architecture & Dépendances Partagées
-
-Le projet repose sur 4 bibliothèques partagées modulaires conformes aux règles de Clean Architecture et de SonarQube Quality Gate :
-
-- [**FileForge.Core**](file:///D:/Dev/Framework/FileForge/FRAMEWORK.md) : Moteur d'I/O streaming thread-safe, écrivain délimité RFC 4180 avec verrouillage partagé non bloquant.
-- [**ProcessForge**](file:///D:/Dev/Framework/ProcessForge/FRAMEWORK.md) : Résolution des processus multiplateforme, analyseurs de lignes de commande et moteur de règles d'exclusion.
-- [**SocketForge**](file:///D:/Dev/Framework/SocketForge/FRAMEWORK.md) : Scanneur de sockets multiplateforme (Win32 IP Helper & Linux `/proc/net`).
-- [**TopologyForge**](file:///D:/Dev/Framework/TopologyForge/FRAMEWORK.md) : Moteur de cartographie topologique HTML5/SVG 100 % hors-ligne, filtrage d'inclusion/exclusion, tri anti-croisement Sugiyama, routage avec contournement des boîtes serveurs et pointes directionnelles `IN`/`OUT`.
-
-Pour lancer la chaîne complète de validation qualité (formatage, compilation Release, couverture de code et SonarQube) :
+To run the full quality verification pipeline (formatting, Release build, unit/architecture tests with OpenCover coverage, and SonarQube Quality Gate):
 ```powershell
 .\verify.ps1
 ```

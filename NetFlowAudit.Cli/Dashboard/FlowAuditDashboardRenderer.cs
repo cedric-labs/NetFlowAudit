@@ -11,7 +11,7 @@ using SocketForge.Models;
 namespace NetFlowAudit.Cli.Dashboard;
 
 /// <summary>
-/// Afficheur de tableau de bord terminal interactif inspiré de btop pour NetFlowAudit.
+/// Interactive terminal dashboard renderer inspired by btop for NetFlowAudit.
 /// </summary>
 public sealed partial class FlowAuditDashboardRenderer
 {
@@ -34,6 +34,7 @@ public sealed partial class FlowAuditDashboardRenderer
     private const int MinRequiredHeight = 16;
     private const int DefaultFallbackWidth = 102;
     private const int DefaultFallbackHeight = 30;
+    private const int UnlimitedDiscoveriesCapacity = 50_000;
 
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private readonly List<NetworkAuditEntry> _recentDiscoveries = [];
@@ -53,12 +54,14 @@ public sealed partial class FlowAuditDashboardRenderer
 
     private bool _isSelectionActive;
     private int _selectedRowIndex;
+    private int _currentPageIndex;
+    private int _maxStoredDiscoveries = 100;
     private InteractiveExclusionColumn _selectedColumn = InteractiveExclusionColumn.Local;
     private string? _statusBannerMessage;
     private DateTime _statusBannerExpiresUtc = DateTime.MinValue;
 
     /// <summary>
-    /// Indique si le mode de sélection interactive est actuellement actif.
+    /// Indicates whether interactive row/column selection mode is currently active.
     /// </summary>
     public bool IsSelectionActive
     {
@@ -72,7 +75,7 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Index de la ligne actuellement sélectionnée dans la liste des découvertes.
+    /// Zero-based index of the currently selected row within the active page.
     /// </summary>
     public int SelectedRowIndex
     {
@@ -86,7 +89,50 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Colonne interactive actuellement sélectionnée.
+    /// Zero-based index of the currently displayed page.
+    /// </summary>
+    public int CurrentPageIndex
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _currentPageIndex;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Total number of pages available for the currently stored flow discoveries.
+    /// </summary>
+    public int TotalPages
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                var pageSize = GetVisiblePageSize();
+                return Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Maximum number of flow discoveries kept in the paginated dashboard buffer (100 by default).
+    /// </summary>
+    public int MaxStoredDiscoveries
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _maxStoredDiscoveries;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Currently selected interactive exclusion column.
     /// </summary>
     public InteractiveExclusionColumn SelectedColumn
     {
@@ -100,10 +146,13 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Initialise le moteur de rendu du tableau de bord.
+    /// Initializes the terminal dashboard renderer.
     /// </summary>
-    /// <param name="scanIntervalSeconds">Intervalle de scan configuré.</param>
-    /// <param name="outputCsvPath">Chemin du fichier CSV de sortie.</param>
+    /// <param name="scanIntervalSeconds">Configured scan interval in seconds.</param>
+    /// <param name="outputCsvPath">Output CSV file path.</param>
+    /// <param name="networkFlowFilter">Optional network flow filter.</param>
+    /// <param name="processExclusionFilter">Optional process exclusion filter.</param>
+    /// <param name="localHostAddresses">Optional set of local host IP addresses.</param>
     public FlowAuditDashboardRenderer(
         int scanIntervalSeconds,
         string outputCsvPath,
@@ -121,29 +170,28 @@ public sealed partial class FlowAuditDashboardRenderer
         {
             if (!Console.IsOutputRedirected)
             {
-                // Active le Screen Buffer Alternatif ANSI (supprime l'ascenseur/historique) et masque le curseur
                 Console.Write(AnsiEnterAltBuffer);
                 Console.CursorVisible = false;
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            // Environnement sans contrôle de terminal
+            // Environment without terminal control
         }
     }
 
     /// <summary>
-    /// Constructeur de compatibilité sans filtres d'exclusion explicites.
+    /// Compatibility constructor without explicit exclusion filters.
     /// </summary>
-    /// <param name="scanIntervalSeconds">Intervalle de scan configuré.</param>
-    /// <param name="outputCsvPath">Chemin du fichier CSV de sortie.</param>
+    /// <param name="scanIntervalSeconds">Configured scan interval in seconds.</param>
+    /// <param name="outputCsvPath">Output CSV file path.</param>
     public FlowAuditDashboardRenderer(int scanIntervalSeconds, string outputCsvPath)
         : this(scanIntervalSeconds, outputCsvPath, null, null, null)
     {
     }
 
     /// <summary>
-    /// Réinitialise l'affichage console.
+    /// Clears the terminal screen.
     /// </summary>
     public void ClearScreen()
     {
@@ -153,12 +201,12 @@ public sealed partial class FlowAuditDashboardRenderer
         }
         catch (IOException)
         {
-            // Erreur console tolérée
+            // Tolerated when no console is attached
         }
     }
 
     /// <summary>
-    /// Restaure la visibilité du curseur et le tampon d'écran standard à la fermeture.
+    /// Restores cursor visibility and exits the alternate screen buffer on shutdown.
     /// </summary>
     public void RestoreCursor()
     {
@@ -172,18 +220,19 @@ public sealed partial class FlowAuditDashboardRenderer
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            // Toléré lors de la fermeture
+            // Tolerated during shutdown
         }
     }
 
     /// <summary>
-    /// Déplace le curseur de sélection vers le haut.
+    /// Moves the selection cursor one row up within the current visible page.
     /// </summary>
     public void MoveSelectionUp()
     {
         lock (_syncLock)
         {
-            if (_recentDiscoveries.Count == 0)
+            var visibleCount = GetVisibleCountOnCurrentPage();
+            if (visibleCount == 0)
             {
                 return;
             }
@@ -203,13 +252,14 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Déplace le curseur de sélection vers le bas.
+    /// Moves the selection cursor one row down, strictly stopping at the last visible row of the current page.
     /// </summary>
     public void MoveSelectionDown()
     {
         lock (_syncLock)
         {
-            if (_recentDiscoveries.Count == 0)
+            var visibleCount = GetVisibleCountOnCurrentPage();
+            if (visibleCount == 0)
             {
                 return;
             }
@@ -219,7 +269,7 @@ public sealed partial class FlowAuditDashboardRenderer
                 _isSelectionActive = true;
                 _selectedRowIndex = 0;
             }
-            else if (_selectedRowIndex < _recentDiscoveries.Count - 1)
+            else if (_selectedRowIndex < visibleCount - 1)
             {
                 _selectedRowIndex++;
             }
@@ -229,13 +279,79 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Déplace la colonne de sélection vers la gauche.
+    /// Advances to the next page of flow discoveries if available.
+    /// </summary>
+    public void NextPage()
+    {
+        lock (_syncLock)
+        {
+            var pageSize = GetVisiblePageSize();
+            var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+            if (_currentPageIndex < totalPages - 1)
+            {
+                _currentPageIndex++;
+                var visibleCount = GetVisibleCountOnCurrentPage();
+                _selectedRowIndex = visibleCount > 0 ? Math.Clamp(_selectedRowIndex, 0, visibleCount - 1) : 0;
+                RenderInternal(forceClear: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns to the previous page of flow discoveries if available.
+    /// </summary>
+    public void PreviousPage()
+    {
+        lock (_syncLock)
+        {
+            if (_currentPageIndex > 0)
+            {
+                _currentPageIndex--;
+                var visibleCount = GetVisibleCountOnCurrentPage();
+                _selectedRowIndex = visibleCount > 0 ? Math.Clamp(_selectedRowIndex, 0, visibleCount - 1) : 0;
+                RenderInternal(forceClear: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Increases the number of flow discoveries retained in the paginated list by 100.
+    /// </summary>
+    /// <param name="batchSize">Batch size increment (100 by default).</param>
+    public void LoadNextBatch(int batchSize = 100)
+    {
+        lock (_syncLock)
+        {
+            var increment = Math.Max(10, batchSize);
+            _maxStoredDiscoveries = Math.Min(UnlimitedDiscoveriesCapacity, _maxStoredDiscoveries + increment);
+            _statusBannerMessage = $"Buffer capacity increased to {_maxStoredDiscoveries} flows";
+            _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(3);
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Expands the discovery buffer to retain all discovered flows across pages.
+    /// </summary>
+    public void ShowAllDiscoveries()
+    {
+        lock (_syncLock)
+        {
+            _maxStoredDiscoveries = UnlimitedDiscoveriesCapacity;
+            _statusBannerMessage = "Buffer capacity set to ALL flows";
+            _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(3);
+            RenderInternal(forceClear: false);
+        }
+    }
+
+    /// <summary>
+    /// Moves the interactive column selection to the left.
     /// </summary>
     public void MoveSelectionLeft()
     {
         lock (_syncLock)
         {
-            if (_recentDiscoveries.Count == 0)
+            if (GetVisibleCountOnCurrentPage() == 0)
             {
                 return;
             }
@@ -258,13 +374,13 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Déplace la colonne de sélection vers la droite.
+    /// Moves the interactive column selection to the right.
     /// </summary>
     public void MoveSelectionRight()
     {
         lock (_syncLock)
         {
-            if (_recentDiscoveries.Count == 0)
+            if (GetVisibleCountOnCurrentPage() == 0)
             {
                 return;
             }
@@ -287,7 +403,7 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Annule le mode de sélection interactive.
+    /// Cancels interactive selection mode.
     /// </summary>
     public void CancelSelection()
     {
@@ -299,10 +415,10 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Applique l'exclusion correspondant à la cellule sélectionnée et met à jour l'affichage.
+    /// Applies the exclusion rule matching the currently selected cell and updates the display.
     /// </summary>
-    /// <param name="configurator">Configurateur d'exclusions.</param>
-    /// <returns>Vrai si l'exclusion a été appliquée, sinon faux.</returns>
+    /// <param name="configurator">Flow exclusion configurator.</param>
+    /// <returns>True if the exclusion was applied; otherwise false.</returns>
     public bool ApplyExclusionAtSelection(IFlowExclusionConfigurator configurator)
     {
         ArgumentNullException.ThrowIfNull(configurator);
@@ -314,12 +430,14 @@ public sealed partial class FlowAuditDashboardRenderer
                 return false;
             }
 
-            if (_selectedRowIndex < 0 || _selectedRowIndex >= _recentDiscoveries.Count)
+            var pageSize = GetVisiblePageSize();
+            var globalIndex = (_currentPageIndex * pageSize) + _selectedRowIndex;
+            if (globalIndex < 0 || globalIndex >= _recentDiscoveries.Count)
             {
                 return false;
             }
 
-            var entry = _recentDiscoveries[_selectedRowIndex];
+            var entry = _recentDiscoveries[globalIndex];
             string actionDescription;
 
             switch (_selectedColumn)
@@ -361,14 +479,21 @@ public sealed partial class FlowAuditDashboardRenderer
             _statusBannerMessage = actionDescription;
             _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(4);
 
-            if (_recentDiscoveries.Count == 0)
+            var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+            if (_currentPageIndex >= totalPages)
+            {
+                _currentPageIndex = totalPages - 1;
+            }
+
+            var visibleCount = GetVisibleCountOnCurrentPage();
+            if (visibleCount == 0)
             {
                 _isSelectionActive = false;
                 _selectedRowIndex = 0;
             }
             else
             {
-                _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, _recentDiscoveries.Count - 1);
+                _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, visibleCount - 1);
             }
 
             RenderInternal(forceClear: false);
@@ -377,10 +502,10 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Met à jour les métadonnées et affiche la trame courante du tableau de bord.
+    /// Updates cycle metrics and renders the current dashboard frame.
     /// </summary>
-    /// <param name="result">Synthèse métrique du dernier scan.</param>
-    /// <param name="host">Métadonnées de la machine hôte.</param>
+    /// <param name="result">Scan cycle summary metrics.</param>
+    /// <param name="host">Local host metadata.</param>
     public void Render(FlowAuditCycleResult result, ServerHostMetadata host)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -405,14 +530,17 @@ public sealed partial class FlowAuditDashboardRenderer
                     newCount++;
                 }
 
-                if (_isSelectionActive)
-                {
-                    _selectedRowIndex = Math.Min(_recentDiscoveries.Count - 1, _selectedRowIndex + newCount);
-                }
-
-                while (_recentDiscoveries.Count > 100)
+                while (_recentDiscoveries.Count > _maxStoredDiscoveries)
                 {
                     _recentDiscoveries.RemoveAt(_recentDiscoveries.Count - 1);
+                }
+
+                if (_isSelectionActive)
+                {
+                    var visibleCount = GetVisibleCountOnCurrentPage();
+                    _selectedRowIndex = visibleCount > 0
+                        ? Math.Clamp(_selectedRowIndex + newCount, 0, visibleCount - 1)
+                        : 0;
                 }
             }
 
@@ -421,11 +549,11 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Met à jour le nom d'hôte distant dans la liste des découvertes récentes si l'adresse IP correspond.
+    /// Updates the resolved remote hostname in the recent discoveries buffer when the IP matches.
     /// </summary>
-    /// <param name="remoteAddress">Adresse IP distante résolue.</param>
-    /// <param name="hostName">Nom d'hôte résolu.</param>
-    public void UpdateRemoteHostName(System.Net.IPAddress remoteAddress, string hostName)
+    /// <param name="remoteAddress">Resolved remote IP address.</param>
+    /// <param name="hostName">Resolved hostname.</param>
+    public void UpdateRemoteHostName(IPAddress remoteAddress, string hostName)
     {
         ArgumentNullException.ThrowIfNull(remoteAddress);
         ArgumentNullException.ThrowIfNull(hostName);
@@ -451,7 +579,7 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
-    /// Vérifie si la fenêtre a été redimensionnée ou si l'ascenseur a bougé, et redessine immédiatement le tableau de bord.
+    /// Checks whether the terminal window was resized or scrolled and redraws immediately.
     /// </summary>
     public void CheckAndRedrawIfWindowChanged()
     {
@@ -482,18 +610,24 @@ public sealed partial class FlowAuditDashboardRenderer
                     _lastWindowTop = top;
                     _lastWindowLeft = left;
 
+                    var visibleCount = GetVisibleCountOnCurrentPage();
+                    if (_isSelectionActive && visibleCount > 0)
+                    {
+                        _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, visibleCount - 1);
+                    }
+
                     RenderInternal(forceClear: true);
                 }
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            // Toléré si le terminal ne supporte pas l'interrogation de géométrie
+            // Tolerated if terminal does not support geometry queries
         }
     }
 
     /// <summary>
-    /// Force le réaffichage complet du tableau de bord après avoir effacé l'écran.
+    /// Forces a full screen clear and redraw of the dashboard.
     /// </summary>
     public void ForceRedraw()
     {
@@ -504,6 +638,25 @@ public sealed partial class FlowAuditDashboardRenderer
                 RenderInternal(forceClear: true);
             }
         }
+    }
+
+    private int GetVisiblePageSize()
+    {
+        var currentHeight = _lastWindowHeight > 0 ? _lastWindowHeight : DefaultFallbackHeight;
+        var targetHeight = Console.IsOutputRedirected ? DefaultFallbackHeight : Math.Max(MinRequiredHeight, currentHeight);
+        return Math.Max(3, targetHeight - 15);
+    }
+
+    private int GetVisibleCountOnCurrentPage()
+    {
+        var pageSize = GetVisiblePageSize();
+        var startIndex = _currentPageIndex * pageSize;
+        if (startIndex >= _recentDiscoveries.Count)
+        {
+            return 0;
+        }
+
+        return Math.Min(pageSize, _recentDiscoveries.Count - startIndex);
     }
 
     private void RenderInternal(bool forceClear)
@@ -531,7 +684,7 @@ public sealed partial class FlowAuditDashboardRenderer
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or PlatformNotSupportedException or ArgumentOutOfRangeException)
             {
-                // Toléré selon capacités du terminal
+                // Tolerated depending on terminal capabilities
             }
         }
 
@@ -550,7 +703,6 @@ public sealed partial class FlowAuditDashboardRenderer
         }
         else
         {
-            // Utilise la largeur de fenêtre visible (moins 1 pour éviter l'enroulement forcé sous Windows)
             var targetWidth = Console.IsOutputRedirected ? DefaultFallbackWidth : Math.Max(MinRequiredWidth, currentWidth - 1);
             var targetHeight = Console.IsOutputRedirected ? DefaultFallbackHeight : Math.Max(MinRequiredHeight, currentHeight);
             frame = BuildDashboardFrame(_lastResult, _lastHost, targetWidth, targetHeight);
@@ -562,7 +714,7 @@ public sealed partial class FlowAuditDashboardRenderer
         }
         catch (IOException)
         {
-            // Erreur console tolérée
+            // Tolerated console I/O error
         }
     }
 
@@ -572,14 +724,14 @@ public sealed partial class FlowAuditDashboardRenderer
         var sb = new StringBuilder(512);
 
         sb.AppendLine($"{AnsiCyan}┌{new string('─', boxWidth)}┐{AnsiReset}{AnsiClearLine}");
-        var msg1 = PadRightVisible($" {AnsiYellow}{AnsiBold}Fenêtre trop petite : {currentWidth}x{currentHeight}{AnsiReset}", boxWidth);
+        var msg1 = PadRightVisible($" {AnsiYellow}{AnsiBold}Window too small: {currentWidth}x{currentHeight}{AnsiReset}", boxWidth);
         sb.AppendLine($"{AnsiCyan}│{AnsiReset}{msg1}{AnsiCyan}│{AnsiReset}{AnsiClearLine}");
-        var msg2 = PadRightVisible($" Minimum requis : {minWidth} colonnes x {minHeight} lignes", boxWidth);
+        var msg2 = PadRightVisible($" Minimum required: {minWidth} columns x {minHeight} rows", boxWidth);
         sb.AppendLine($"{AnsiCyan}│{AnsiReset}{msg2}{AnsiCyan}│{AnsiReset}{AnsiClearLine}");
-        var msg3 = PadRightVisible(" Veuillez agrandir la fenêtre du terminal...", boxWidth);
+        var msg3 = PadRightVisible(" Please enlarge your terminal window...", boxWidth);
         sb.AppendLine($"{AnsiCyan}│{AnsiReset}{msg3}{AnsiCyan}│{AnsiReset}{AnsiClearLine}");
         sb.AppendLine($"{AnsiCyan}└{new string('─', boxWidth)}┘{AnsiReset}{AnsiClearLine}");
-        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter{AnsiClearLine}");
+        sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
 
         return sb.ToString();
     }
@@ -640,7 +792,7 @@ public sealed partial class FlowAuditDashboardRenderer
                     break;
             }
 
-            var procName = string.IsNullOrWhiteSpace(s.Process.ProcessName) ? "Inconnu" : s.Process.ProcessName;
+            var procName = string.IsNullOrWhiteSpace(s.Process.ProcessName) ? "Unknown" : s.Process.ProcessName;
             processCounts[procName] = processCounts.GetValueOrDefault(procName) + 1;
         }
 
@@ -649,62 +801,60 @@ public sealed partial class FlowAuditDashboardRenderer
             .Take(4)
             .ToList();
 
-        // 1. En-tête principal & Volet Métriques
+        // 1. Main Header & Metrics Pane
         const int metricsColWidth = 30;
-        var infoColWidth = interiorWidth - (metricsColWidth + 1); // 1 pour séparateur central
+        var infoColWidth = interiorWidth - (metricsColWidth + 1);
 
         var headerDashesCount = Math.Max(1, infoColWidth - 22);
 
-        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', headerDashesCount)}┬─ {AnsiBold}{AnsiWhite}MÉTRIQUES{AnsiReset}{AnsiCyan} {new string('─', metricsColWidth - 12)}┐{AnsiReset}{AnsiClearLine}");
+        sb.AppendLine($"{AnsiCyan}┌─ {AnsiBold}{AnsiWhite}NetFlowAudit v1.0.0{AnsiReset}{AnsiCyan} {new string('─', headerDashesCount)}┬─ {AnsiBold}{AnsiWhite}METRICS{AnsiReset}{AnsiCyan} {new string('─', metricsColWidth - 10)}┐{AnsiReset}{AnsiClearLine}");
 
-        // Calcul des largeurs des 3 sous-colonnes dans le volet d'information gauche
-        // Col1 (fixe: 21) | Col3 (fixe: 20) | Col2 (prend tout le reste disponible)
         const int subCol1W = 21;
         const int subCol3W = 20;
-        var subCol2W = Math.Max(10, infoColWidth - (subCol1W + subCol3W + 6)); // 6 pour les deux ' │ '
+        var subCol2W = Math.Max(10, infoColWidth - (subCol1W + subCol3W + 6));
 
-        var srv1 = $" Serveur : {AnsiWhite}{Truncate(host.HostName, 10),-10}{AnsiReset}";
+        var srv1 = $" Server  : {AnsiWhite}{Truncate(host.HostName, 10),-10}{AnsiReset}";
         var srv2 = $"OS : {AnsiDarkGray}{Truncate(host.OperatingSystemDescription, subCol2W - 5),-5}{AnsiReset}";
         var srv3 = $"Uptime : {AnsiYellow}{uptimeStr,7}{AnsiReset}";
         var srvPart = FormatThreeSubColumns(srv1, subCol1W, srv2, subCol2W, srv3, subCol3W);
-        var sockPart = $" Sockets actives : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}";
+        var sockPart = $" Active sockets  : {AnsiGreen}{result.TotalSocketsScanned,6}{AnsiReset}";
         sb.AppendLine(FormatSplitRow(srvPart, infoColWidth, sockPart, metricsColWidth));
 
-        var ip1 = $" IP Hôte : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 10),-10}{AnsiReset}";
+        var ip1 = $" Host IP : {AnsiWhite}{Truncate(host.PrimaryIpAddress, 10),-10}{AnsiReset}";
         var ip2 = $"Scan : {AnsiYellow}{_scanIntervalSeconds}s{AnsiReset} (auto)";
-        var ip3 = $"Heure  : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
+        var ip3 = $"Time   : {AnsiDarkGray}{timestampStr,8}{AnsiReset}";
         var ipPart = FormatThreeSubColumns(ip1, subCol1W, ip2, subCol2W, ip3, subCol3W);
-        var flowsPart = $" Flux uniques    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}";
+        var flowsPart = $" Unique flows    : {AnsiCyan}{result.TotalUniqueFlowsTracked,6}{AnsiReset}";
         sb.AppendLine(FormatSplitRow(ipPart, infoColWidth, flowsPart, metricsColWidth));
 
-        var st1 = $" Statut  : {AnsiGreen}Actif{AnsiReset}";
-        var st2 = "Filtre: Ports/Loopback";
-        var st3 = $"Ignorés: {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flux";
+        var st1 = $" Status  : {AnsiGreen}Active{AnsiReset}";
+        var st2 = "Filter: Ports/Loopback";
+        var st3 = $"Ignored: {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flows";
         var stPart = FormatThreeSubColumns(st1, subCol1W, st2, subCol2W, st3, subCol3W);
-        var newPart = $" Nouveaux flux   : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
+        var newPart = $" New flows       : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
         sb.AppendLine(FormatSplitRow(stPart, infoColWidth, newPart, metricsColWidth));
 
-        // 2. Séparateur vers volets médians
+        // 2. Separator to middle panes
         const int trafficColWidth = 48;
         var topProcColWidth = interiorWidth - (trafficColWidth + 1);
         var middleBridgeDashes = Math.Max(1, infoColWidth - trafficColWidth - 1);
 
         sb.AppendLine($"{AnsiCyan}├{new string('─', trafficColWidth)}┬{new string('─', middleBridgeDashes)}┴{new string('─', metricsColWidth)}┤{AnsiReset}{AnsiClearLine}");
 
-        // 3. Volets médians (Trafic vs Top Processus)
-        var titleTrafic = $" {AnsiBold}{AnsiWhite}RÉPARTITION DU TRAFIC RÉSEAU{AnsiReset}";
-        var titleProc = $" {AnsiBold}{AnsiWhite}TOP PROCESSUS ACTIFS (SOCKETS){AnsiReset}";
+        // 3. Middle panes (Traffic Breakdown vs Top Active Processes)
+        var titleTrafic = $" {AnsiBold}{AnsiWhite}NETWORK TRAFFIC BREAKDOWN{AnsiReset}";
+        var titleProc = $" {AnsiBold}{AnsiWhite}TOP ACTIVE PROCESSES (SOCKETS){AnsiReset}";
         sb.AppendLine(FormatSplitRow(titleTrafic, trafficColWidth, titleProc, topProcColWidth));
 
-        var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Écoute: {listeningCount,3}, Sortant: {outboundCount,3})";
+        var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Listen: {listeningCount,3}, Outbound: {outboundCount,3})";
         var proc1 = FormatTopProcess(topProcesses, 0, 1, topProcColWidth);
         sb.AppendLine(FormatSplitRow(tcpLine, trafficColWidth, proc1, topProcColWidth));
 
-        var udpLine = $" UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Écoute: {udpSockets,3})";
+        var udpLine = $" UDP : {AnsiYellow}{udpSockets,4}{AnsiReset} (Listen: {udpSockets,3})";
         var proc2 = FormatTopProcess(topProcesses, 1, 2, topProcColWidth);
         sb.AppendLine(FormatSplitRow(udpLine, trafficColWidth, proc2, topProcColWidth));
 
-        var inLine = $" Flux entrants établis : {AnsiCyan}{inboundCount,4}{AnsiReset}";
+        var inLine = $" Established inbound flows : {AnsiCyan}{inboundCount,4}{AnsiReset}";
         var proc3 = FormatTopProcess(topProcesses, 2, 3, topProcColWidth);
         sb.AppendLine(FormatSplitRow(inLine, trafficColWidth, proc3, topProcColWidth));
 
@@ -712,19 +862,35 @@ public sealed partial class FlowAuditDashboardRenderer
         var proc4 = FormatTopProcess(topProcesses, 3, 4, topProcColWidth);
         sb.AppendLine(FormatSplitRow(emptyLine, trafficColWidth, proc4, topProcColWidth));
 
-        // 4. Séparateur vers tableau des découvertes
+        // 4. Separator to discoveries table
         sb.AppendLine($"{AnsiCyan}├{new string('─', trafficColWidth)}┴{new string('─', topProcColWidth)}┤{AnsiReset}{AnsiClearLine}");
 
-        // 5. Titre et colonnes du tableau des découvertes
+        // 5. Discoveries table title & pagination status
+        var maxVisibleDiscoveries = Math.Max(3, totalHeight - 15);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)maxVisibleDiscoveries));
+        if (_currentPageIndex >= totalPages)
+        {
+            _currentPageIndex = totalPages - 1;
+        }
+
+        var pageStartIndex = _currentPageIndex * maxVisibleDiscoveries;
+        var visibleOnPage = Math.Clamp(_recentDiscoveries.Count - pageStartIndex, 0, maxVisibleDiscoveries);
+        if (_isSelectionActive && visibleOnPage > 0)
+        {
+            _selectedRowIndex = Math.Clamp(_selectedRowIndex, 0, visibleOnPage - 1);
+        }
+
+        var startRowNum = _recentDiscoveries.Count == 0 ? 0 : pageStartIndex + 1;
+        var endRowNum = pageStartIndex + visibleOnPage;
+        var capLabel = _maxStoredDiscoveries >= UnlimitedDiscoveriesCapacity ? "ALL" : _maxStoredDiscoveries.ToString();
+
         var hasActiveBanner = !string.IsNullOrEmpty(_statusBannerMessage) && DateTime.UtcNow < _statusBannerExpiresUtc;
         var tableTitle = hasActiveBanner
             ? $" {AnsiBold}{AnsiGreen}✔ {_statusBannerMessage}{AnsiReset}"
-            : $" {AnsiBold}{AnsiWhite}DERNIÈRES DÉCOUVERTES DE FLUX (TEMPS RÉEL){AnsiReset}";
+            : $" {AnsiBold}{AnsiWhite}RECENT FLOW DISCOVERIES (LIVE){AnsiReset} {AnsiDarkGray}[Page {_currentPageIndex + 1}/{totalPages} | Rows {startRowNum}-{endRowNum} of {_recentDiscoveries.Count} | Max: {capLabel}]{AnsiReset}";
         sb.AppendLine(FormatRow(tableTitle, interiorWidth));
 
-        // Calcul dynamique des largeurs des colonnes du tableau
-        // Structure de préfixe fixe (21 caractères) :
-        // " " (1) + "HEURE   " (8) + " " (1) + "PROTO" (5) + " " (1) + "DIR " (4) + " " (1) = 21 chars
+        // Fixed prefix width (21 chars): " " (1) + "TIME    " (8) + " " (1) + "PROTO" (5) + " " (1) + "DIR " (4) + " " (1) = 21 chars
         var extraWidth = Math.Max(0, interiorWidth - 100);
         var localWidth = Math.Clamp(21 + (extraWidth / 4), 21, 32);
         var remoteWidth = Math.Clamp(21 + (extraWidth / 4), 21, 32);
@@ -734,28 +900,25 @@ public sealed partial class FlowAuditDashboardRenderer
         var rawLocalHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Local ? $"{AnsiYellow}{AnsiBold}[LOCAL]{AnsiReset}" : "LOCAL";
         var headerColLocal = PadRightVisible(rawLocalHeader, localWidth);
 
-        var rawRemoteHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Remote ? $"{AnsiYellow}{AnsiBold}[DISTANT]{AnsiReset}" : "DISTANT";
+        var rawRemoteHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Remote ? $"{AnsiYellow}{AnsiBold}[REMOTE]{AnsiReset}" : "REMOTE";
         var headerColRemote = PadRightVisible(rawRemoteHeader, remoteWidth);
 
-        var rawProcHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Process ? $"{AnsiYellow}{AnsiBold}[PROCESSUS]{AnsiReset}" : "PROCESSUS";
+        var rawProcHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Process ? $"{AnsiYellow}{AnsiBold}[PROCESS]{AnsiReset}" : "PROCESS";
         var headerColProc = PadRightVisible(rawProcHeader, procWidth);
 
-        var rawTargetHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Target ? $"{AnsiYellow}{AnsiBold}[CIBLE / CMD]{AnsiReset}" : "CIBLE / CMD";
+        var rawTargetHeader = _isSelectionActive && _selectedColumn == InteractiveExclusionColumn.Target ? $"{AnsiYellow}{AnsiBold}[TARGET / CMD]{AnsiReset}" : "TARGET / CMD";
         var headerColTarget = PadRightVisible(rawTargetHeader, targetWidth);
 
-        var headerPrefix = $" {AnsiDarkGray}{"HEURE",-8} {"PROTO",-5} {"DIR",-4} ";
+        var headerPrefix = $" {AnsiDarkGray}{"TIME",-8} {"PROTO",-5} {"DIR",-4} ";
         var tableHeader = $"{headerPrefix}{headerColLocal} {headerColRemote} {headerColProc} {headerColTarget}{AnsiReset}";
         sb.AppendLine(FormatRow(tableHeader, interiorWidth));
 
-        // Calcul du nombre de lignes disponibles pour les découvertes selon la hauteur de la fenêtre
-        // 15 lignes fixes au total hors découvertes
-        var maxVisibleDiscoveries = Math.Max(3, totalHeight - 15);
-
         for (var i = 0; i < maxVisibleDiscoveries; i++)
         {
-            if (i < _recentDiscoveries.Count)
+            var dataIdx = pageStartIndex + i;
+            if (dataIdx < _recentDiscoveries.Count)
             {
-                var entry = _recentDiscoveries[i];
+                var entry = _recentDiscoveries[dataIdx];
                 var isRowSelected = _isSelectionActive && i == _selectedRowIndex;
 
                 var time = entry.FirstSeenUtc.ToString("HH:mm:ss");
@@ -822,7 +985,7 @@ public sealed partial class FlowAuditDashboardRenderer
             }
         }
 
-        // 6. Pied de page
+        // 6. Footer bar
         sb.AppendLine($"{AnsiCyan}└{new string('─', interiorWidth)}┘{AnsiReset}{AnsiClearLine}");
 
         if (_isSelectionActive)
@@ -830,17 +993,17 @@ public sealed partial class FlowAuditDashboardRenderer
             var colLabel = _selectedColumn switch
             {
                 InteractiveExclusionColumn.Local => "LOCAL",
-                InteractiveExclusionColumn.Remote => "DISTANT",
-                InteractiveExclusionColumn.Process => "PROCESSUS",
-                InteractiveExclusionColumn.Target => "CIBLE",
-                _ => "FLUX"
+                InteractiveExclusionColumn.Remote => "REMOTE",
+                InteractiveExclusionColumn.Process => "PROCESS",
+                InteractiveExclusionColumn.Target => "TARGET",
+                _ => "FLOW"
             };
 
-            sb.Append($" {AnsiBold}{AnsiYellow}[↑↓←→]{AnsiReset} Naviguer  {AnsiBold}{AnsiYellow}[Entrée/X]{AnsiReset} Exclure {colLabel}  {AnsiBold}{AnsiYellow}[Échap]{AnsiReset} Annuler  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[↑↓←→]{AnsiReset} Navigate  {AnsiBold}{AnsiYellow}[Enter/X]{AnsiReset} Exclude {colLabel}  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Page  {AnsiBold}{AnsiYellow}[Esc]{AnsiReset} Cancel  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
         }
         else
         {
-            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quitter  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Effacer  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Rafraîchir carte  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclure flux  {AnsiDarkGray}| Journal : {_outputCsvPath} (RFC 4180){AnsiReset}{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Clear  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Refresh Map  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Next/Prev Page  {AnsiBold}{AnsiYellow}[L/A]{AnsiReset} +100/All  {AnsiBold}{AnsiYellow}[↑↓]{AnsiReset} Exclude{AnsiClearLine}");
         }
 
         return sb.ToString();
