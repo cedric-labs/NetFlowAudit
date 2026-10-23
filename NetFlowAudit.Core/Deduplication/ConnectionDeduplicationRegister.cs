@@ -9,11 +9,12 @@ namespace NetFlowAudit.Core.Deduplication;
 /// </summary>
 public sealed class ConnectionDeduplicationRegister
 {
-    private readonly ConcurrentDictionary<string, NetworkAuditEntry> _activeFlows = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<FlowIdentityKey, NetworkAuditEntry?> _activeFlows = new();
 
     /// <summary>
     /// Hydrate le registre avec des clés préexistantes (ex: rechargées depuis un CSV au démarrage).
     /// </summary>
+    /// <param name="existingKeys">Liste des clés logiques textuelles existantes.</param>
     public void Hydrate(IEnumerable<string> existingKeys)
     {
         ArgumentNullException.ThrowIfNull(existingKeys);
@@ -22,7 +23,7 @@ public sealed class ConnectionDeduplicationRegister
         {
             if (!string.IsNullOrWhiteSpace(key))
             {
-                _activeFlows.TryAdd(key, null!);
+                _activeFlows.TryAdd(new FlowIdentityKey(key), null);
             }
         }
     }
@@ -30,14 +31,17 @@ public sealed class ConnectionDeduplicationRegister
     /// <summary>
     /// Tente d'enregistrer une entrée d'audit. Retourne true si c'est la première occurrence observée.
     /// </summary>
+    /// <param name="candidate">Entrée d'audit candidate.</param>
+    /// <param name="registered">Entrée enregistrée ou mise à jour dans le registre.</param>
+    /// <returns>True si l'entrée est nouvelle, False s'il s'agit d'une mise à jour.</returns>
     public bool TryRegisterOrUpdate(NetworkAuditEntry candidate, out NetworkAuditEntry registered)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
-        var key = candidate.ComputeAuditKey();
+        var key = FlowIdentityKey.FromEntry(candidate);
         var isNew = false;
 
-        registered = _activeFlows.AddOrUpdate(
+        var result = _activeFlows.AddOrUpdate(
             key,
             addValueFactory: _ =>
             {
@@ -59,6 +63,7 @@ public sealed class ConnectionDeduplicationRegister
                 };
             });
 
+        registered = result ?? candidate;
         return isNew;
     }
 
@@ -69,7 +74,7 @@ public sealed class ConnectionDeduplicationRegister
     public void UpdateRegisteredEntry(NetworkAuditEntry updated)
     {
         ArgumentNullException.ThrowIfNull(updated);
-        var key = updated.ComputeAuditKey();
+        var key = FlowIdentityKey.FromEntry(updated);
         _activeFlows[key] = updated;
     }
 

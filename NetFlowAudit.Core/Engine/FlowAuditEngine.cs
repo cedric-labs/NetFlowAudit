@@ -13,47 +13,26 @@ namespace NetFlowAudit.Core.Engine;
 /// <summary>
 /// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge, le filtrage de flux réseau, la résolution de noms d'hôtes et la persistance FileForge.
 /// </summary>
-public sealed class FlowAuditEngine
+public sealed class FlowAuditEngine(
+    ISocketScanner socketScanner,
+    ProcessExclusionFilter exclusionFilter,
+    INetworkFlowFilter networkFlowFilter,
+    ConnectionDeduplicationRegister deduplicationRegister,
+    IServerHostProvider hostProvider,
+    PersistentDelimitedFileWriter csvWriter,
+    AuditCsvFormatter csvFormatter,
+    IHostNameResolver hostNameResolver,
+    TimeSpan scanInterval)
 {
-    private readonly ISocketScanner _socketScanner;
-    private readonly ProcessExclusionFilter _exclusionFilter;
-    private readonly INetworkFlowFilter _networkFlowFilter;
-    private readonly ConnectionDeduplicationRegister _deduplicationRegister;
-    private readonly LocalServerHostProvider _hostProvider;
-    private readonly PersistentDelimitedFileWriter _csvWriter;
-    private readonly AuditCsvFormatter _csvFormatter;
-    private readonly IHostNameResolver _hostNameResolver;
-    private readonly TimeSpan _scanInterval;
-
-    /// <summary>
-    /// Initialise une nouvelle instance complète du moteur d'audit.
-    /// </summary>
-    public FlowAuditEngine(
-        ISocketScanner socketScanner,
-        ProcessExclusionFilter exclusionFilter,
-        INetworkFlowFilter networkFlowFilter,
-        ConnectionDeduplicationRegister deduplicationRegister,
-        LocalServerHostProvider hostProvider,
-        PersistentDelimitedFileWriter csvWriter,
-        AuditCsvFormatter csvFormatter,
-        IHostNameResolver hostNameResolver,
-        TimeSpan scanInterval)
-    {
-        _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
-        _exclusionFilter = exclusionFilter ?? throw new ArgumentNullException(nameof(exclusionFilter));
-        _networkFlowFilter = networkFlowFilter ?? throw new ArgumentNullException(nameof(networkFlowFilter));
-        _deduplicationRegister = deduplicationRegister ?? throw new ArgumentNullException(nameof(deduplicationRegister));
-        _hostProvider = hostProvider ?? throw new ArgumentNullException(nameof(hostProvider));
-        _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
-        _csvFormatter = csvFormatter ?? throw new ArgumentNullException(nameof(csvFormatter));
-        _hostNameResolver = hostNameResolver ?? throw new ArgumentNullException(nameof(hostNameResolver));
-        _scanInterval = scanInterval;
-
-        _hostNameResolver.HostNameResolved += (_, e) =>
-        {
-            _deduplicationRegister.UpdateRemoteHostName(e.Address, e.HostName);
-        };
-    }
+    private readonly IHostNameResolver _hostNameResolver = InitializeHostNameResolver(
+        socketScanner,
+        exclusionFilter,
+        networkFlowFilter,
+        deduplicationRegister,
+        hostProvider,
+        csvWriter,
+        csvFormatter,
+        hostNameResolver);
 
     /// <summary>
     /// Constructeur avec filtre de flux explicite et résolveur de nom d'hôte inactif par défaut.
@@ -63,7 +42,7 @@ public sealed class FlowAuditEngine
         ProcessExclusionFilter exclusionFilter,
         INetworkFlowFilter networkFlowFilter,
         ConnectionDeduplicationRegister deduplicationRegister,
-        LocalServerHostProvider hostProvider,
+        IServerHostProvider hostProvider,
         PersistentDelimitedFileWriter csvWriter,
         AuditCsvFormatter csvFormatter,
         TimeSpan scanInterval)
@@ -87,7 +66,7 @@ public sealed class FlowAuditEngine
         ISocketScanner socketScanner,
         ProcessExclusionFilter exclusionFilter,
         ConnectionDeduplicationRegister deduplicationRegister,
-        LocalServerHostProvider hostProvider,
+        IServerHostProvider hostProvider,
         PersistentDelimitedFileWriter csvWriter,
         AuditCsvFormatter csvFormatter,
         TimeSpan scanInterval)
@@ -114,12 +93,12 @@ public sealed class FlowAuditEngine
     /// </summary>
     public async Task RunContinuousAuditAsync(CancellationToken cancellationToken = default)
     {
-        await _csvWriter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        await csvWriter.InitializeAsync(cancellationToken).ConfigureAwait(false);
 
-        var existingSignatures = await _csvWriter.ReadExistingLinesAsync(cancellationToken).ConfigureAwait(false);
-        _deduplicationRegister.Hydrate(existingSignatures);
+        var existingSignatures = await csvWriter.ReadExistingLinesAsync(cancellationToken).ConfigureAwait(false);
+        deduplicationRegister.Hydrate(existingSignatures);
 
-        using var timer = new PeriodicTimer(_scanInterval);
+        using var timer = new PeriodicTimer(scanInterval);
 
         await ExecuteScanCycleAsync(cancellationToken).ConfigureAwait(false);
 
@@ -134,9 +113,9 @@ public sealed class FlowAuditEngine
     /// </summary>
     public async Task<int> ExecuteScanCycleAsync(CancellationToken cancellationToken = default)
     {
-        var activeSockets = await _socketScanner.ScanSocketsAsync(cancellationToken).ConfigureAwait(false);
-        var host = _hostProvider.GetCurrentHostMetadata();
-        var localAddresses = _hostProvider.GetLocalIpAddresses();
+        var activeSockets = await socketScanner.ScanSocketsAsync(cancellationToken).ConfigureAwait(false);
+        var host = hostProvider.GetCurrentHostMetadata();
+        var localAddresses = hostProvider.GetLocalIpAddresses();
         var now = DateTimeOffset.UtcNow;
         var newlyDiscovered = new List<NetworkAuditEntry>();
         var excludedCount = 0;
@@ -146,7 +125,7 @@ public sealed class FlowAuditEngine
             cancellationToken.ThrowIfCancellationRequested();
             var socket = activeSockets[i];
 
-            if (_exclusionFilter.ShouldExclude(socket.Process) || _networkFlowFilter.ShouldExclude(socket, localAddresses))
+            if (exclusionFilter.ShouldExclude(socket.Process) || networkFlowFilter.ShouldExclude(socket, localAddresses))
             {
                 excludedCount++;
                 continue;
@@ -163,12 +142,12 @@ public sealed class FlowAuditEngine
                 _hostNameResolver.QueueResolution(socket.RemoteEndpoint.Address);
             }
 
-            var isNew = _deduplicationRegister.TryRegisterOrUpdate(entry, out var registered);
+            var isNew = deduplicationRegister.TryRegisterOrUpdate(entry, out var registered);
 
             if (isNew)
             {
-                var line = _csvFormatter.FormatEntry(registered);
-                await _csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
+                var line = csvFormatter.FormatEntry(registered);
+                await csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
                 newlyDiscovered.Add(registered);
             }
         }
@@ -178,12 +157,39 @@ public sealed class FlowAuditEngine
             TotalSocketsScanned: activeSockets.Count,
             ExcludedSocketsCount: excludedCount,
             NewlyDiscoveredCount: newlyDiscovered.Count,
-            TotalUniqueFlowsTracked: _deduplicationRegister.UniqueCount,
+            TotalUniqueFlowsTracked: deduplicationRegister.UniqueCount,
             NewlyDiscoveredEntries: newlyDiscovered,
             ActiveSockets: activeSockets);
 
         ScanCycleCompleted?.Invoke(this, new FlowAuditCycleEventArgs(result));
 
         return newlyDiscovered.Count;
+    }
+
+    private static IHostNameResolver InitializeHostNameResolver(
+        ISocketScanner socketScanner,
+        ProcessExclusionFilter exclusionFilter,
+        INetworkFlowFilter networkFlowFilter,
+        ConnectionDeduplicationRegister deduplicationRegister,
+        IServerHostProvider hostProvider,
+        PersistentDelimitedFileWriter csvWriter,
+        AuditCsvFormatter csvFormatter,
+        IHostNameResolver hostNameResolver)
+    {
+        ArgumentNullException.ThrowIfNull(socketScanner);
+        ArgumentNullException.ThrowIfNull(exclusionFilter);
+        ArgumentNullException.ThrowIfNull(networkFlowFilter);
+        ArgumentNullException.ThrowIfNull(deduplicationRegister);
+        ArgumentNullException.ThrowIfNull(hostProvider);
+        ArgumentNullException.ThrowIfNull(csvWriter);
+        ArgumentNullException.ThrowIfNull(csvFormatter);
+        ArgumentNullException.ThrowIfNull(hostNameResolver);
+
+        hostNameResolver.HostNameResolved += (_, e) =>
+        {
+            deduplicationRegister.UpdateRemoteHostName(e.Address, e.HostName);
+        };
+
+        return hostNameResolver;
     }
 }

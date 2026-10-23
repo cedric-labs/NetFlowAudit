@@ -6,60 +6,58 @@ using System.Threading.Channels;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Résolveur DNS inverse haute performance s'appuyant sur un cache mémoire, un fichier de persistance dédié,
-/// l'exclusion de plages réseaux et une file de résolution asynchrone non-bloquante en tâche de fond.
+/// Résolveur DNS inverse asynchrone et non-bloquant avec mise en cache mémoire et exclusion de sous-réseaux.
 /// </summary>
-public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAsyncDisposable
+public sealed class CachedHostNameResolver(
+    TimeSpan resolutionTimeout,
+    DnsAddressExclusionEvaluator? exclusionEvaluator = null,
+    PersistentDnsCacheStore? cacheStore = null) : IHostNameResolver, IDisposable, IAsyncDisposable
 {
-    private readonly TimeSpan _resolutionTimeout;
-    private readonly DnsAddressExclusionEvaluator _exclusionEvaluator;
-    private readonly PersistentDnsCacheStore? _cacheStore;
-    private readonly ConcurrentDictionary<IPAddress, string> _cache = new();
+    private readonly TimeSpan _resolutionTimeout = resolutionTimeout;
+    private readonly DnsAddressExclusionEvaluator _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
+    private readonly PersistentDnsCacheStore? _cacheStore = cacheStore;
+    private readonly ConcurrentDictionary<IPAddress, string> _cache = LoadCache(cacheStore);
     private readonly ConcurrentDictionary<IPAddress, byte> _queuedAddresses = new();
     private readonly Channel<IPAddress> _channel = Channel.CreateUnbounded<IPAddress>();
     private readonly CancellationTokenSource _cts = new();
-    private readonly Task _backgroundWorker;
     private readonly SemaphoreSlim _concurrencySemaphore = new(10, 10);
+    private Task? _backgroundWorker;
+    private int _workerStarted;
     private int _pendingSaves;
 
     /// <inheritdoc />
     public event EventHandler<HostNameResolvedEventArgs>? HostNameResolved;
 
     /// <summary>
-    /// Initialise une nouvelle instance avec configuration complète.
+    /// Initialise une nouvelle instance avec le délai d'expiration par défaut (500ms).
     /// </summary>
-    /// <param name="resolutionTimeout">Délai d'expiration de chaque requête DNS (par défaut 500ms).</param>
-    /// <param name="exclusionEvaluator">Évaluateur optionnel des plages réseaux exclues de la résolution DNS.</param>
-    /// <param name="cacheStore">Gestionnaire optionnel de persistance sur disque du cache DNS.</param>
-    public CachedHostNameResolver(
-        TimeSpan resolutionTimeout,
-        DnsAddressExclusionEvaluator? exclusionEvaluator = null,
-        PersistentDnsCacheStore? cacheStore = null)
+    public CachedHostNameResolver() : this(TimeSpan.FromMilliseconds(500))
     {
-        _resolutionTimeout = resolutionTimeout;
-        _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
-        _cacheStore = cacheStore;
+    }
 
-        if (_cacheStore is not null)
+    private static ConcurrentDictionary<IPAddress, string> LoadCache(PersistentDnsCacheStore? cacheStore)
+    {
+        var cache = new ConcurrentDictionary<IPAddress, string>();
+        if (cacheStore is not null)
         {
-            var loaded = _cacheStore.Load();
+            var loaded = cacheStore.Load();
             foreach (var kvp in loaded)
             {
                 if (IPAddress.TryParse(kvp.Key, out var address))
                 {
-                    _cache.TryAdd(address, kvp.Value);
+                    cache.TryAdd(address, kvp.Value);
                 }
             }
         }
-
-        _backgroundWorker = Task.Run(() => ProcessQueueAsync(_cts.Token));
+        return cache;
     }
 
-    /// <summary>
-    /// Initialise une nouvelle instance avec un délai d'expiration par défaut de 500 ms.
-    /// </summary>
-    public CachedHostNameResolver() : this(TimeSpan.FromMilliseconds(500))
+    private void EnsureWorkerStarted()
     {
+        if (Interlocked.CompareExchange(ref _workerStarted, 1, 0) == 0)
+        {
+            _backgroundWorker = Task.Run(() => ProcessQueueAsync(_cts.Token));
+        }
     }
 
     /// <inheritdoc />
@@ -99,6 +97,7 @@ public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAs
 
         if (_queuedAddresses.TryAdd(address, 0))
         {
+            EnsureWorkerStarted();
             _channel.Writer.TryWrite(address);
         }
     }
@@ -195,10 +194,12 @@ public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAs
                     {
                         try
                         {
-                            var host = await ResolveAndCacheAsync(address, cancellationToken).ConfigureAwait(false);
-                            if (!string.IsNullOrWhiteSpace(host))
+                            var resolved = await ResolveAndCacheAsync(address, cancellationToken).ConfigureAwait(false);
+                            _queuedAddresses.TryRemove(address, out _);
+
+                            if (!string.IsNullOrWhiteSpace(resolved))
                             {
-                                HostNameResolved?.Invoke(this, new HostNameResolvedEventArgs(address, host));
+                                HostNameResolved?.Invoke(this, new HostNameResolvedEventArgs(address, resolved));
                             }
                         }
                         finally
@@ -243,7 +244,21 @@ public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAs
     /// <inheritdoc />
     public void Dispose()
     {
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _channel.Writer.TryComplete();
+        _cts.Cancel();
+        _cts.Dispose();
+        _concurrencySemaphore.Dispose();
+
+        if (_cacheStore is not null)
+        {
+            var snapshot = new Dictionary<string, string>(_cache.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in _cache)
+            {
+                snapshot[kvp.Key.ToString()] = kvp.Value;
+            }
+
+            _cacheStore.Save(snapshot);
+        }
     }
 
     /// <inheritdoc />
@@ -252,13 +267,16 @@ public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAs
         _channel.Writer.TryComplete();
         await _cts.CancelAsync().ConfigureAwait(false);
 
-        try
+        if (_backgroundWorker is not null)
         {
-            await _backgroundWorker.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Toléré lors de l'arrêt
+            try
+            {
+                await _backgroundWorker.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Toléré lors de l'arrêt
+            }
         }
 
         _cts.Dispose();
@@ -272,7 +290,7 @@ public sealed class CachedHostNameResolver : IHostNameResolver, IDisposable, IAs
                 snapshot[kvp.Key.ToString()] = kvp.Value;
             }
 
-            _cacheStore.Save(snapshot);
+            await _cacheStore.SaveAsync(snapshot).ConfigureAwait(false);
         }
     }
 }

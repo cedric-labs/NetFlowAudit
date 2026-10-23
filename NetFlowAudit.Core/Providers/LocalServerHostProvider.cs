@@ -8,7 +8,7 @@ namespace NetFlowAudit.Core.Providers;
 /// <summary>
 /// Fournisseur d'informations sur l'hôte local et ses adresses réseau.
 /// </summary>
-public sealed class LocalServerHostProvider
+public sealed class LocalServerHostProvider : IServerHostProvider
 {
     private readonly Lazy<ServerHostMetadata> _cachedMetadata = new(ResolveMetadata);
     private readonly Lazy<HashSet<IPAddress>> _cachedAddresses = new(ResolveAllLocalAddresses);
