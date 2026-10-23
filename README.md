@@ -8,6 +8,20 @@
 
 ---
 
+## Preview
+
+### Interactive `btop`-Style Terminal Dashboard (TUI)
+<p align="center">
+  <img src="assets/tui-dashboard-preview.png" alt="NetFlowAudit Interactive Terminal Dashboard" width="100%" />
+</p>
+
+### Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)
+<p align="center">
+  <img src="assets/topology-map-preview.png" alt="NetFlowAudit HTML5 Network Topology Map" width="100%" />
+</p>
+
+---
+
 ## 1. Key Features
 
 - **Zero Third-Party Packet Capture Drivers**: Requires neither Npcap, WinPcap, nor libpcap.
@@ -32,7 +46,7 @@
 - **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
   - Generates a 100% standalone single-file HTML5/SVG interactive map (`--map` or press `[M]` in the dashboard).
   - Priority-ranked server pagination (`100` most active/audited servers per page by default, with `◀ Prev`, `Next ▶`, `+100 Servers`, and `Show All` buttons).
-  - Sugiyama barycentric anti-crossing sort, obstacle-avoiding Bezier/Orthogonal edge routing, border-anchored directional `IN` / `OUT` arrowheads, and real-time spacing sliders.
+  - 5-pass anti-crossing layout engine (360° concentric sector rings, alternating Barycenter/Median sweep, exact 2-Opt crossing optimizer, force-repulsion corridor clearance, and full-border angular port distribution) with `IN` / `OUT` directional arrowheads.
 
 ---
 
@@ -209,10 +223,10 @@ On startup, `NetFlowAudit` looks for an optional `netflowaudit.json` file in the
 
 `NetFlowAudit` builds upon 4 modular shared libraries compliant with Clean Architecture and SonarQube Quality Gate standards:
 
-- [**FileForge.Core**](file:///D:/Dev/Framework/FileForge/FRAMEWORK.md): Thread-safe streaming I/O engine and RFC 4180 delimited file writer with non-blocking shared read/write access.
-- [**ProcessForge**](file:///D:/Dev/Framework/ProcessForge/FRAMEWORK.md): Cross-platform process inspector, command-line wrapper analyzer, and exclusion rule evaluator.
-- [**SocketForge**](file:///D:/Dev/Framework/SocketForge/FRAMEWORK.md): Cross-platform active socket scanner (Win32 IP Helper & Linux `/proc/net`).
-- [**TopologyForge**](file:///D:/Dev/Framework/TopologyForge/FRAMEWORK.md): Self-contained offline HTML5/SVG network topology engine with inclusion/exclusion filters, priority-ranked pagination, Sugiyama anti-crossing sort, obstacle-avoiding arrow routing, and `IN`/`OUT` directional markers.
+- **FileForge.Core**: Thread-safe streaming I/O engine and RFC 4180 delimited file writer with non-blocking shared read/write access.
+- **ProcessForge**: Cross-platform process inspector, command-line wrapper analyzer, and exclusion rule evaluator.
+- **SocketForge**: Cross-platform active socket scanner (Win32 IP Helper & Linux `/proc/net`).
+- **TopologyForge**: Self-contained offline HTML5/SVG network topology engine with inclusion/exclusion filters, priority-ranked pagination, 5-pass crossing minimization, obstacle-avoiding arrow routing, and `IN`/`OUT` directional markers.
 
 To run the full quality verification pipeline (formatting, Release build, unit/architecture tests with OpenCover coverage, and SonarQube Quality Gate):
 ```powershell
