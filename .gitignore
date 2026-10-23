@@ -11,7 +11,7 @@ _ReSharper*/
 *.suo
 
 ## ----------------------------------------------------------------------
-## Quality / Coverage / SonarQube
+## Quality / Coverage / SonarQube / AI Instructions
 ## ----------------------------------------------------------------------
 TestResults/
 .sonarqube/
@@ -19,6 +19,7 @@ TestResults/
 coverage*.xml
 StrykerOutput/
 .sonar-token
+AGENTS.md
 
 ## ----------------------------------------------------------------------
 ## OS & Output Files
@@ -30,3 +31,5 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 *.csv
+*.topology.html
+netflow_dns_cache.json
