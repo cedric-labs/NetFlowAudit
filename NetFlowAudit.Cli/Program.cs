@@ -196,7 +196,9 @@ public static class Program
                 config.OutputCsvPath,
                 networkFlowFilter,
                 exclusionFilter,
-                hostProvider.GetLocalIpAddresses());
+                hostProvider.GetLocalIpAddresses(),
+                config.MaskServerName,
+                config.MaskLocalIp);
             dashboard.ClearScreen();
             engine.ScanCycleCompleted += (_, e) => dashboard.Render(e.Result, host);
             hostNameResolver.HostNameResolved += (_, e) => dashboard.UpdateRemoteHostName(e.Address, e.HostName);
@@ -274,6 +276,10 @@ public static class Program
                             if (key.KeyChar is 'c' or 'C')
                             {
                                 dashboard?.ForceRedraw();
+                            }
+                            else if (key.KeyChar is 'f' or 'F')
+                            {
+                                dashboard?.ToggleFilterBypass();
                             }
                             else if (key.KeyChar is 'm' or 'M')
                             {
@@ -411,7 +417,7 @@ public static class Program
         return new AppConfiguration();
     }
 
-    private static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
+    internal static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
     {
         var output = GetCommandLineArgumentValue(args, "--output");
         var intervalStr = GetCommandLineArgumentValue(args, "--interval");
@@ -459,6 +465,19 @@ public static class Program
             excludedRemoteIps = excludeRemoteIpsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
 
+        var maskServer = GetCommandLineArgumentValue(args, "--mask-server") ??
+                         GetCommandLineArgumentValue(args, "--obfuscate-server");
+        var maskIp = GetCommandLineArgumentValue(args, "--mask-ip") ??
+                     GetCommandLineArgumentValue(args, "--obfuscate-ip");
+        var isObfuscated = args.Any(a => a.Equals("--obfuscate", StringComparison.OrdinalIgnoreCase) ||
+                                         a.Equals("--anonymize", StringComparison.OrdinalIgnoreCase));
+
+        if (isObfuscated)
+        {
+            maskServer ??= "SRV-AUDIT-01";
+            maskIp ??= new System.Net.IPAddress([10, 0, 0, 10]).ToString();
+        }
+
         return config with
         {
             OutputCsvPath = output ?? config.OutputCsvPath,
@@ -467,7 +486,9 @@ public static class Program
             ResolveRemoteHostNames = resolveDns,
             ResolveIpOwners = resolveIpOwners,
             IsolatedMode = isIsolated || config.IsolatedMode,
-            ExcludedRemoteIps = excludedRemoteIps
+            ExcludedRemoteIps = excludedRemoteIps,
+            MaskServerName = maskServer ?? config.MaskServerName,
+            MaskLocalIp = maskIp ?? config.MaskLocalIp
         };
     }
 
