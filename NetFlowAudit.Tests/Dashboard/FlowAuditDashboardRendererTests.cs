@@ -33,7 +33,7 @@ public sealed class FlowAuditDashboardRendererTests
     public void BuildWindowTooSmallFrame_WhenWindowWidthIsNarrow_RendersFittedBoxWithoutWrapping()
     {
         // Arrange & Act
-        var frame = FlowAuditDashboardRenderer.BuildWindowTooSmallFrame(70);
+        var frame = FlowAuditDashboardRenderer.BuildWindowTooSmallFrame(70, 20);
 
         // Assert
         var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
@@ -107,6 +107,67 @@ public sealed class FlowAuditDashboardRendererTests
             var visibleWidth = FlowAuditDashboardRenderer.GetVisibleWidth(line);
             visibleWidth.Should().Be(102, $"Line index {i} ('{line}') must have exact visible width of 102 characters");
         }
+    }
+
+    [Fact]
+    public void BuildDashboardFrame_WhenWindowIsWide_AdaptsAllLinesToTargetWidthOf130Characters()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 5,
+            ExcludedSocketsCount: 2,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 3,
+            NewlyDiscoveredEntries: [],
+            ActiveSockets: []);
+
+        const int wideWidth = 130;
+        const int tallHeight = 25;
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost, wideWidth, tallHeight);
+
+        // Assert
+        var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
+        lines.Length.Should().BeGreaterThan(15);
+
+        for (var i = 0; i < lines.Length - 1; i++)
+        {
+            var line = lines[i];
+            var visibleWidth = FlowAuditDashboardRenderer.GetVisibleWidth(line);
+            visibleWidth.Should().Be(wideWidth, $"Line index {i} must match expanded width of {wideWidth}");
+        }
+    }
+
+    [Fact]
+    public void BuildDashboardFrame_WhenWindowHeightIsLarge_ExpandsDiscoveriesRowsCount()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 5,
+            ExcludedSocketsCount: 2,
+            NewlyDiscoveredCount: 1,
+            TotalUniqueFlowsTracked: 3,
+            NewlyDiscoveredEntries: [],
+            ActiveSockets: []);
+
+        const int targetWidth = 110;
+        const int targetHeight = 40;
+
+        // Act
+        var frame = renderer.BuildDashboardFrame(result, SampleHost, targetWidth, targetHeight);
+
+        // Assert
+        var lines = frame.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
+        // Fixed overhead is 15 lines (including footer). With targetHeight = 40, discoveries rows = 25.
+        // Total lines in frame should be 40 (39 box lines + 1 footer line).
+        lines.Length.Should().Be(40);
     }
 
     [Fact]
