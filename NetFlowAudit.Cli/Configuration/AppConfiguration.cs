@@ -32,6 +32,16 @@ public sealed record AppConfiguration
     public bool ResolveRemoteHostNames { get; init; } = true;
 
     /// <summary>
+    /// Active ou désactive la résolution de l'organisation ou du propriétaire IP (RDAP) en cas d'absence de PTR DNS.
+    /// </summary>
+    public bool ResolveIpOwners { get; init; } = true;
+
+    /// <summary>
+    /// Mode isolé / hors-ligne : désactive toute tentative de résolution externe vers Internet.
+    /// </summary>
+    public bool IsolatedMode { get; init; } = false;
+
+    /// <summary>
     /// Chemin du fichier de persistance du cache DNS inverse (JSON).
     /// </summary>
     public string DnsCacheFilePath { get; init; } = "netflow_dns_cache.json";

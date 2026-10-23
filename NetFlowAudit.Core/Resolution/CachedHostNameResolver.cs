@@ -6,16 +6,18 @@ using System.Threading.Channels;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Résolveur DNS inverse asynchrone et non-bloquant avec mise en cache mémoire et exclusion de sous-réseaux.
+/// Résolveur DNS inverse asynchrone et non-bloquant avec mise en cache mémoire, exclusion de sous-réseaux et repli d'organisation.
 /// </summary>
 public sealed class CachedHostNameResolver(
     TimeSpan resolutionTimeout,
     DnsAddressExclusionEvaluator? exclusionEvaluator = null,
-    PersistentDnsCacheStore? cacheStore = null) : IHostNameResolver, IDisposable, IAsyncDisposable
+    PersistentDnsCacheStore? cacheStore = null,
+    IIpOrganizationResolver? organizationResolver = null) : IHostNameResolver, IDisposable, IAsyncDisposable
 {
     private readonly TimeSpan _resolutionTimeout = resolutionTimeout;
     private readonly DnsAddressExclusionEvaluator _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
     private readonly PersistentDnsCacheStore? _cacheStore = cacheStore;
+    private readonly IIpOrganizationResolver? _organizationResolver = organizationResolver;
     private readonly ConcurrentDictionary<IPAddress, string> _cache = LoadCache(cacheStore);
     private readonly ConcurrentDictionary<IPAddress, byte> _queuedAddresses = new();
     private readonly Channel<IPAddress> _channel = Channel.CreateUnbounded<IPAddress>();
@@ -147,27 +149,46 @@ public sealed class CachedHostNameResolver(
 
     private async Task<string> ResolveAndCacheAsync(IPAddress address, CancellationToken cancellationToken)
     {
+        var hostName = string.Empty;
+
+        // 1. Tentative de résolution DNS inverse (PTR)
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_resolutionTimeout);
+            using var dnsTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            dnsTimeoutCts.CancelAfter(_resolutionTimeout);
 
-            var entry = await Dns.GetHostEntryAsync(address.ToString(), timeoutCts.Token).ConfigureAwait(false);
-            var hostName = string.IsNullOrWhiteSpace(entry.HostName) ? string.Empty : entry.HostName;
-
-            _cache[address] = hostName;
-            ScheduleCacheSave();
-            return hostName;
+            var entry = await Dns.GetHostEntryAsync(address.ToString(), dnsTimeoutCts.Token).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(entry.HostName))
+            {
+                hostName = entry.HostName;
+            }
         }
         catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
         {
             // Toléré : L'adresse distante ne dispose pas d'enregistrement DNS PTR inverse,
-            // le serveur DNS est inaccessible ou la requête a dépassé le délai imparti.
-            // On enregistre une chaîne vide dans le cache pour ne pas répéter la requête inutilement (cache négatif).
-            _cache[address] = string.Empty;
-            ScheduleCacheSave();
-            return string.Empty;
+            // ou le serveur DNS est inaccessible/hors-ligne.
         }
+
+        // 2. Repli : si aucun nom DNS n'a été trouvé et qu'un résolveur d'organisation est disponible
+        if (string.IsNullOrWhiteSpace(hostName) && _organizationResolver is not null)
+        {
+            try
+            {
+                var org = await _organizationResolver.ResolveOrganizationAsync(address, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(org))
+                {
+                    hostName = org;
+                }
+            }
+            catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
+            {
+                // Toléré : Environnement isolé du réseau, serveur d'organisation inaccessible ou annulation.
+            }
+        }
+
+        _cache[address] = hostName;
+        ScheduleCacheSave();
+        return hostName;
     }
 
     private async Task ProcessQueueAsync(CancellationToken cancellationToken)

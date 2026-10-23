@@ -33,6 +33,8 @@ OPTIONS DE LIGNE DE COMMANDE :
   --interval <secondes>               Intervalle en secondes entre deux balayages (par défaut : 5).
   --columns <col1,col2,...>           Liste personnalisée ordonnée de colonnes à exporter dans le CSV.
   --resolve-dns <true|false>          Active ou désactive la résolution DNS inverse des IP distantes.
+  --resolve-ip-owners <true|false>    Active ou désactive la résolution d'organisation IP (RDAP) en repli DNS.
+  --isolated, --offline               Mode serveur isolé d'Internet : désactive les résolutions réseau sortantes.
   --exclude-remote-ips <ip1,cidr2,..> Liste d'adresses IP ou plages CIDR distantes à exclure de l'audit.
 
 TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
@@ -69,6 +71,8 @@ TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   "OutputCsvPath": "netflow_audit.csv",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
+  "ResolveIpOwners": true,
+  "IsolatedMode": false,
   "DnsCacheFilePath": "netflow_dns_cache.json",
   "DnsExcludedNetworks": [
     "0.0.0.0",

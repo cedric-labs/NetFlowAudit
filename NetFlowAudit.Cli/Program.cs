@@ -69,6 +69,7 @@ public static class Program
             Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
             Console.WriteLine($"Colonnes CSV    : {selectedColumns.Count} colonnes actives");
             Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? $"Activé (cache: {config.DnsCacheFilePath})" : "Désactivé")}");
+            Console.WriteLine($"Propriétaires IP: {(config.ResolveIpOwners && !config.IsolatedMode ? "Activé (RDAP avec disjoncteur)" : (config.IsolatedMode ? "Désactivé (Mode isolé)" : "Désactivé"))}");
             Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
             Console.WriteLine($"Exclusion loop  : {(config.ExcludeLoopbackFlows ? "Activée" : "Désactivée")}");
             if (config.ExcludedRemoteIps.Count > 0)
@@ -118,8 +119,12 @@ public static class Program
         var exclusionEvaluator = new DnsAddressExclusionEvaluator(config.DnsExcludedNetworks);
         var dnsCacheStore = new PersistentDnsCacheStore(config.DnsCacheFilePath);
 
+        using var orgResolver = config.ResolveIpOwners && !config.IsolatedMode
+            ? new RdapIpOrganizationResolver()
+            : (IIpOrganizationResolver)new NoOpIpOrganizationResolver();
+
         IHostNameResolver hostNameResolver = config.ResolveRemoteHostNames
-            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore)
+            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore, orgResolver)
             : new NoOpHostNameResolver();
 
         var engine = new FlowAuditEngine(
@@ -264,6 +269,10 @@ public static class Program
         var intervalStr = GetCommandLineArgumentValue(args, "--interval");
         var columnsStr = GetCommandLineArgumentValue(args, "--columns");
         var dnsStr = GetCommandLineArgumentValue(args, "--resolve-dns");
+        var ipOwnersStr = GetCommandLineArgumentValue(args, "--resolve-ip-owners");
+        var isIsolated = args.Any(a => a.Equals("--isolated", StringComparison.OrdinalIgnoreCase) ||
+                                       a.Equals("--offline", StringComparison.OrdinalIgnoreCase));
+        var noIpOwners = args.Any(a => a.Equals("--no-ip-owners", StringComparison.OrdinalIgnoreCase));
         var excludeRemoteIpsStr = GetCommandLineArgumentValue(args, "--exclude-remote-ips") ??
                                   GetCommandLineArgumentValue(args, "--exclude-remote-ip");
 
@@ -285,6 +294,17 @@ public static class Program
             resolveDns = parsedDns;
         }
 
+        var resolveIpOwners = config.ResolveIpOwners;
+        if (ipOwnersStr is not null && bool.TryParse(ipOwnersStr, out var parsedOwners))
+        {
+            resolveIpOwners = parsedOwners;
+        }
+
+        if (noIpOwners || isIsolated)
+        {
+            resolveIpOwners = false;
+        }
+
         var excludedRemoteIps = config.ExcludedRemoteIps;
         if (!string.IsNullOrWhiteSpace(excludeRemoteIpsStr))
         {
@@ -297,6 +317,8 @@ public static class Program
             ScanIntervalSeconds = interval,
             CsvColumns = columns,
             ResolveRemoteHostNames = resolveDns,
+            ResolveIpOwners = resolveIpOwners,
+            IsolatedMode = isIsolated || config.IsolatedMode,
             ExcludedRemoteIps = excludedRemoteIps
         };
     }

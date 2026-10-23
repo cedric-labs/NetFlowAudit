@@ -7,6 +7,19 @@ namespace NetFlowAudit.Tests.Resolution;
 
 public sealed class CachedHostNameResolverTests
 {
+    private sealed class FakeOrganizationResolver(Func<IPAddress, string?> resolverFunc) : IIpOrganizationResolver
+    {
+        public Task<string?> ResolveOrganizationAsync(IPAddress address, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(resolverFunc(address));
+        }
+
+        public void Dispose()
+        {
+            // Aucun état à libérer pour le mock de test
+        }
+    }
+
     [Fact]
     public Task ResolveHostNameAsync_WhenNullAddress_ThrowsArgumentNullException()
     {
@@ -61,6 +74,66 @@ public sealed class CachedHostNameResolverTests
         // Assert
         firstResult.Should().BeEmpty();
         secondResult.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveHostNameAsync_WhenDnsFailsAndOrgResolverSucceeds_ReturnsOrganizationName()
+    {
+        // Arrange : adresse TEST-NET sans PTR DNS
+        var testIp = IPAddress.Parse("192.0.2.42");
+        var fakeOrgResolver = new FakeOrganizationResolver(ip => ip.Equals(testIp) ? "Microsoft Corporation" : null);
+
+        await using var resolver = new CachedHostNameResolver(
+            resolutionTimeout: TimeSpan.FromMilliseconds(10),
+            exclusionEvaluator: null,
+            cacheStore: null,
+            organizationResolver: fakeOrgResolver);
+
+        // Act
+        var result = await resolver.ResolveHostNameAsync(testIp);
+
+        // Assert
+        result.Should().Be("Microsoft Corporation");
+    }
+
+    [Fact]
+    public async Task ResolveHostNameAsync_WhenDnsFailsAndOrgResolverThrows_ReturnsEmptyStringWithoutThrowing()
+    {
+        // Arrange : simulateur d'environnement hors-ligne / erreur réseau
+        var testIp = IPAddress.Parse("192.0.2.99");
+        var failingOrgResolver = new FakeOrganizationResolver(_ => throw new HttpRequestException("Air-gapped server"));
+
+        await using var resolver = new CachedHostNameResolver(
+            resolutionTimeout: TimeSpan.FromMilliseconds(10),
+            exclusionEvaluator: null,
+            cacheStore: null,
+            organizationResolver: failingOrgResolver);
+
+        // Act
+        var result = await resolver.ResolveHostNameAsync(testIp);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveHostNameAsync_WhenIpIsMicrosoftWithoutDnsPtr_ResolvesOrganizationViaRdap()
+    {
+        // Arrange : 52.123.242.181 n'a pas de PTR DNS, mais appartient à Microsoft Corporation
+        using var orgResolver = new RdapIpOrganizationResolver();
+        await using var resolver = new CachedHostNameResolver(
+            resolutionTimeout: TimeSpan.FromMilliseconds(500),
+            exclusionEvaluator: null,
+            cacheStore: null,
+            organizationResolver: orgResolver);
+
+        var ip = IPAddress.Parse("52.123.242.181");
+
+        // Act
+        var result = await resolver.ResolveHostNameAsync(ip);
+
+        // Assert
+        result.Should().Be("Microsoft Corporation");
     }
 
     [Fact]
