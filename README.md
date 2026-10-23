@@ -22,6 +22,24 @@
 
 ---
 
+## Why NetFlowAudit? (The Problem It Solves)
+
+When preparing infrastructure migrations, establishing strict firewall whitelists, or conducting security audits, system administrators and security engineers face a recurring question: **"Which services does this machine actually communicate with over time, and which local application is responsible?"**
+
+Existing tools often fall into extremes:
+- **Packet sniffers (Wireshark, tcpdump)** require third-party kernel drivers (`Npcap`, `libpcap`), generate massive PCAP files, and do not inherently associate local process command-lines with network sockets.
+- **Point-in-time snapshots (`netstat`, `ss`, `TCPView`)** only capture active connections at that exact instant, completely missing short-lived, transient, or scheduled night jobs.
+- **Security event loggers (Sysmon Event ID 3)** log every individual connection without aggregating ephemeral ports, quickly flooding disks and SIEMs with millions of lines.
+- **Active network scanners (Nmap, port scanners)** probe machines from the outside, generating aggressive network traffic that triggers IDS/EDR alerts.
+
+**NetFlowAudit fills this gap:**
+1. **Zero Capture Drivers**: Uses only native OS APIs (`iphlpapi.dll` on Windows, `/proc` on Linux) with zero driver installation.
+2. **Continuous & Deduplicated**: Sits quietly in the background, collapsing ephemeral client ports into a clean, consolidated RFC 4180 CSV audit trail tracking `FirstSeen`, `LastSeen`, and cumulative hit counts.
+3. **Deep Target Unwrapping**: Identifies the true underlying application payload behind generic launchers (`java -jar service.jar`, `python script.py`, `powershell task.ps1`, `dotnet app.dll`).
+4. **Instant Self-Contained Topology Maps**: Generates interactive HTML5/SVG network graphs that can be opened in any browser offline, with no backend or cloud dependencies.
+
+---
+
 ## 1. Key Features
 
 - **Zero Third-Party Packet Capture Drivers**: Requires neither Npcap, WinPcap, nor libpcap.
