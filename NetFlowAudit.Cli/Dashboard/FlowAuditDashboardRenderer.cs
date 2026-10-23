@@ -136,6 +136,36 @@ public sealed partial class FlowAuditDashboardRenderer
     /// <summary>
     /// Vérifie si la fenêtre a été redimensionnée ou si l'ascenseur a bougé, et redessine immédiatement le tableau de bord.
     /// </summary>
+    /// <summary>
+    /// Met à jour le nom d'hôte distant dans la liste des découvertes récentes si l'adresse IP correspond.
+    /// </summary>
+    /// <param name="remoteAddress">Adresse IP distante résolue.</param>
+    /// <param name="hostName">Nom d'hôte résolu.</param>
+    public void UpdateRemoteHostName(System.Net.IPAddress remoteAddress, string hostName)
+    {
+        ArgumentNullException.ThrowIfNull(remoteAddress);
+        ArgumentNullException.ThrowIfNull(hostName);
+
+        lock (_syncLock)
+        {
+            var updated = false;
+            for (var i = 0; i < _recentDiscoveries.Count; i++)
+            {
+                var entry = _recentDiscoveries[i];
+                if (entry.Socket.RemoteEndpoint.Address.Equals(remoteAddress) && string.IsNullOrWhiteSpace(entry.RemoteHostName))
+                {
+                    _recentDiscoveries[i] = entry with { RemoteHostName = hostName };
+                    updated = true;
+                }
+            }
+
+            if (updated && _lastResult is not null && _lastHost is not null)
+            {
+                RenderInternal(forceClear: false);
+            }
+        }
+    }
+
     public void CheckAndRedrawIfWindowChanged()
     {
         if (Console.IsOutputRedirected || _lastResult is null || _lastHost is null)

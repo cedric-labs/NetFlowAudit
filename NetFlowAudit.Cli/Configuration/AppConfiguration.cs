@@ -32,6 +32,24 @@ public sealed record AppConfiguration
     public bool ResolveRemoteHostNames { get; init; } = true;
 
     /// <summary>
+    /// Chemin du fichier de persistance du cache DNS inverse (JSON).
+    /// </summary>
+    public string DnsCacheFilePath { get; init; } = "netflow_dns_cache.json";
+
+    /// <summary>
+    /// Liste des sous-réseaux (CIDR) ou adresses IP exclues de la résolution DNS inverse.
+    /// </summary>
+    public List<string> DnsExcludedNetworks { get; init; } =
+    [
+        "0.0.0.0",
+        "255.255.255.255",
+        "169.254.0.0/16",
+        "224.0.0.0/4",
+        "fe80::/10",
+        "ff00::/8"
+    ];
+
+    /// <summary>
     /// PIDs à exclure systématiquement.
     /// </summary>
     public List<int> ExcludedPids { get; init; } = [0, 4];

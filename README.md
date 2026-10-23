@@ -116,6 +116,15 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
   "OutputCsvPath": "netflow_audit.csv",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
+  "DnsCacheFilePath": "netflow_dns_cache.json",
+  "DnsExcludedNetworks": [
+    "0.0.0.0",
+    "255.255.255.255",
+    "169.254.0.0/16",
+    "224.0.0.0/4",
+    "fe80::/10",
+    "ff00::/8"
+  ],
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [ 22, 3389 ],
   "ExcludedRemotePorts": [ 53 ],
@@ -158,7 +167,9 @@ Au démarrage, l'application recherche un fichier optionnel nommé `netflowaudit
 | `ScanIntervalSeconds` | Entier | `5` | Fréquence en secondes entre deux balayages de la table des sockets actives. |
 | `OutputCsvPath` | Chaîne | `"netflow_audit.csv"` | Chemin relatif ou absolu du fichier CSV de sortie. |
 | `EnableDashboard` | Booléen | `true` | Active le tableau de bord interactif dans le terminal en mode interactif. |
-| `ResolveRemoteHostNames` | Booléen | `true` | Active la résolution DNS inverse asynchrone des adresses IP distantes avec cache mémoire. |
+| `ResolveRemoteHostNames` | Booléen | `true` | Active la résolution DNS inverse asynchrone non-bloquante des IP distantes. |
+| `DnsCacheFilePath` | Chaîne | `"netflow_dns_cache.json"` | Chemin du fichier JSON de persistance du cache DNS inverse entre les redémarrages. |
+| `DnsExcludedNetworks` | Tableau de chaînes | `["0.0.0.0", "255.255.255.255", "169.254.0.0/16", ...]` | Plages réseaux (CIDR) ou adresses IP pour lesquelles la résolution DNS est ignorée d'office. |
 | `ExcludeLoopbackFlows` | Booléen | `true` | Ignore les flux internes lorsque `LocalIp == RemoteIp`, adresses loopback (`127.0.0.0/8`, `::1`) ou interfaces locales de la machine. |
 | `ExcludedLocalPorts` | Tableau d'entiers | `[]` | Liste des ports d'écoute ou locaux à ignorer (ex: `[22, 3389]`). |
 | `ExcludedRemotePorts` | Tableau d'entiers | `[]` | Liste des ports distants cibles à ignorer (ex: `[53, 443]`). |

@@ -68,6 +68,15 @@ TOUCHES INTERACTIVES DU TABLEAU DE BORD (TUI) :
   "OutputCsvPath": "netflow_audit.csv",
   "EnableDashboard": true,
   "ResolveRemoteHostNames": true,
+  "DnsCacheFilePath": "netflow_dns_cache.json",
+  "DnsExcludedNetworks": [
+    "0.0.0.0",
+    "255.255.255.255",
+    "169.254.0.0/16",
+    "224.0.0.0/4",
+    "fe80::/10",
+    "ff00::/8"
+  ],
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [ 22, 3389 ],
   "ExcludedRemotePorts": [ 53 ],

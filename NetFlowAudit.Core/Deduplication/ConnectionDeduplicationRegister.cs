@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using NetFlowAudit.Core.Models;
 
 namespace NetFlowAudit.Core.Deduplication;
@@ -70,6 +71,25 @@ public sealed class ConnectionDeduplicationRegister
         ArgumentNullException.ThrowIfNull(updated);
         var key = updated.ComputeAuditKey();
         _activeFlows[key] = updated;
+    }
+
+    /// <summary>
+    /// Met à jour le nom d'hôte distant pour l'ensemble des flux enregistrés correspondant à une adresse IP distante donnée.
+    /// </summary>
+    /// <param name="remoteAddress">Adresse IP distante dont le nom d'hôte a été résolu.</param>
+    /// <param name="resolvedHostName">Nom d'hôte résolu.</param>
+    public void UpdateRemoteHostName(IPAddress remoteAddress, string resolvedHostName)
+    {
+        ArgumentNullException.ThrowIfNull(remoteAddress);
+        ArgumentNullException.ThrowIfNull(resolvedHostName);
+
+        foreach (var (key, entry) in _activeFlows)
+        {
+            if (entry is not null && entry.Socket.RemoteEndpoint.Address.Equals(remoteAddress) && string.IsNullOrWhiteSpace(entry.RemoteHostName))
+            {
+                _activeFlows[key] = entry with { RemoteHostName = resolvedHostName };
+            }
+        }
     }
 
     /// <summary>

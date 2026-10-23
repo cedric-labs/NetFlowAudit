@@ -281,6 +281,19 @@ public sealed class FlowAuditEngineTests : IAsyncLifetime
 
     private sealed class FakeHostNameResolver(string resolvedHost) : NetFlowAudit.Core.Resolution.IHostNameResolver
     {
+        public event EventHandler<NetFlowAudit.Core.Resolution.HostNameResolvedEventArgs>? HostNameResolved;
+
+        public bool TryGetCachedHostName(IPAddress address, out string hostName)
+        {
+            hostName = resolvedHost;
+            return true;
+        }
+
+        public void QueueResolution(IPAddress address)
+        {
+            HostNameResolved?.Invoke(this, new NetFlowAudit.Core.Resolution.HostNameResolvedEventArgs(address, resolvedHost));
+        }
+
         public Task<string> ResolveHostNameAsync(IPAddress address, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(resolvedHost);

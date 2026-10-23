@@ -21,7 +21,7 @@ public sealed class CachedHostNameResolverTests
     public async Task ResolveHostNameAsync_WhenAnyAddress_ReturnsEmptyString()
     {
         // Arrange
-        var resolver = new CachedHostNameResolver();
+        await using var resolver = new CachedHostNameResolver();
 
         // Act
         var resultV4 = await resolver.ResolveHostNameAsync(IPAddress.Any);
@@ -36,7 +36,7 @@ public sealed class CachedHostNameResolverTests
     public async Task ResolveHostNameAsync_WhenLoopbackAddress_ReturnsLocalhost()
     {
         // Arrange
-        var resolver = new CachedHostNameResolver();
+        await using var resolver = new CachedHostNameResolver();
 
         // Act
         var resultV4 = await resolver.ResolveHostNameAsync(IPAddress.Loopback);
@@ -51,7 +51,7 @@ public sealed class CachedHostNameResolverTests
     public async Task ResolveHostNameAsync_WhenNonRoutableOrTimeoutAddress_ReturnsEmptyAndCachesNegativeResult()
     {
         // Arrange : Utilise un délai très court (10 ms) et une adresse réservée pour documentation (TEST-NET)
-        var resolver = new CachedHostNameResolver(TimeSpan.FromMilliseconds(10));
+        await using var resolver = new CachedHostNameResolver(TimeSpan.FromMilliseconds(10));
         var dummyIp = IPAddress.Parse("192.0.2.1");
 
         // Act
@@ -61,5 +61,37 @@ public sealed class CachedHostNameResolverTests
         // Assert
         firstResult.Should().BeEmpty();
         secondResult.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryGetCachedHostName_WhenAddressIsExcluded_ReturnsTrueAndEmptyString()
+    {
+        // Arrange
+        var evaluator = new DnsAddressExclusionEvaluator(["169.254.0.0/16"]);
+        using var resolver = new CachedHostNameResolver(TimeSpan.FromMilliseconds(10), evaluator);
+        var linkLocal = IPAddress.Parse("169.254.1.2");
+
+        // Act
+        var found = resolver.TryGetCachedHostName(linkLocal, out var hostName);
+
+        // Assert
+        found.Should().BeTrue();
+        hostName.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryGetCachedHostName_WhenAddressNotInCache_ReturnsFalse()
+    {
+        // Arrange
+        var evaluator = new DnsAddressExclusionEvaluator([]);
+        using var resolver = new CachedHostNameResolver(TimeSpan.FromMilliseconds(10), evaluator);
+        var externalIp = IPAddress.Parse("93.184.216.34");
+
+        // Act
+        var found = resolver.TryGetCachedHostName(externalIp, out var hostName);
+
+        // Assert
+        found.Should().BeFalse();
+        hostName.Should().BeEmpty();
     }
 }

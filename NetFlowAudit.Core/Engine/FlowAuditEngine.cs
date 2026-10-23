@@ -13,26 +13,47 @@ namespace NetFlowAudit.Core.Engine;
 /// <summary>
 /// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge, le filtrage de flux réseau, la résolution de noms d'hôtes et la persistance FileForge.
 /// </summary>
-public sealed class FlowAuditEngine(
-    ISocketScanner socketScanner,
-    ProcessExclusionFilter exclusionFilter,
-    INetworkFlowFilter networkFlowFilter,
-    ConnectionDeduplicationRegister deduplicationRegister,
-    LocalServerHostProvider hostProvider,
-    PersistentDelimitedFileWriter csvWriter,
-    AuditCsvFormatter csvFormatter,
-    IHostNameResolver hostNameResolver,
-    TimeSpan scanInterval)
+public sealed class FlowAuditEngine
 {
-    private readonly ISocketScanner _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
-    private readonly ProcessExclusionFilter _exclusionFilter = exclusionFilter ?? throw new ArgumentNullException(nameof(exclusionFilter));
-    private readonly INetworkFlowFilter _networkFlowFilter = networkFlowFilter ?? throw new ArgumentNullException(nameof(networkFlowFilter));
-    private readonly ConnectionDeduplicationRegister _deduplicationRegister = deduplicationRegister ?? throw new ArgumentNullException(nameof(deduplicationRegister));
-    private readonly LocalServerHostProvider _hostProvider = hostProvider ?? throw new ArgumentNullException(nameof(hostProvider));
-    private readonly PersistentDelimitedFileWriter _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
-    private readonly AuditCsvFormatter _csvFormatter = csvFormatter ?? throw new ArgumentNullException(nameof(csvFormatter));
-    private readonly IHostNameResolver _hostNameResolver = hostNameResolver ?? throw new ArgumentNullException(nameof(hostNameResolver));
-    private readonly TimeSpan _scanInterval = scanInterval;
+    private readonly ISocketScanner _socketScanner;
+    private readonly ProcessExclusionFilter _exclusionFilter;
+    private readonly INetworkFlowFilter _networkFlowFilter;
+    private readonly ConnectionDeduplicationRegister _deduplicationRegister;
+    private readonly LocalServerHostProvider _hostProvider;
+    private readonly PersistentDelimitedFileWriter _csvWriter;
+    private readonly AuditCsvFormatter _csvFormatter;
+    private readonly IHostNameResolver _hostNameResolver;
+    private readonly TimeSpan _scanInterval;
+
+    /// <summary>
+    /// Initialise une nouvelle instance complète du moteur d'audit.
+    /// </summary>
+    public FlowAuditEngine(
+        ISocketScanner socketScanner,
+        ProcessExclusionFilter exclusionFilter,
+        INetworkFlowFilter networkFlowFilter,
+        ConnectionDeduplicationRegister deduplicationRegister,
+        LocalServerHostProvider hostProvider,
+        PersistentDelimitedFileWriter csvWriter,
+        AuditCsvFormatter csvFormatter,
+        IHostNameResolver hostNameResolver,
+        TimeSpan scanInterval)
+    {
+        _socketScanner = socketScanner ?? throw new ArgumentNullException(nameof(socketScanner));
+        _exclusionFilter = exclusionFilter ?? throw new ArgumentNullException(nameof(exclusionFilter));
+        _networkFlowFilter = networkFlowFilter ?? throw new ArgumentNullException(nameof(networkFlowFilter));
+        _deduplicationRegister = deduplicationRegister ?? throw new ArgumentNullException(nameof(deduplicationRegister));
+        _hostProvider = hostProvider ?? throw new ArgumentNullException(nameof(hostProvider));
+        _csvWriter = csvWriter ?? throw new ArgumentNullException(nameof(csvWriter));
+        _csvFormatter = csvFormatter ?? throw new ArgumentNullException(nameof(csvFormatter));
+        _hostNameResolver = hostNameResolver ?? throw new ArgumentNullException(nameof(hostNameResolver));
+        _scanInterval = scanInterval;
+
+        _hostNameResolver.HostNameResolved += (_, e) =>
+        {
+            _deduplicationRegister.UpdateRemoteHostName(e.Address, e.HostName);
+        };
+    }
 
     /// <summary>
     /// Constructeur avec filtre de flux explicite et résolveur de nom d'hôte inactif par défaut.
@@ -132,17 +153,20 @@ public sealed class FlowAuditEngine(
             }
 
             var entry = new NetworkAuditEntry(now, now, 1, host, socket);
+
+            if (_hostNameResolver.TryGetCachedHostName(socket.RemoteEndpoint.Address, out var cachedHost) && !string.IsNullOrWhiteSpace(cachedHost))
+            {
+                entry = entry with { RemoteHostName = cachedHost };
+            }
+            else
+            {
+                _hostNameResolver.QueueResolution(socket.RemoteEndpoint.Address);
+            }
+
             var isNew = _deduplicationRegister.TryRegisterOrUpdate(entry, out var registered);
 
             if (isNew)
             {
-                var remoteHost = await _hostNameResolver.ResolveHostNameAsync(socket.RemoteEndpoint.Address, cancellationToken).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(remoteHost))
-                {
-                    registered = registered with { RemoteHostName = remoteHost };
-                    _deduplicationRegister.UpdateRegisteredEntry(registered);
-                }
-
                 var line = _csvFormatter.FormatEntry(registered);
                 await _csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
                 newlyDiscovered.Add(registered);

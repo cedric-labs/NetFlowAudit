@@ -68,7 +68,7 @@ public static class Program
             Console.WriteLine($"IP principale   : {host.PrimaryIpAddress}");
             Console.WriteLine($"Fichier CSV     : {config.OutputCsvPath}");
             Console.WriteLine($"Colonnes CSV    : {selectedColumns.Count} colonnes actives");
-            Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? "Activé (résolution inverse)" : "Désactivé")}");
+            Console.WriteLine($"DNS distant     : {(config.ResolveRemoteHostNames ? $"Activé (cache: {config.DnsCacheFilePath})" : "Désactivé")}");
             Console.WriteLine($"Fréquence scan  : toutes les {config.ScanIntervalSeconds} seconde(s)");
             Console.WriteLine($"Exclusion loop  : {(config.ExcludeLoopbackFlows ? "Activée" : "Désactivée")}");
             Console.WriteLine("Démarrage de l'audit continu... (Appuyez sur 'q' pour stopper)\n");
@@ -110,8 +110,11 @@ public static class Program
 
         await using var csvWriter = new PersistentDelimitedFileWriter(config.OutputCsvPath, csvFormatter.BuildHeaderLine());
 
+        var exclusionEvaluator = new DnsAddressExclusionEvaluator(config.DnsExcludedNetworks);
+        var dnsCacheStore = new PersistentDnsCacheStore(config.DnsCacheFilePath);
+
         IHostNameResolver hostNameResolver = config.ResolveRemoteHostNames
-            ? new CachedHostNameResolver(TimeSpan.FromSeconds(1))
+            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore)
             : new NoOpHostNameResolver();
 
         var engine = new FlowAuditEngine(
@@ -131,6 +134,7 @@ public static class Program
             dashboard = new FlowAuditDashboardRenderer(config.ScanIntervalSeconds, config.OutputCsvPath);
             dashboard.ClearScreen();
             engine.ScanCycleCompleted += (_, e) => dashboard.Render(e.Result, host);
+            hostNameResolver.HostNameResolved += (_, e) => dashboard.UpdateRemoteHostName(e.Address, e.HostName);
         }
 
         System.Runtime.InteropServices.PosixSignalRegistration? posixSigInt = null;
@@ -220,6 +224,10 @@ public static class Program
         finally
         {
             dashboard?.RestoreCursor();
+            if (hostNameResolver is IAsyncDisposable asyncResolver)
+            {
+                await asyncResolver.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 
