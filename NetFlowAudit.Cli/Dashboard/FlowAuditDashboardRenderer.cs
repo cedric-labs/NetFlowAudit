@@ -1061,7 +1061,7 @@ public sealed partial class FlowAuditDashboardRenderer
         filledCount = Math.Clamp(filledCount, 0, barWidth);
         var emptyCount = barWidth - filledCount;
 
-        var filledBlocks = new string('█', filledCount);
+        var filledBlocks = new string('▮', filledCount);
         var emptyBlocks = new string('─', emptyCount);
 
         var barPart = $"{AnsiCyan}[{filledBlocks}{AnsiDarkGray}{emptyBlocks}{AnsiCyan}]{AnsiReset}";
