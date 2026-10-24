@@ -36,6 +36,7 @@ COMMAND-LINE OPTIONS:
   --resolve-ip-owners <true|false>    Enable or disable RDAP IP organization fallback when PTR is missing.
   --isolated, --offline               Air-gapped / offline server mode: disable external resolution queries.
   --exclude-remote-ips <ip1,cidr2,..> Comma-separated remote IP addresses or CIDR subnets to exclude.
+  --alias <ip>=<host>                 Static IP-to-hostname alias taking precedence over reverse DNS PTR.
   --mask-server <name>                Fictitious server name for dashboard display/screenshots.
   --mask-ip <ip>                      Fictitious local IP for dashboard display/screenshots.
   --obfuscate, --anonymize            Mask both server name (SRV-AUDIT-01) and local IP (10.0.0.10).
@@ -118,6 +119,9 @@ INTERACTIVE DASHBOARD SHORTCUTS (TUI):
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,
   "IsolatedMode": false,
+  "CustomHostAliases": {
+    "203.0.113.30": "nextcloud.home.arpa"
+  },
   "DnsCacheFilePath": "netflow_dns_cache.json",
   "DnsExcludedNetworks": [
     "0.0.0.0",

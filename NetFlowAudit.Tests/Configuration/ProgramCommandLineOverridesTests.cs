@@ -36,4 +36,40 @@ public sealed class ProgramCommandLineOverridesTests
         updated.MaskServerName.Should().Be("DEMO-SERVER");
         updated.MaskLocalIp.Should().Be("172.16.0.5");
     }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenSingleAliasProvided_PopulatesCustomHostAliases()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration();
+        var args = new[] { "--alias", "203.0.113.30=nextcloud.home.arpa" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.CustomHostAliases.Should().ContainKey("203.0.113.30")
+            .WhoseValue.Should().Be("nextcloud.home.arpa");
+    }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenMultipleAliasesProvided_PopulatesAllAliases()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration();
+        var args = new[]
+        {
+            "--alias", "192.168.1.10=srv-db",
+            "--aliases", "10.0.0.1=router.corp,10.0.0.2:gateway.corp"
+        };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.CustomHostAliases.Should().HaveCount(3);
+        updated.CustomHostAliases["192.168.1.10"].Should().Be("srv-db");
+        updated.CustomHostAliases["10.0.0.1"].Should().Be("router.corp");
+        updated.CustomHostAliases["10.0.0.2"].Should().Be("gateway.corp");
+    }
 }

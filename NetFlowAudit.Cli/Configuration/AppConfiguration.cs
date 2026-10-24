@@ -193,4 +193,9 @@ public sealed record AppConfiguration
     /// Masked local IP address displayed in dashboard rows for anonymized presentations.
     /// </summary>
     public string MaskLocalIp { get; init; } = string.Empty;
+
+    /// <summary>
+    /// User-defined static IP-to-hostname mappings taking precedence over DNS reverse PTR records.
+    /// </summary>
+    public Dictionary<string, string> CustomHostAliases { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 }

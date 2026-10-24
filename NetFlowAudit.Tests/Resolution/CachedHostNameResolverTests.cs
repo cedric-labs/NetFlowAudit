@@ -142,7 +142,7 @@ public sealed class CachedHostNameResolverTests
     public async Task ResolveHostNameAsync_WhenIpIsMicrosoftWithoutDnsPtr_ResolvesOrganizationViaRdap()
     {
         // Arrange: 52.123.242.181 lacks reverse DNS PTR but belongs to Microsoft Corporation
-        using var orgResolver = new RdapIpOrganizationResolver();
+        using var orgResolver = new RdapIpOrganizationResolver(requestTimeout: TimeSpan.FromSeconds(10));
         await using var resolver = new CachedHostNameResolver(
             resolutionTimeout: TimeSpan.FromMilliseconds(500),
             exclusionEvaluator: null,
@@ -188,5 +188,37 @@ public sealed class CachedHostNameResolverTests
         // Assert
         found.Should().BeFalse();
         hostName.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveHostNameAsync_WhenCustomHostAliasProvided_ReturnsCustomAliasImmediately()
+    {
+        // Arrange
+        var ip = IPAddress.Parse("203.0.113.30");
+        var customAliases = new Dictionary<string, string>
+        {
+            ["203.0.113.30"] = "nextcloud.home.arpa"
+        };
+
+        await using var resolver = new CachedHostNameResolver(
+            resolutionTimeout: TimeSpan.FromMilliseconds(500),
+            exclusionEvaluator: null,
+            cacheStore: null,
+            organizationResolver: null,
+            customHostAliases: customAliases);
+
+        // Act
+        var result = await resolver.ResolveHostNameAsync(ip);
+
+        // Assert
+        result.Should().Be("nextcloud.home.arpa");
+
+        var cached = resolver.TryGetCachedHostName(ip, out var cachedName);
+        cached.Should().BeTrue();
+        cachedName.Should().Be("nextcloud.home.arpa");
+
+        resolver.TryGetCachedEntry(ip, out var entry);
+        entry.Should().NotBeNull();
+        entry!.Source.Should().Be("Custom");
     }
 }

@@ -172,7 +172,7 @@ public static class Program
             : (IIpOrganizationResolver)new NoOpIpOrganizationResolver();
 
         IHostNameResolver hostNameResolver = config.ResolveRemoteHostNames
-            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore, orgResolver)
+            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore, orgResolver, config.CustomHostAliases)
             : new NoOpHostNameResolver();
 
         var engine = new FlowAuditEngine(
@@ -472,6 +472,29 @@ public static class Program
         var isObfuscated = args.Any(a => a.Equals("--obfuscate", StringComparison.OrdinalIgnoreCase) ||
                                          a.Equals("--anonymize", StringComparison.OrdinalIgnoreCase));
 
+        var customAliases = new Dictionary<string, string>(config.CustomHostAliases, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals("--alias", StringComparison.OrdinalIgnoreCase) ||
+                args[i].Equals("--aliases", StringComparison.OrdinalIgnoreCase))
+            {
+                var pairList = args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var pair in pairList)
+                {
+                    var separatorIndex = pair.IndexOfAny(['=', ':']);
+                    if (separatorIndex > 0 && separatorIndex < pair.Length - 1)
+                    {
+                        var ip = pair[..separatorIndex].Trim();
+                        var host = pair[(separatorIndex + 1)..].Trim();
+                        if (!string.IsNullOrWhiteSpace(ip) && !string.IsNullOrWhiteSpace(host))
+                        {
+                            customAliases[ip] = host;
+                        }
+                    }
+                }
+            }
+        }
+
         if (isObfuscated)
         {
             maskServer ??= "SRV-AUDIT-01";
@@ -488,7 +511,8 @@ public static class Program
             IsolatedMode = isIsolated || config.IsolatedMode,
             ExcludedRemoteIps = excludedRemoteIps,
             MaskServerName = maskServer ?? config.MaskServerName,
-            MaskLocalIp = maskIp ?? config.MaskLocalIp
+            MaskLocalIp = maskIp ?? config.MaskLocalIp,
+            CustomHostAliases = customAliases
         };
     }
 

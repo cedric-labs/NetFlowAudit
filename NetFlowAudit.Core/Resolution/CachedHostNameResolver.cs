@@ -12,13 +12,14 @@ public sealed class CachedHostNameResolver(
     TimeSpan resolutionTimeout,
     DnsAddressExclusionEvaluator? exclusionEvaluator = null,
     PersistentDnsCacheStore? cacheStore = null,
-    IIpOrganizationResolver? organizationResolver = null) : IHostNameResolver, IDisposable, IAsyncDisposable
+    IIpOrganizationResolver? organizationResolver = null,
+    IReadOnlyDictionary<string, string>? customHostAliases = null) : IHostNameResolver, IDisposable, IAsyncDisposable
 {
     private readonly TimeSpan _resolutionTimeout = resolutionTimeout;
     private readonly DnsAddressExclusionEvaluator _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
     private readonly PersistentDnsCacheStore? _cacheStore = cacheStore;
     private readonly IIpOrganizationResolver? _organizationResolver = organizationResolver;
-    private readonly ConcurrentDictionary<IPAddress, DnsCacheEntry> _cache = LoadCache(cacheStore);
+    private readonly ConcurrentDictionary<IPAddress, DnsCacheEntry> _cache = LoadCache(cacheStore, customHostAliases);
     private readonly ConcurrentDictionary<IPAddress, byte> _queuedAddresses = new();
     private readonly Channel<IPAddress> _channel = Channel.CreateUnbounded<IPAddress>();
     private readonly CancellationTokenSource _cts = new();
@@ -37,7 +38,7 @@ public sealed class CachedHostNameResolver(
     {
     }
 
-    private static ConcurrentDictionary<IPAddress, DnsCacheEntry> LoadCache(PersistentDnsCacheStore? cacheStore)
+    private static ConcurrentDictionary<IPAddress, DnsCacheEntry> LoadCache(PersistentDnsCacheStore? cacheStore, IReadOnlyDictionary<string, string>? customHostAliases)
     {
         var cache = new ConcurrentDictionary<IPAddress, DnsCacheEntry>();
         if (cacheStore is not null)
@@ -51,6 +52,22 @@ public sealed class CachedHostNameResolver(
                 }
             }
         }
+        if (customHostAliases is not null)
+        {
+            foreach (var (ipStr, hostName) in customHostAliases)
+            {
+                if (IPAddress.TryParse(ipStr, out var address) && !string.IsNullOrWhiteSpace(hostName))
+                {
+                    cache[address] = new DnsCacheEntry
+                    {
+                        HostName = hostName.Trim(),
+                        Source = "Custom",
+                        ResolvedAtUtc = DateTimeOffset.UtcNow
+                    };
+                }
+            }
+        }
+
         return cache;
     }
 
@@ -92,16 +109,16 @@ public sealed class CachedHostNameResolver(
     {
         ArgumentNullException.ThrowIfNull(address);
 
+        if (_cache.TryGetValue(address, out var cached))
+        {
+            entry = cached;
+            return true;
+        }
+
         if (IsFastTrackAddress(address, out var fastHost))
         {
             var source = IPAddress.IsLoopback(address) ? "Local" : "Excluded";
             entry = new DnsCacheEntry { HostName = fastHost, Source = source };
-            return true;
-        }
-
-        if (_cache.TryGetValue(address, out var cached))
-        {
-            entry = cached;
             return true;
         }
 
@@ -168,6 +185,12 @@ public sealed class CachedHostNameResolver(
 
     private bool IsFastTrackAddress(IPAddress address, out string hostName)
     {
+        if (_cache.TryGetValue(address, out var customEntry) && string.Equals(customEntry.Source, "Custom", StringComparison.OrdinalIgnoreCase))
+        {
+            hostName = customEntry.HostName;
+            return true;
+        }
+
         if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) || address.Equals(IPAddress.None))
         {
             hostName = string.Empty;
