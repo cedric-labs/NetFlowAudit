@@ -97,6 +97,8 @@ public sealed partial class FlowAuditDashboardRenderer
                 ? "View switched: Active Sockets (Real-time snapshot)"
                 : "View switched: Audit Log (Session discoveries)";
             _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(3);
+            _currentPageIndex = 0;
+            _selectedRowIndex = 0;
             RenderInternal(forceClear: false);
         }
     }
@@ -158,7 +160,7 @@ public sealed partial class FlowAuditDashboardRenderer
             lock (_syncLock)
             {
                 var pageSize = GetVisiblePageSize();
-                return Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+                return Math.Max(1, (int)Math.Ceiling(GetCurrentDisplayCount() / (double)pageSize));
             }
         }
     }
@@ -336,7 +338,7 @@ public sealed partial class FlowAuditDashboardRenderer
         lock (_syncLock)
         {
             var pageSize = GetVisiblePageSize();
-            var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+            var totalPages = Math.Max(1, (int)Math.Ceiling(GetCurrentDisplayCount() / (double)pageSize));
             if (_currentPageIndex < totalPages - 1)
             {
                 _currentPageIndex++;
@@ -475,19 +477,20 @@ public sealed partial class FlowAuditDashboardRenderer
 
         lock (_syncLock)
         {
-            if (!_isSelectionActive || _recentDiscoveries.Count == 0)
+            var entries = GetCurrentDisplayEntries();
+            if (!_isSelectionActive || entries.Count == 0)
             {
                 return false;
             }
 
             var pageSize = GetVisiblePageSize();
             var globalIndex = (_currentPageIndex * pageSize) + _selectedRowIndex;
-            if (globalIndex < 0 || globalIndex >= _recentDiscoveries.Count)
+            if (globalIndex < 0 || globalIndex >= entries.Count)
             {
                 return false;
             }
 
-            var entry = _recentDiscoveries[globalIndex];
+            var entry = entries[globalIndex];
             string actionDescription;
 
             switch (_selectedColumn)
@@ -529,7 +532,7 @@ public sealed partial class FlowAuditDashboardRenderer
             _statusBannerMessage = actionDescription;
             _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(4);
 
-            var totalPages = Math.Max(1, (int)Math.Ceiling(_recentDiscoveries.Count / (double)pageSize));
+            var totalPages = Math.Max(1, (int)Math.Ceiling(GetCurrentDisplayCount() / (double)pageSize));
             if (_currentPageIndex >= totalPages)
             {
                 _currentPageIndex = totalPages - 1;
@@ -697,16 +700,49 @@ public sealed partial class FlowAuditDashboardRenderer
         return Math.Max(3, targetHeight - 15);
     }
 
+    private int GetCurrentDisplayCount()
+    {
+        if (_isFilterBypassed)
+        {
+            return _lastResult?.ActiveSockets.Count ?? 0;
+        }
+
+        return _recentDiscoveries.Count;
+    }
+
+    private IReadOnlyList<NetworkAuditEntry> GetCurrentDisplayEntries()
+    {
+        if (_isFilterBypassed && _lastResult is not null && _lastHost is not null)
+        {
+            var rawList = new List<NetworkAuditEntry>(_lastResult.ActiveSockets.Count);
+            for (var i = 0; i < _lastResult.ActiveSockets.Count; i++)
+            {
+                var s = _lastResult.ActiveSockets[i];
+                rawList.Add(new NetworkAuditEntry(
+                    FirstSeenUtc: _lastResult.TimestampUtc,
+                    LastSeenUtc: _lastResult.TimestampUtc,
+                    ObservationCount: 1,
+                    Server: _lastHost,
+                    Socket: s));
+            }
+
+            return rawList;
+        }
+
+        return _recentDiscoveries;
+    }
+
     private int GetVisibleCountOnCurrentPage()
     {
         var pageSize = GetVisiblePageSize();
         var startIndex = _currentPageIndex * pageSize;
-        if (startIndex >= _recentDiscoveries.Count)
+        var totalCount = GetCurrentDisplayCount();
+        if (startIndex >= totalCount)
         {
             return 0;
         }
 
-        return Math.Min(pageSize, _recentDiscoveries.Count - startIndex);
+        return Math.Min(pageSize, totalCount - startIndex);
     }
 
     private void RenderInternal(bool forceClear)
@@ -925,26 +961,7 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine($"{AnsiCyan}├{new string('─', trafficColWidth)}┴{new string('─', topProcColWidth)}┤{AnsiReset}{AnsiClearLine}");
 
         // 5. Discoveries table title & pagination status
-        IReadOnlyList<NetworkAuditEntry> displayEntries;
-        if (_isFilterBypassed)
-        {
-            var rawList = new List<NetworkAuditEntry>(result.ActiveSockets.Count);
-            for (var i = 0; i < result.ActiveSockets.Count; i++)
-            {
-                var s = result.ActiveSockets[i];
-                rawList.Add(new NetworkAuditEntry(
-                    FirstSeenUtc: result.TimestampUtc,
-                    LastSeenUtc: result.TimestampUtc,
-                    ObservationCount: 1,
-                    Server: host,
-                    Socket: s));
-            }
-            displayEntries = rawList;
-        }
-        else
-        {
-            displayEntries = _recentDiscoveries;
-        }
+        var displayEntries = GetCurrentDisplayEntries();
 
         var maxVisibleDiscoveries = Math.Max(3, totalHeight - 15);
         var totalPages = Math.Max(1, (int)Math.Ceiling(displayEntries.Count / (double)maxVisibleDiscoveries));

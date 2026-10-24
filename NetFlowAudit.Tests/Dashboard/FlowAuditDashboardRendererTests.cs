@@ -431,6 +431,59 @@ public sealed class FlowAuditDashboardRendererTests
     }
 
     [Fact]
+    public void NextPage_WhenInActiveSocketsViewMode_NavigatesUsingActiveSocketsCount()
+    {
+        // Arrange: 15 items per page in default mock window.
+        // Audit log has 20 items (2 pages). Active sockets has 75 items (5 pages).
+        var renderer = new FlowAuditDashboardRenderer(5, "output.csv");
+        var entries = new List<NetworkAuditEntry>();
+        var sockets = new List<ActiveSocketConnection>();
+
+        for (var i = 0; i < 75; i++)
+        {
+            var sock = new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50000 + i),
+                new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 443),
+                "Established",
+                new ProcessMetadata(300 + i, $"proc-{i}", "", "", "", "user"));
+            sockets.Add(sock);
+            if (i < 20)
+            {
+                entries.Add(new NetworkAuditEntry(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, SampleHost, sock));
+            }
+        }
+
+        var result = new FlowAuditCycleResult(DateTimeOffset.UtcNow, 75, 0, 20, 20, entries, sockets);
+        renderer.Render(result, SampleHost);
+
+        // Audit Log view has 2 pages
+        renderer.TotalPages.Should().Be(2);
+
+        // Act: Switch to Active Sockets view mode
+        renderer.ToggleViewMode();
+
+        // Assert: Active Sockets view has 5 pages
+        renderer.TotalPages.Should().Be(5);
+        renderer.CurrentPageIndex.Should().Be(0);
+
+        // Navigate all the way to page 4 (page 5 of 5)
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(1);
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(2);
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(3);
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(4);
+
+        // Cannot navigate past the last page
+        renderer.NextPage();
+        renderer.CurrentPageIndex.Should().Be(4);
+    }
+
+    [Fact]
     public void LoadNextBatch_WhenInvoked_IncreasesMaxStoredDiscoveriesBy100AndAllowsAll()
     {
         // Arrange
