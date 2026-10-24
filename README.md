@@ -2,6 +2,8 @@
 
 <p align="center">
   <img src="assets/netflowaudit-icon.png" alt="NetFlowAudit Logo" width="200" />
+  <br/>
+  <a href="https://ko-fi.com/curvecoder"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support curvecoder on Ko-fi" /></a>
 </p>
 
 **NetFlowAudit** is a cross-platform (Windows and Linux) network flow auditing agent designed to run either interactively in the terminal or continuously as a background service/daemon. It inspects all inbound, outbound, and listening TCP/UDP sockets, identifies the local processes and application targets responsible for network activity, logs deduplicated flows to an RFC 4180 CSV file, and generates self-contained offline HTML5 topology maps.
@@ -332,6 +334,18 @@ To run the full quality verification pipeline (formatting, Release build, unit/a
 
 ---
 
-## 6. License
+## 6. Support & Sponsoring
+
+If **NetFlowAudit** helps you map, migrate, or secure your infrastructure, consider supporting its continuous maintenance:
+
+<p align="left">
+  <a href="https://ko-fi.com/curvecoder">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Buy Me a Coffee on Ko-fi" />
+  </a>
+</p>
+
+---
+
+## 7. License
 
 This project is licensed under the [MIT License](LICENSE).
