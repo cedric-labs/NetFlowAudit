@@ -80,18 +80,31 @@ public sealed partial class FlowAuditDashboardRenderer
     /// <summary>
     /// Toggles the filter bypass mode for the dashboard display.
     /// </summary>
-    public void ToggleFilterBypass()
+    /// <summary>
+    /// Indicates whether the active sockets snapshot view is currently displayed instead of the audit log discoveries.
+    /// </summary>
+    public bool IsActiveSocketsView => IsFilterBypassed;
+
+    /// <summary>
+    /// Toggles the view mode between Audit Log (discoveries history) and Active Sockets (real-time snapshot).
+    /// </summary>
+    public void ToggleViewMode()
     {
         lock (_syncLock)
         {
             _isFilterBypassed = !_isFilterBypassed;
             _statusBannerMessage = _isFilterBypassed
-                ? "Filter BYPASSED: Displaying all active processes and sockets"
-                : "Filter RESTORED: Displaying audited flows only";
+                ? "View switched: Active Sockets (Real-time snapshot)"
+                : "View switched: Audit Log (Session discoveries)";
             _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(3);
             RenderInternal(forceClear: false);
         }
     }
+
+    /// <summary>
+    /// Toggles the filter bypass mode for the dashboard display.
+    /// </summary>
+    public void ToggleFilterBypass() => ToggleViewMode();
 
     /// <summary>
     /// Indicates whether interactive row/column selection mode is currently active.
@@ -871,7 +884,7 @@ public sealed partial class FlowAuditDashboardRenderer
         sb.AppendLine(FormatSplitRow(ipPart, infoColWidth, flowsPart, metricsColWidth));
 
         var st1 = $" Status  : {AnsiGreen}Active{AnsiReset}";
-        var st2 = _isFilterBypassed ? $"{AnsiYellow}Filter: OFF (All){AnsiReset}" : "Filter: Ports/Loopback";
+        var st2 = _isFilterBypassed ? $"{AnsiYellow}View: Active Sockets{AnsiReset}" : $"{AnsiCyan}View: Audit Log{AnsiReset}";
         var st3 = $"Ignored: {AnsiYellow}{result.ExcludedSocketsCount,5}{AnsiReset} flows";
         var stPart = FormatThreeSubColumns(st1, subCol1W, st2, subCol2W, st3, subCol3W);
         var newPart = $" New flows       : {AnsiMagenta}+{result.NewlyDiscoveredCount,-5}{AnsiReset}";
@@ -887,8 +900,8 @@ public sealed partial class FlowAuditDashboardRenderer
         // 3. Middle panes (Traffic Breakdown vs Top Active Processes)
         var titleTrafic = $" {AnsiBold}{AnsiWhite}NETWORK TRAFFIC BREAKDOWN{AnsiReset}";
         var titleProc = _isFilterBypassed
-            ? $" {AnsiBold}{AnsiWhite}ALL ACTIVE PROCESSES (RAW){AnsiReset}"
-            : $" {AnsiBold}{AnsiWhite}TOP ACTIVE PROCESSES (SOCKETS){AnsiReset}";
+            ? $" {AnsiBold}{AnsiWhite}ACTIVE PROCESSES (SNAPSHOT){AnsiReset}"
+            : $" {AnsiBold}{AnsiWhite}TOP ACTIVE PROCESSES (AUDITED){AnsiReset}";
         sb.AppendLine(FormatSplitRow(titleTrafic, trafficColWidth, titleProc, topProcColWidth));
 
         var tcpLine = $" TCP : {AnsiGreen}{tcpSockets,4}{AnsiReset} (Listen: {listeningCount,3}, Outbound: {outboundCount,3})";
@@ -955,8 +968,8 @@ public sealed partial class FlowAuditDashboardRenderer
 
         var hasActiveBanner = !string.IsNullOrEmpty(_statusBannerMessage) && DateTime.UtcNow < _statusBannerExpiresUtc;
         var tableTitlePrefix = _isFilterBypassed
-            ? $" {AnsiBold}{AnsiWhite}ALL ACTIVE SOCKETS (RAW){AnsiReset}"
-            : $" {AnsiBold}{AnsiWhite}RECENT FLOW DISCOVERIES (LIVE){AnsiReset}";
+            ? $" {AnsiBold}{AnsiWhite}ACTIVE SOCKETS (SNAPSHOT){AnsiReset}"
+            : $" {AnsiBold}{AnsiWhite}AUDIT LOG (DISCOVERIES){AnsiReset}";
         var tableTitle = hasActiveBanner
             ? $" {AnsiBold}{AnsiGreen}\u2714 {_statusBannerMessage}{AnsiReset}"
             : $"{tableTitlePrefix} {AnsiDarkGray}[Page {_currentPageIndex + 1}/{totalPages} | Rows {startRowNum}-{endRowNum} of {displayEntries.Count} | Max: {capLabel}]{AnsiReset}";
@@ -1065,7 +1078,7 @@ public sealed partial class FlowAuditDashboardRenderer
         // 6. Footer bar
         sb.AppendLine($"{AnsiCyan}\u2514{new string('\u2500', interiorWidth)}\u2518{AnsiReset}{AnsiClearLine}");
 
-        var filterLabel = _isFilterBypassed ? "OFF" : "ON";
+        var viewLabel = _isFilterBypassed ? "Active Sockets" : "Audit Log";
         if (_isSelectionActive)
         {
             var colLabel = _selectedColumn switch
@@ -1077,11 +1090,11 @@ public sealed partial class FlowAuditDashboardRenderer
                 _ => "FLOW"
             };
 
-            sb.Append($" {AnsiBold}{AnsiYellow}[\u2191\u2193\u2190\u2192]{AnsiReset} Navigate  {AnsiBold}{AnsiYellow}[Enter/X]{AnsiReset} Exclude {colLabel}  {AnsiBold}{AnsiYellow}[F]{AnsiReset} Filter: {filterLabel}  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Page  {AnsiBold}{AnsiYellow}[Esc]{AnsiReset} Cancel  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[\u2191\u2193\u2190\u2192]{AnsiReset} Navigate  {AnsiBold}{AnsiYellow}[Enter/X]{AnsiReset} Exclude {colLabel}  {AnsiBold}{AnsiYellow}[V]{AnsiReset} View: {viewLabel}  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Page  {AnsiBold}{AnsiYellow}[Esc]{AnsiReset} Cancel  {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit{AnsiClearLine}");
         }
         else
         {
-            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Clear  {AnsiBold}{AnsiYellow}[F]{AnsiReset} Filter: {filterLabel}  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Refresh Map  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Next/Prev Page  {AnsiBold}{AnsiYellow}[L/A]{AnsiReset} +100/All  {AnsiBold}{AnsiYellow}[\u2191\u2193]{AnsiReset} Exclude{AnsiClearLine}");
+            sb.Append($" {AnsiBold}{AnsiYellow}[Q]{AnsiReset} Quit  {AnsiBold}{AnsiYellow}[C]{AnsiReset} Clear  {AnsiBold}{AnsiYellow}[V]{AnsiReset} View: {viewLabel}  {AnsiBold}{AnsiYellow}[M]{AnsiReset} Refresh Map  {AnsiBold}{AnsiYellow}[N/P]{AnsiReset} Next/Prev Page  {AnsiBold}{AnsiYellow}[L/A]{AnsiReset} +100/All  {AnsiBold}{AnsiYellow}[\u2191\u2193]{AnsiReset} Exclude{AnsiClearLine}");
         }
         return sb.ToString();
     }

@@ -981,29 +981,29 @@ public sealed class FlowAuditDashboardRendererTests
 
         renderer.Render(result, SampleHost);
 
-        // Act 1: Initial state (filtered)
+        // Act 1: Initial state (Audit Log)
         renderer.IsFilterBypassed.Should().BeFalse();
+        renderer.IsActiveSocketsView.Should().BeFalse();
         var initialFrame = renderer.BuildDashboardFrame(result, SampleHost);
-        initialFrame.Should().Contain("Filter: Ports/Loopback");
-        initialFrame.Should().Contain("TOP ACTIVE PROCESSES (SOCKETS)");
-        initialFrame.Should().Contain("Filter: ON");
+        initialFrame.Should().Contain("View: Audit Log");
+        initialFrame.Should().Contain("TOP ACTIVE PROCESSES (AUDITED)");
         initialFrame.Should().NotContain("ExcludedProc");
 
-        // Act 2: Toggle filter bypass
-        renderer.ToggleFilterBypass();
+        // Act 2: Toggle view mode
+        renderer.ToggleViewMode();
 
-        // Assert 2: Raw / All processes view
+        // Assert 2: Active Sockets snapshot view
         renderer.IsFilterBypassed.Should().BeTrue();
+        renderer.IsActiveSocketsView.Should().BeTrue();
         var bypassedFrame = renderer.BuildDashboardFrame(result, SampleHost);
-        bypassedFrame.Should().Contain("Filter: OFF (All)");
-        bypassedFrame.Should().Contain("ALL ACTIVE PROCESSES (RAW)");
-        bypassedFrame.Should().Contain("Filter BYPASSED");
-        bypassedFrame.Should().Contain("Filter: OFF");
+        bypassedFrame.Should().Contain("View: Active Sockets");
+        bypassedFrame.Should().Contain("ACTIVE PROCESSES (SNAPSHOT)");
         bypassedFrame.Should().Contain("ExcludedProc");
 
         // Act 3: Toggle back
-        renderer.ToggleFilterBypass();
+        renderer.ToggleViewMode();
         renderer.IsFilterBypassed.Should().BeFalse();
+        renderer.IsActiveSocketsView.Should().BeFalse();
     }
 
     private static string StripAnsi(string text)

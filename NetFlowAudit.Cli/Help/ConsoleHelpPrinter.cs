@@ -63,7 +63,7 @@ TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
 INTERACTIVE DASHBOARD SHORTCUTS (TUI):
   [Q]                        Graceful shutdown and CSV flush.
   [C]                        Clear screen and force full dashboard redraw.
-  [F]                        Toggle filter bypass for display (Show All / Filtered).
+  [V]                        Toggle view mode (Audit Log discoveries / Active Sockets snapshot).
   [M]                        Immediately generate/refresh the HTML topology map (netflow_topology.html).
   [N / PageDown]             Go to next page of flow discoveries.
   [P / PageUp]               Go to previous page of flow discoveries.

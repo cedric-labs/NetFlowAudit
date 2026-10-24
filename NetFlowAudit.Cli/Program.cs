@@ -277,9 +277,9 @@ public static class Program
                             {
                                 dashboard?.ForceRedraw();
                             }
-                            else if (key.KeyChar is 'f' or 'F')
+                            else if (key.KeyChar is 'v' or 'V' or 'f' or 'F')
                             {
-                                dashboard?.ToggleFilterBypass();
+                                dashboard?.ToggleViewMode();
                             }
                             else if (key.KeyChar is 'm' or 'M')
                             {
