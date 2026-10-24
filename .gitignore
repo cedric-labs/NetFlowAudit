@@ -32,4 +32,6 @@ Desktop.ini
 .DS_Store
 *.csv
 *.topology.html
+netflow_topology.html
+*topology*.html
 netflow_dns_cache.json

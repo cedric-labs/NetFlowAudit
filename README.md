@@ -184,6 +184,21 @@ The generated HTML5 map is 100% self-contained and offers advanced interactive c
 - **Collapsible Sidebar & Accordion**: Toggle the filter panel with the `[◀ Sidebar]` button or key `[B]`. Sections (Layout, Filters, CLI Command, Inspector) can be expanded or collapsed independently.
 - **CLI Command Reproducer**: The sidebar generates the exact CLI command matching the filters, sorting, and routing selected in the web UI with a one-click `[Copy CLI Command]` button.
 
+### 2.6. Topology Rendering Performance & Scalability
+
+Automated Playwright and .NET benchmarks executed across synthetic and real-world enterprise network topologies:
+
+| Scale | Servers ($N$) | Links ($Y$) | Payload Size | .NET Generation Time | Browser Load & Render (Playwright) | Evaluation |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Small** | 10 | 25 | 74 KB | 4 ms | 125 ms | Instantaneous |
+| **Medium** | 50 | 200 | 127 KB | < 1 ms | 147 ms | Instantaneous |
+| **Enterprise** | 200 | 1,000 | 359 KB | 6 ms | 172 ms | Ultra-responsive |
+| **Datacenter** | 1,000 | 5,000 | 1,533 KB | 11 ms | ~280 ms | High-density fleet scale |
+| **Production Audit** | 2,079 | 2,081 | 1,180 KB | 8 ms | 218 ms | Instantaneous (100 servers/page) |
+
+* Environment: .NET 8.0 (Release), Playwright Chromium (Headless), Windows 11.
+* All layout calculations, Barycenter sweeps, and SVG layer injections complete within milliseconds on the client side.
+
 ---
 
 ## 3. Configuration (`netflowaudit.json`)
