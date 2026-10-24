@@ -192,4 +192,110 @@ public sealed class AuditTopologyMapperTests
             }
         }
     }
+
+    [Fact]
+    public async Task GenerateHtmlMapFromFilesAsync_WhenMultipleCsvFilesProvided_ConsolidatesAllServersAndFlows()
+    {
+        // Arrange
+        var mapper = new AuditTopologyMapper();
+        var tempCsv1 = Path.Combine(Path.GetTempPath(), $"netflow_multi_1_{Guid.NewGuid():N}.csv");
+        var tempCsv2 = Path.Combine(Path.GetTempPath(), $"netflow_multi_2_{Guid.NewGuid():N}.csv");
+        var tempHtml = Path.Combine(Path.GetTempPath(), $"netflow_multi_map_{Guid.NewGuid():N}.html");
+
+        try
+        {
+            await File.WriteAllLinesAsync(tempCsv1,
+            [
+                "ServerName,ServerPrimaryIp,Protocol,Direction,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessName,TargetExecutable,ObservationCount",
+                "SRV-APP-01,10.1.0.10,Tcp,Outbound,10.1.0.10,55100,10.1.0.50,5432,SRV-PGSQL-01,dotnet,App1.dll,20"
+            ]);
+
+            await File.WriteAllLinesAsync(tempCsv2,
+            [
+                "ServerName,ServerPrimaryIp,Protocol,Direction,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessName,TargetExecutable,ObservationCount",
+                "SRV-APP-02,10.1.0.11,Tcp,Outbound,10.1.0.11,55200,10.1.0.50,5432,SRV-PGSQL-01,dotnet,App2.dll,35"
+            ]);
+
+            var filterOptions = new TopologyFilterOptions();
+
+            // Act
+            var graph = await mapper.GenerateHtmlMapFromFilesAsync([tempCsv1, tempCsv2], tempHtml, filterOptions);
+
+            // Assert
+            graph.Nodes.Should().HaveCount(3);
+            graph.Nodes.Select(n => n.HostName).Should().Contain(["SRV-APP-01", "SRV-APP-02", "SRV-PGSQL-01"]);
+            graph.Edges.Should().HaveCount(2);
+            File.Exists(tempHtml).Should().BeTrue();
+            var html = await File.ReadAllTextAsync(tempHtml);
+            html.Should().Contain("SRV-APP-01");
+            html.Should().Contain("SRV-APP-02");
+            html.Should().Contain("SRV-PGSQL-01");
+        }
+        finally
+        {
+            if (File.Exists(tempCsv1)) File.Delete(tempCsv1);
+            if (File.Exists(tempCsv2)) File.Delete(tempCsv2);
+            if (File.Exists(tempHtml)) File.Delete(tempHtml);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateHtmlMapFromDirectoryAsync_WhenDirectoryContainsCsvFiles_DiscoversAndConsolidatesFilesMatchingFilter()
+    {
+        // Arrange
+        var mapper = new AuditTopologyMapper();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"netflow_dir_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var file1 = Path.Combine(tempDir, "audit_srv1.csv");
+        var file2 = Path.Combine(tempDir, "audit_srv2.csv");
+        var ignoredFile = Path.Combine(tempDir, "other_file.txt");
+        var tempHtml = Path.Combine(Path.GetTempPath(), $"netflow_dir_map_{Guid.NewGuid():N}.html");
+
+        try
+        {
+            await File.WriteAllLinesAsync(file1,
+            [
+                "ServerName,ServerPrimaryIp,Protocol,Direction,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessName,TargetExecutable,ObservationCount",
+                "SRV-WEB-01,10.0.1.1,Tcp,Outbound,10.0.1.1,51000,10.0.2.1,3306,SRV-MYSQL-01,nginx,nginx.exe,15"
+            ]);
+
+            await File.WriteAllLinesAsync(file2,
+            [
+                "ServerName,ServerPrimaryIp,Protocol,Direction,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessName,TargetExecutable,ObservationCount",
+                "SRV-WEB-02,10.0.1.2,Tcp,Outbound,10.0.1.2,51001,10.0.2.1,3306,SRV-MYSQL-01,nginx,nginx.exe,25"
+            ]);
+
+            await File.WriteAllLinesAsync(ignoredFile, ["Should be ignored"]);
+
+            var filterOptions = new TopologyFilterOptions();
+
+            // Act
+            var graph = await mapper.GenerateHtmlMapFromDirectoryAsync(tempDir, "audit_*.csv", tempHtml, filterOptions);
+
+            // Assert
+            graph.Nodes.Should().HaveCount(3);
+            graph.Nodes.Select(n => n.HostName).Should().Contain(["SRV-WEB-01", "SRV-WEB-02", "SRV-MYSQL-01"]);
+            File.Exists(tempHtml).Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            if (File.Exists(tempHtml)) File.Delete(tempHtml);
+        }
+    }
+
+    [Fact]
+    public void GenerateHtmlMapFromDirectoryAsync_WhenDirectoryDoesNotExist_ThrowsDirectoryNotFoundException()
+    {
+        // Arrange
+        var mapper = new AuditTopologyMapper();
+        var nonExistentDir = Path.Combine(Path.GetTempPath(), $"non_existent_{Guid.NewGuid():N}");
+        var tempHtml = Path.Combine(Path.GetTempPath(), "output.html");
+
+        // Act
+        var act = () => { _ = mapper.GenerateHtmlMapFromDirectoryAsync(nonExistentDir, "*.csv", tempHtml, new TopologyFilterOptions()); };
+
+        // Assert
+        act.Should().Throw<DirectoryNotFoundException>();
+    }
 }

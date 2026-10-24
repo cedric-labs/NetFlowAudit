@@ -165,4 +165,128 @@ public sealed class AuditTopologyMapper(
         await _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken).ConfigureAwait(false);
         return graph;
     }
+
+    /// <summary>
+    /// Reads multiple audit CSV files, consolidates flows across all monitored servers, applies filtering and rendering options, and generates a unified HTML5 topology map.
+    /// </summary>
+    /// <param name="csvFilePaths">Collection of source audit CSV file paths.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public Task<NetworkTopologyGraph> GenerateHtmlMapFromFilesAsync(
+        IEnumerable<string> csvFilePaths,
+        string outputHtmlPath,
+        TopologyFilterOptions filterOptions,
+        char csvDelimiter = ',',
+        string title = "NetFlowAudit Network Topology Map",
+        CancellationToken cancellationToken = default)
+        => GenerateHtmlMapFromFilesAsync(csvFilePaths, outputHtmlPath, filterOptions, new TopologyRenderingOptions(), csvDelimiter, title, cancellationToken);
+
+    /// <summary>
+    /// Reads multiple audit CSV files, consolidates flows across all monitored servers, applies filtering and rendering options, and generates a unified HTML5 topology map.
+    /// </summary>
+    /// <param name="csvFilePaths">Collection of source audit CSV file paths.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="renderingOptions">Sorting, routing, and spacing rendering options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public async Task<NetworkTopologyGraph> GenerateHtmlMapFromFilesAsync(
+        IEnumerable<string> csvFilePaths,
+        string outputHtmlPath,
+        TopologyFilterOptions filterOptions,
+        TopologyRenderingOptions renderingOptions,
+        char csvDelimiter = ',',
+        string title = "NetFlowAudit Network Topology Map",
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(csvFilePaths);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputHtmlPath);
+        ArgumentNullException.ThrowIfNull(filterOptions);
+        ArgumentNullException.ThrowIfNull(renderingOptions);
+
+        var allFlowRecords = new List<TopologyFlowRecord>();
+        foreach (var filePath in csvFilePaths)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                continue;
+            }
+
+            var records = await _csvParser.ParseFileAsync(filePath, csvDelimiter, cancellationToken).ConfigureAwait(false);
+            allFlowRecords.AddRange(records);
+        }
+
+        var evaluator = new TopologyFlowEvaluator(filterOptions);
+        var builder = new TopologyGraphBuilder(evaluator);
+        var graph = builder.BuildGraph(allFlowRecords);
+        var effectiveOptions = renderingOptions with { Title = title };
+
+        await _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken).ConfigureAwait(false);
+        return graph;
+    }
+
+    /// <summary>
+    /// Discovers all audit CSV files matching a search pattern in a directory and generates a consolidated HTML5 topology map.
+    /// </summary>
+    /// <param name="directoryPath">Directory path containing audit CSV files.</param>
+    /// <param name="searchPattern">File search pattern (e.g. "*.csv").</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public Task<NetworkTopologyGraph> GenerateHtmlMapFromDirectoryAsync(
+        string directoryPath,
+        string searchPattern,
+        string outputHtmlPath,
+        TopologyFilterOptions filterOptions,
+        char csvDelimiter = ',',
+        string title = "NetFlowAudit Network Topology Map",
+        CancellationToken cancellationToken = default)
+        => GenerateHtmlMapFromDirectoryAsync(directoryPath, searchPattern, outputHtmlPath, filterOptions, new TopologyRenderingOptions(), csvDelimiter, title, cancellationToken);
+
+    /// <summary>
+    /// Discovers all audit CSV files matching a search pattern in a directory and generates a consolidated HTML5 topology map.
+    /// </summary>
+    /// <param name="directoryPath">Directory path containing audit CSV files.</param>
+    /// <param name="searchPattern">File search pattern (e.g. "*.csv").</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="renderingOptions">Sorting, routing, and spacing rendering options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public Task<NetworkTopologyGraph> GenerateHtmlMapFromDirectoryAsync(
+        string directoryPath,
+        string searchPattern,
+        string outputHtmlPath,
+        TopologyFilterOptions filterOptions,
+        TopologyRenderingOptions renderingOptions,
+        char csvDelimiter = ',',
+        string title = "NetFlowAudit Network Topology Map",
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputHtmlPath);
+        ArgumentNullException.ThrowIfNull(filterOptions);
+        ArgumentNullException.ThrowIfNull(renderingOptions);
+
+        if (!Directory.Exists(directoryPath))
+        {
+            throw new DirectoryNotFoundException($"The audit directory '{directoryPath}' does not exist.");
+        }
+
+        var pattern = string.IsNullOrWhiteSpace(searchPattern) ? "*.csv" : searchPattern;
+        var files = Directory.GetFiles(directoryPath, pattern, SearchOption.TopDirectoryOnly);
+
+        return GenerateHtmlMapFromFilesAsync(files, outputHtmlPath, filterOptions, renderingOptions, csvDelimiter, title, cancellationToken);
+    }
 }

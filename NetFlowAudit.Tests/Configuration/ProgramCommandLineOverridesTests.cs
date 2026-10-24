@@ -72,4 +72,32 @@ public sealed class ProgramCommandLineOverridesTests
         updated.CustomHostAliases["10.0.0.1"].Should().Be("router.corp");
         updated.CustomHostAliases["10.0.0.2"].Should().Be("gateway.corp");
     }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenOutputProvided_SetsOutputCsvPath()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { OutputCsvPath = "default.csv" };
+        var args = new[] { "--output", "custom_audit_{ServerName}.csv" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.OutputCsvPath.Should().Be("custom_audit_{ServerName}.csv");
+    }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenShortOutputFlagProvided_SetsOutputCsvPath()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { OutputCsvPath = "default.csv" };
+        var args = new[] { "-o", "short_output.csv" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.OutputCsvPath.Should().Be("short_output.csv");
+    }
 }

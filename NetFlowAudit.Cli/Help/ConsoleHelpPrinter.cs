@@ -29,7 +29,8 @@ COMMAND-LINE OPTIONS:
   -h, --help                          Display this help message and exit.
   --no-tui, --daemon                  Disable the interactive full-screen terminal dashboard (for services).
   --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
-  --output <path>                     Path to output CSV file (default: netflow_audit.csv).
+  -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
+                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --interval <seconds>                Scan interval in seconds (default: 5).
   --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
   --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.
@@ -43,7 +44,12 @@ COMMAND-LINE OPTIONS:
 
 TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
   --map <path.html>                   Generate a self-contained HTML5 topology map of servers and service ports.
-  --map-only                          Generate the HTML topology map from the existing CSV (--output) and exit.
+                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
+  --map-only                          Generate the HTML topology map from audit logs and exit.
+  -i, --input <path.csv>              Single input audit CSV file (default: OutputCsvPath).
+  --dir, --input-dir <dir>            Consolidate all audit CSV files from a directory into a unified map.
+  --pattern, --input-filter <glob>    File search filter when using --input-dir (default: *.csv).
+  --inputs, --input-files <f1,f2,...> Comma-separated list of audit CSV files to consolidate.
   --include-ports <p1,p2-p3,...>      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
   --exclude-ports <p1,p2-p3,...>      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
   --include-hosts <m1,m2,...>         Include only servers matching wildcard patterns (e.g. SRV-*,*SQL*).

@@ -12,6 +12,7 @@ using NetFlowAudit.Core.Resolution;
 using ProcessForge.Filtering;
 using ProcessForge.Inspectors;
 using SocketForge.Factories;
+using TopologyForge.Models;
 
 namespace NetFlowAudit.Cli;
 
@@ -55,24 +56,73 @@ public static class Program
         config = ApplyCommandLineOverrides(config, args);
         config = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(config, args);
 
+        config = config with
+        {
+            OutputCsvPath = OutputFilePathResolver.Resolve(config.OutputCsvPath),
+            OutputHtmlMapPath = OutputFilePathResolver.Resolve(config.OutputHtmlMapPath),
+            DnsCacheFilePath = OutputFilePathResolver.Resolve(config.DnsCacheFilePath)
+        };
+
         var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
         var topologyMapper = new AuditTopologyMapper();
 
         if (args.Any(a => a.Equals("--map-only", StringComparison.OrdinalIgnoreCase)))
         {
+            var inputDir = GetCommandLineArgumentValue(args, "--input-dir") ??
+                           GetCommandLineArgumentValue(args, "--dir");
+            var inputFilter = GetCommandLineArgumentValue(args, "--input-filter") ??
+                              GetCommandLineArgumentValue(args, "--pattern") ??
+                              "*.csv";
+            var inputsArg = GetCommandLineArgumentValue(args, "--inputs") ??
+                            GetCommandLineArgumentValue(args, "--input-files");
+            var singleInput = GetCommandLineArgumentValue(args, "--input") ??
+                              GetCommandLineArgumentValue(args, "-i");
+
             var targetHtml = string.IsNullOrWhiteSpace(config.OutputHtmlMapPath)
                 ? "netflow_topology.html"
                 : config.OutputHtmlMapPath;
             var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
             var mapRendering = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
-            var graph = await topologyMapper.GenerateHtmlMapFromCsvAsync(
-                config.OutputCsvPath,
-                targetHtml,
-                mapFilters,
-                mapRendering,
-                delimiter,
-                "Network Flow & Server Topology Map",
-                CancellationToken.None).ConfigureAwait(false);
+
+            NetworkTopologyGraph graph;
+            if (!string.IsNullOrWhiteSpace(inputDir))
+            {
+                Console.WriteLine($"Reading audit logs from directory: {inputDir} (filter: {inputFilter})...");
+                graph = await topologyMapper.GenerateHtmlMapFromDirectoryAsync(
+                    inputDir,
+                    inputFilter,
+                    targetHtml,
+                    mapFilters,
+                    mapRendering,
+                    delimiter,
+                    "Network Flow & Server Topology Map",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            else if (!string.IsNullOrWhiteSpace(inputsArg))
+            {
+                var files = inputsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                Console.WriteLine($"Reading audit logs from {files.Length} source file(s)...");
+                graph = await topologyMapper.GenerateHtmlMapFromFilesAsync(
+                    files,
+                    targetHtml,
+                    mapFilters,
+                    mapRendering,
+                    delimiter,
+                    "Network Flow & Server Topology Map",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            else
+            {
+                var sourceCsv = singleInput ?? config.OutputCsvPath;
+                graph = await topologyMapper.GenerateHtmlMapFromCsvAsync(
+                    sourceCsv,
+                    targetHtml,
+                    mapFilters,
+                    mapRendering,
+                    delimiter,
+                    "Network Flow & Server Topology Map",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
 
             Console.WriteLine($"Topology map generated: {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
             return;
@@ -419,7 +469,7 @@ public static class Program
 
     internal static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
     {
-        var output = GetCommandLineArgumentValue(args, "--output");
+        var output = GetCommandLineArgumentValue(args, "--output") ?? GetCommandLineArgumentValue(args, "-o");
         var intervalStr = GetCommandLineArgumentValue(args, "--interval");
         var columnsStr = GetCommandLineArgumentValue(args, "--columns");
         var dnsStr = GetCommandLineArgumentValue(args, "--resolve-dns");

@@ -61,6 +61,14 @@ Existing tools often fall into extremes:
 - **Responsive Terminal Dashboard (TUI) with Pagination**:
   - Full-screen ANSI interface adapting dynamically to terminal width and height.
   - Paginated live flow discovery table with clamped row navigation (`[N/P]` or `[PgDn/PgUp]` for Next/Previous page, `[L]` to load +100 rows, `[A]` to load all).
+- **Dynamic File Name Placeholders & Multi-Server Deployment**:
+  - Automatically expands `{ServerName}`, `{HostName}`, `{Date}`, and `{Timestamp}` in output file paths (`OutputCsvPath`, `OutputHtmlMapPath`, `DnsCacheFilePath`).
+  - Perfect for deploying the exact same configuration across hundreds of servers without filename conflicts when collecting audit logs centrally.
+- **Multi-Server Consolidation into Unified Topology Maps**:
+  - Consolidates logs from a directory (`--input-dir <dir> --input-filter *.csv`) or file list (`--inputs f1.csv,f2.csv`) into a single unified topology map.
+  - Automatically links cross-server flows, merges service ports, and deduplicates communication pairs while filtering before HTML generation to keep file size minimal.
+- **Static Host Aliases**:
+  - Map static IP addresses to explicit hostnames (`--alias 10.0.0.5=srv-oracle-prod`) bypassing or supplementing reverse DNS.
 - **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
   - Generates a 100% standalone single-file HTML5/SVG interactive map (`--map` or press `[M]` in the dashboard).
   - Priority-ranked server pagination (`100` most active/audited servers per page by default, with `◀ Prev`, `Next ▶`, `+100 Servers`, and `Show All` buttons).
@@ -79,17 +87,27 @@ General Options:
   -h, --help                          Display full help (including the 20 CSV columns catalog) and exit.
   --no-tui, --daemon                  Disable the interactive terminal dashboard (recommended for background services).
   --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
-  --output <path>                     Path to output CSV file (default: netflow_audit.csv).
+  -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
+                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --interval <seconds>                Scan interval in seconds (default: 5).
   --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
   --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.
   --resolve-ip-owners <true|false>    Enable or disable RDAP IP organization fallback.
   --isolated, --offline               Air-gapped mode: disable external resolution queries.
   --exclude-remote-ips <ip1,cidr2,..> Comma-separated remote IP addresses or CIDR subnets to exclude.
+  --alias <ip>=<host>                 Static IP-to-hostname alias taking precedence over reverse DNS PTR.
+  --mask-server <name>                Fictitious server name for dashboard display/screenshots.
+  --mask-ip <ip>                      Fictitious local IP for dashboard display/screenshots.
+  --obfuscate, --anonymize            Mask both server name (SRV-AUDIT-01) and local IP (10.0.0.10).
 
 Topology Map Options (TopologyForge):
   --map <path.html>                   Generate a self-contained offline HTML5 topology map.
-  --map-only                          Generate the HTML map immediately from the CSV (--output) and exit.
+                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
+  --map-only                          Generate the HTML map from audit logs and exit.
+  -i, --input <path.csv>              Single input audit CSV file (default: OutputCsvPath).
+  --dir, --input-dir <dir>            Consolidate all audit CSV files from a directory into a unified map.
+  --pattern, --input-filter <glob>    File search filter when using --input-dir (default: *.csv).
+  --inputs, --input-files <f1,f2,...> Comma-separated list of audit CSV files to consolidate.
   --include-ports <p1,p2-p3,...>      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
   --exclude-ports <p1,p2-p3,...>      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
   --include-hosts <m1,m2,...>         Include only servers matching wildcard patterns (e.g. SRV-*,*SQL*).
@@ -134,6 +152,37 @@ On Linux, inspecting `/proc/<pid>/fd` socket descriptors across all system users
 chmod +x ./NetFlowAudit.Cli
 sudo ./NetFlowAudit.Cli
 ```
+
+---
+
+### 2.4. Multi-Server Consolidation Workflow
+
+When auditing an entire data center or cluster, configure `netflowaudit.json` with dynamic tokens so each machine generates unique audit files:
+
+```json
+{
+  "OutputCsvPath": "audit_{ServerName}_{Date}.csv",
+  "OutputHtmlMapPath": "map_{ServerName}_{Date}.html"
+}
+```
+
+Once you collect all audit CSVs into a shared directory (e.g. `./collected-audits/`), generate a single consolidated topology map showing all inter-server communications:
+
+```powershell
+# Consolidate all servers and filter down to database flows
+.\NetFlowAudit.Cli.exe --map-only `
+  --input-dir ./collected-audits `
+  --input-filter "audit_*.csv" `
+  --include-ports 1433,3306,5432,1521,6379,27017 `
+  --map consolidated_database_map.html
+```
+
+### 2.5. Interactive HTML5 Topology Map Controls
+
+The generated HTML5 map is 100% self-contained and offers advanced interactive controls:
+- **Apply Filters Button & [Enter]**: Text filters only recalculate on clicking `[Apply Filters]` or pressing `[Enter]`, guaranteeing fast responsiveness even with thousands of flows.
+- **Collapsible Sidebar & Accordion**: Toggle the filter panel with the `[◀ Sidebar]` button or key `[B]`. Sections (Layout, Filters, CLI Command, Inspector) can be expanded or collapsed independently.
+- **CLI Command Reproducer**: The sidebar generates the exact CLI command matching the filters, sorting, and routing selected in the web UI with a one-click `[Copy CLI Command]` button.
 
 ---
 
