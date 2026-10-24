@@ -70,9 +70,27 @@ In headless mode, the TUI is disabled, and the agent logs standard startup/shutd
 
 ### 3.1. Windows Service Deployment
 
-#### Option A: Using NSSM (Recommended for resilience)
+#### Option A: Using NSSM (Non-Sucking Service Manager)
+> [!NOTE]
+> NSSM is an open-source service wrapper that enables standard CLI applications to run as native Windows services with automatic restarts and logging. It is not preinstalled on Windows and can be installed in seconds:
+
+```powershell
+# Install via Winget (Windows 11 / Windows 10 modern)
+winget install NSSM.NSSM
+
+# Or install via Chocolatey
+choco install nssm -y
+
+# Or install via Scoop
+scoop install nssm
+
+# Or direct download from https://nssm.cc/download:
+# Extract 'win64/nssm.exe' to C:\Windows\System32 (or any directory in your PATH)
+```
+
+Once installed, register and launch the NetFlowAudit background service:
 ```cmd
-:: 1. Download NSSM and create the service
+:: 1. Create and configure the service
 nssm install NetFlowAudit "C:\Program Files\NetFlowAudit\NetFlowAudit.Cli.exe"
 nssm set NetFlowAudit AppParameters "--daemon --config \"C:\Program Files\NetFlowAudit\netflowaudit.json\""
 nssm set NetFlowAudit AppDirectory "C:\Program Files\NetFlowAudit"
