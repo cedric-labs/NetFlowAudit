@@ -3,6 +3,8 @@
 ## ----------------------------------------------------------------------
 bin/
 obj/
+publish/
+dist/
 *.user
 *.userosscache
 *.sln.docstates

@@ -1,5 +1,12 @@
 <Project>
   <PropertyGroup>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Authors>curvecoder</Authors>
+    <Company>curvecoder</Company>
+    <Product>NetFlowAudit</Product>
+    <Copyright>Copyright (c) 2026 curvecoder</Copyright>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest</AnalysisLevel>
