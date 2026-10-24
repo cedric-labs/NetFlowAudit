@@ -6,7 +6,7 @@ using NetFlowAudit.Core.Filtering;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Résolveur d'organisation IP s'appuyant sur le protocole RDAP (RFC 7480/7482/7484) avec disjoncteur (circuit breaker) non bloquant pour environnements isolés.
+/// IP organization resolver based on RDAP protocol (RFC 7480/7482/7484) with a non-blocking circuit breaker for air-gapped environments.
 /// </summary>
 public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDisposable
 {
@@ -41,12 +41,12 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
     private long _circuitBreakerTripTimestamp;
 
     /// <summary>
-    /// Initialise une nouvelle instance du résolveur RDAP avec configuration optionnelle.
+    /// Initializes a new instance of the RDAP resolver with optional configuration overrides.
     /// </summary>
-    /// <param name="httpClient">Client HTTP injecté (ou null pour utiliser le client interne par défaut).</param>
-    /// <param name="requestTimeout">Délai d'attente maximal pour une requête RDAP (2s par défaut).</param>
-    /// <param name="circuitBreakerThreshold">Nombre d'échecs réseau consécutifs avant ouverture du disjoncteur (2 par défaut).</param>
-    /// <param name="circuitBreakerCooldown">Durée de mise en veille du disjoncteur avant nouvelle tentative (60s par défaut).</param>
+    /// <param name="httpClient">Injected HTTP client (or null to initialize default internal client).</param>
+    /// <param name="requestTimeout">Maximum timeout per RDAP request (default: 2s).</param>
+    /// <param name="circuitBreakerThreshold">Consecutive failure count before tripping the circuit breaker (default: 2).</param>
+    /// <param name="circuitBreakerCooldown">Cooldown period before permitting a trial request after trip (default: 60s).</param>
     public RdapIpOrganizationResolver(
         HttpClient? httpClient = null,
         TimeSpan? requestTimeout = null,
@@ -89,13 +89,13 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
     {
         ArgumentNullException.ThrowIfNull(address);
 
-        // 1. Filtrage immédiat des adresses privées, locales ou réservées (0ms, aucun trafic réseau)
+        // 1. Immediate filtering of private, loopback, or reserved IP addresses (0ms, no network traffic)
         if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) || IPAddress.IsLoopback(address) || PrivateAndReservedMatcher.IsMatch(address))
         {
             return null;
         }
 
-        // 2. Disjoncteur (Circuit Breaker) : en environnement isolé du réseau, évite toute latence réseau cumulative
+        // 2. Circuit breaker check: prevents cumulative network latency in isolated air-gapped environments
         if (IsCircuitOpen())
         {
             return null;
@@ -111,7 +111,7 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                // Enregistrement non présent dans les RIR (non imputable à un problème de connectivité)
+                // Record absent from RIR databases (not a network connectivity failure)
                 Interlocked.Exchange(ref _consecutiveFailures, 0);
                 return null;
             }
@@ -124,13 +124,13 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
             var content = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
             var details = RdapResponseParser.ExtractOwnerDetails(content);
 
-            // Requête réussie : remise à zéro du compteur de défaillances
+            // Successful query: reset failure count
             Interlocked.Exchange(ref _consecutiveFailures, 0);
             return details;
         }
         catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
         {
-            // Toléré : Serveur isolé d'Internet, DNS externe inaccessible ou expiration de requête.
+            // Tolerated: Server isolated from Internet, external DNS unreachable, or request timed out
             var failures = Interlocked.Increment(ref _consecutiveFailures);
             if (failures >= _circuitBreakerThreshold)
             {
@@ -154,11 +154,11 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
 
         if (elapsed < _circuitBreakerCooldown)
         {
-            // Le disjoncteur est toujours ouvert : échec rapide immédiat sans appel réseau
+            // Circuit is open: fast-fail immediately without network calls
             return true;
         }
 
-        // Fin de période de refroidissement : on autorise une tentative de sonde
+        // Cooldown period elapsed: allow a probe attempt
         Interlocked.Exchange(ref _circuitBreakerTripTimestamp, 0);
         return false;
     }

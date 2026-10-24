@@ -4,16 +4,16 @@ using NetFlowAudit.Core.Filtering;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Évaluateur vérifiant si une adresse IP correspond à une plage réseau ou une adresse exclue de la résolution DNS inverse.
+/// Evaluator determining whether an IP address belongs to an address or CIDR range excluded from reverse DNS resolution.
 /// </summary>
 public sealed class DnsAddressExclusionEvaluator(IEnumerable<string>? rules)
 {
     private readonly IpAddressRangeMatcher _matcher = new(rules);
 
     /// <summary>
-    /// Détermine si l'adresse IP spécifiée doit être exclue de la résolution DNS inverse.
+    /// Determines whether the specified IP address should be excluded from reverse DNS queries.
     /// </summary>
-    /// <param name="address">Adresse IP à évaluer.</param>
-    /// <returns>True si l'adresse est exclue, sinon False.</returns>
+    /// <param name="address">Target IP address to evaluate.</param>
+    /// <returns>True if the address is excluded; otherwise false.</returns>
     public bool ShouldExclude(IPAddress address) => _matcher.IsMatch(address);
 }

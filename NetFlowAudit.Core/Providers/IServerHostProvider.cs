@@ -4,19 +4,19 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Providers;
 
 /// <summary>
-/// Contrat d'abstraction fournissant les métadonnées de la machine hôte et de ses interfaces réseau.
+/// Abstraction contract providing local host machine metadata and network interface IP addresses.
 /// </summary>
 public interface IServerHostProvider
 {
     /// <summary>
-    /// Récupère les métadonnées du serveur local.
+    /// Retrieves identification and environment metadata of the local server.
     /// </summary>
-    /// <returns>Métadonnées de la machine hôte.</returns>
+    /// <returns>Local host server metadata.</returns>
     ServerHostMetadata GetCurrentHostMetadata();
 
     /// <summary>
-    /// Récupère la liste de toutes les adresses IP associées à la machine hôte.
+    /// Retrieves all IP addresses bound to active local network interfaces.
     /// </summary>
-    /// <returns>Ensemble des adresses IP locales de la machine hôte.</returns>
+    /// <returns>Read-only set of local IP addresses.</returns>
     IReadOnlySet<IPAddress> GetLocalIpAddresses();
 }

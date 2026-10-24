@@ -4,33 +4,33 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Contrat de filtrage des connexions réseau (ports, adresses IP distantes et boucle locale).
+/// Filtering contract evaluating whether active network connections must be excluded from auditing.
 /// </summary>
 public interface INetworkFlowFilter
 {
     /// <summary>
-    /// Évalue si la connexion réseau doit être exclue de l'audit.
+    /// Evaluates whether the given socket connection must be excluded from flow auditing.
     /// </summary>
-    /// <param name="connection">Connexion socket inspectée.</param>
-    /// <param name="localHostAddresses">Ensemble des adresses IP locales de la machine hôte.</param>
-    /// <returns>True si le flux doit être ignoré, sinon false.</returns>
+    /// <param name="connection">Inspected active socket connection.</param>
+    /// <param name="localHostAddresses">Set of IP addresses assigned to the local host machine.</param>
+    /// <returns>True if the flow should be excluded; otherwise false.</returns>
     bool ShouldExclude(ActiveSocketConnection connection, IReadOnlySet<IPAddress> localHostAddresses);
 
     /// <summary>
-    /// Ajoute dynamiquement un port local à la liste d'exclusion au cours de l'exécution.
+    /// Dynamically registers a local port into the exclusion filter at runtime.
     /// </summary>
-    /// <param name="port">Numéro de port local à exclure.</param>
+    /// <param name="port">Local port number to exclude.</param>
     void ExcludeLocalPort(int port);
 
     /// <summary>
-    /// Ajoute dynamiquement un port distant à la liste d'exclusion au cours de l'exécution.
+    /// Dynamically registers a remote port into the exclusion filter at runtime.
     /// </summary>
-    /// <param name="port">Numéro de port distant à exclure.</param>
+    /// <param name="port">Remote port number to exclude.</param>
     void ExcludeRemotePort(int port);
 
     /// <summary>
-    /// Ajoute dynamiquement une adresse IP ou notation CIDR distante à la liste d'exclusion au cours de l'exécution.
+    /// Dynamically registers a remote IP address or CIDR notation into the exclusion filter at runtime.
     /// </summary>
-    /// <param name="ipOrCidr">Adresse IP ou notation CIDR à exclure.</param>
+    /// <param name="ipOrCidr">Remote IP address or CIDR subnet notation to exclude.</param>
     void ExcludeRemoteIp(string ipOrCidr);
 }

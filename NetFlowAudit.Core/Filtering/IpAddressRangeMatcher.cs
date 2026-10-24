@@ -4,7 +4,7 @@ using System.Net.Sockets;
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Évaluateur de correspondance d'adresses IP contre un ensemble de règles (notations CIDR ou adresses IP exactes).
+/// Evaluates whether an IP address matches a configured set of address rules (exact IP or CIDR subnets).
 /// </summary>
 public sealed class IpAddressRangeMatcher
 {
@@ -12,9 +12,9 @@ public sealed class IpAddressRangeMatcher
     private readonly HashSet<IPAddress> _addresses = [];
 
     /// <summary>
-    /// Initialise une nouvelle instance avec la liste des règles de filtrage (notations CIDR ou adresses IP exactes).
+    /// Initializes a new matcher instance with the given filtering rules (CIDR subnets or exact IP addresses).
     /// </summary>
-    /// <param name="rules">Règles d'exclusion (ex: "192.168.1.50", "10.0.0.0/8").</param>
+    /// <param name="rules">Exclusion rules (e.g. "192.168.1.50", "10.0.0.0/8").</param>
     public IpAddressRangeMatcher(IEnumerable<string>? rules)
     {
         if (rules is null)
@@ -53,15 +53,15 @@ public sealed class IpAddressRangeMatcher
     }
 
     /// <summary>
-    /// Indique si au moins une règle est configurée.
+    /// Indicates whether at least one matching rule is configured.
     /// </summary>
     public bool HasRules => _addresses.Count > 0 || _networks.Count > 0;
 
     /// <summary>
-    /// Détermine si l'adresse IP spécifiée correspond à l'une des adresses ou plages réseau configurées.
+    /// Determines whether the specified IP address matches any configured address or CIDR range.
     /// </summary>
-    /// <param name="address">Adresse IP à évaluer.</param>
-    /// <returns>True si l'adresse correspond à une règle, sinon False.</returns>
+    /// <param name="address">IP address to evaluate.</param>
+    /// <returns>True if the address matches any rule; otherwise false.</returns>
     public bool IsMatch(IPAddress address)
     {
         ArgumentNullException.ThrowIfNull(address);

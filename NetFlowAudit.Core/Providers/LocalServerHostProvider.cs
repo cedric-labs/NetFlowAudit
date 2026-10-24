@@ -6,7 +6,7 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Providers;
 
 /// <summary>
-/// Fournisseur d'informations sur l'hôte local et ses adresses réseau.
+/// Provides host machine metadata and network interface IP addresses for the local runtime environment.
 /// </summary>
 public sealed class LocalServerHostProvider : IServerHostProvider
 {
@@ -14,12 +14,12 @@ public sealed class LocalServerHostProvider : IServerHostProvider
     private readonly Lazy<HashSet<IPAddress>> _cachedAddresses = new(ResolveAllLocalAddresses);
 
     /// <summary>
-    /// Récupère les métadonnées du serveur local.
+    /// Retrieves identification and environment metadata of the local server.
     /// </summary>
     public ServerHostMetadata GetCurrentHostMetadata() => _cachedMetadata.Value;
 
     /// <summary>
-    /// Récupère la liste de toutes les adresses IP associées à la machine hôte.
+    /// Retrieves all IP addresses bound to active local network interfaces.
     /// </summary>
     public IReadOnlySet<IPAddress> GetLocalIpAddresses() => _cachedAddresses.Value;
 
@@ -59,7 +59,7 @@ public sealed class LocalServerHostProvider : IServerHostProvider
         }
         catch (NetworkInformationException)
         {
-            // Toléré lors de l'absence de droits ou carte réseau indisponible
+            // Tolerated on restricted security environments or unavailable network interfaces
         }
 
         return new ServerHostMetadata(hostName, osDescription, primaryIp);
@@ -92,7 +92,7 @@ public sealed class LocalServerHostProvider : IServerHostProvider
         }
         catch (NetworkInformationException)
         {
-            // Toléré lors de l'absence de droits
+            // Tolerated on restricted security environments
         }
 
         return set;

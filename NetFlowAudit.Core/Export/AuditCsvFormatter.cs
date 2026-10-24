@@ -5,12 +5,12 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Options de sélection des colonnes pour l'export CSV NetFlowAudit.
+/// Column selection and formatting options for NetFlowAudit CSV output.
 /// </summary>
 public sealed record AuditCsvOptions
 {
     /// <summary>
-    /// Colonnes ordonnées à inclure dans le journal CSV.
+    /// Ordered list of columns to export into the CSV log.
     /// </summary>
     public IReadOnlyList<AuditCsvColumn> SelectedColumns { get; init; } =
     [
@@ -37,20 +37,20 @@ public sealed record AuditCsvOptions
     ];
 
     /// <summary>
-    /// Séparateur de champ CSV.
+    /// CSV field delimiter character.
     /// </summary>
     public char Delimiter { get; init; } = ',';
 }
 
 /// <summary>
-/// Formateur de lignes CSV d'audit s'appuyant sur les règles d'échappement de FileForge.
+/// Formats audit entries into RFC 4180 CSV rows using FileForge field escaping rules.
 /// </summary>
 public sealed class AuditCsvFormatter(AuditCsvOptions options)
 {
     private readonly AuditCsvOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <summary>
-    /// Génère la ligne d'en-tête du fichier CSV.
+    /// Builds the CSV header line based on configured columns.
     /// </summary>
     public string BuildHeaderLine()
     {
@@ -64,7 +64,7 @@ public sealed class AuditCsvFormatter(AuditCsvOptions options)
     }
 
     /// <summary>
-    /// Formate une entrée d'audit en ligne CSV.
+    /// Formats a network audit entry into a delimited CSV row string.
     /// </summary>
     public string FormatEntry(NetworkAuditEntry entry)
     {

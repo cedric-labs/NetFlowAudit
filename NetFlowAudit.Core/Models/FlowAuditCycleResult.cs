@@ -3,7 +3,7 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Models;
 
 /// <summary>
-/// Synthèse métrique d'un cycle de balayage d'audit des flux.
+/// Metric summary of an audit scan cycle across network flows.
 /// </summary>
 public sealed record FlowAuditCycleResult(
     DateTimeOffset TimestampUtc,

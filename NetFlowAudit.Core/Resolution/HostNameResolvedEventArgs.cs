@@ -3,19 +3,19 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Événement déclenché lorsqu'une adresse IP a été résolue en nom d'hôte par le service DNS en tâche de fond.
+/// Event arguments raised when a background resolution task finishes resolving an IP address.
 /// </summary>
-/// <param name="address">Adresse IP résolue.</param>
-/// <param name="hostName">Nom d'hôte correspondant (ou chaîne vide si aucun PTR disponible).</param>
+/// <param name="address">Resolved IP address.</param>
+/// <param name="hostName">Corresponding host name (or empty string if no PTR/RDAP record exists).</param>
 public sealed class HostNameResolvedEventArgs(IPAddress address, string hostName) : EventArgs
 {
     /// <summary>
-    /// Adresse IP résolue.
+    /// Resolved IP address.
     /// </summary>
     public IPAddress Address { get; } = address ?? throw new ArgumentNullException(nameof(address));
 
     /// <summary>
-    /// Nom d'hôte correspondant.
+    /// Corresponding resolved host name.
     /// </summary>
     public string HostName { get; } = hostName ?? throw new ArgumentNullException(nameof(hostName));
 }

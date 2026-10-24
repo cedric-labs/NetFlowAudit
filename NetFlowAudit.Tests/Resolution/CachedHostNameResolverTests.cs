@@ -30,7 +30,7 @@ public sealed class CachedHostNameResolverTests
 
         public void Dispose()
         {
-            // Aucun état à libérer pour le mock de test
+            // No resources to release for test mock
         }
     }
 
@@ -77,7 +77,7 @@ public sealed class CachedHostNameResolverTests
     [Fact]
     public async Task ResolveHostNameAsync_WhenNonRoutableOrTimeoutAddress_ReturnsEmptyAndCachesNegativeResult()
     {
-        // Arrange : Utilise un délai très court (10 ms) et une adresse réservée pour documentation (TEST-NET)
+        // Arrange: Use a short timeout (10 ms) and a reserved documentation address (TEST-NET)
         await using var resolver = new CachedHostNameResolver(TimeSpan.FromMilliseconds(10));
         var dummyIp = IPAddress.Parse("192.0.2.1");
 
@@ -93,7 +93,7 @@ public sealed class CachedHostNameResolverTests
     [Fact]
     public async Task ResolveHostNameAsync_WhenDnsFailsAndOrgResolverSucceeds_ReturnsOrganizationName()
     {
-        // Arrange : adresse TEST-NET sans PTR DNS
+        // Arrange: TEST-NET address without reverse DNS PTR
         var testIp = IPAddress.Parse("192.0.2.42");
         var fakeOrgResolver = new FakeOrganizationResolver(ip => ip.Equals(testIp) ? "Microsoft Corporation" : null);
 
@@ -121,7 +121,7 @@ public sealed class CachedHostNameResolverTests
     [Fact]
     public async Task ResolveHostNameAsync_WhenDnsFailsAndOrgResolverThrows_ReturnsEmptyStringWithoutThrowing()
     {
-        // Arrange : simulateur d'environnement hors-ligne / erreur réseau
+        // Arrange: Simulator for offline / network error environment
         var testIp = IPAddress.Parse("192.0.2.99");
         var failingOrgResolver = new FakeOrganizationResolver(_ => throw new HttpRequestException("Air-gapped server"));
 
@@ -141,7 +141,7 @@ public sealed class CachedHostNameResolverTests
     [Fact]
     public async Task ResolveHostNameAsync_WhenIpIsMicrosoftWithoutDnsPtr_ResolvesOrganizationViaRdap()
     {
-        // Arrange : 52.123.242.181 n'a pas de PTR DNS, mais appartient à Microsoft Corporation
+        // Arrange: 52.123.242.181 lacks reverse DNS PTR but belongs to Microsoft Corporation
         using var orgResolver = new RdapIpOrganizationResolver();
         await using var resolver = new CachedHostNameResolver(
             resolutionTimeout: TimeSpan.FromMilliseconds(500),

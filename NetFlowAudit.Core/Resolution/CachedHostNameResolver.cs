@@ -6,7 +6,7 @@ using System.Threading.Channels;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Résolveur DNS inverse asynchrone et non-bloquant avec mise en cache mémoire, exclusion de sous-réseaux et repli d'organisation.
+/// Asynchronous non-blocking reverse DNS resolver with memory caching, subnet exclusion, and RDAP organization fallback.
 /// </summary>
 public sealed class CachedHostNameResolver(
     TimeSpan resolutionTimeout,
@@ -31,7 +31,7 @@ public sealed class CachedHostNameResolver(
     public event EventHandler<HostNameResolvedEventArgs>? HostNameResolved;
 
     /// <summary>
-    /// Initialise une nouvelle instance avec le délai d'expiration par défaut (500ms).
+    /// Initializes a new instance with the default resolution timeout (500ms).
     /// </summary>
     public CachedHostNameResolver() : this(TimeSpan.FromMilliseconds(500))
     {
@@ -83,11 +83,11 @@ public sealed class CachedHostNameResolver(
     }
 
     /// <summary>
-    /// Tente de récupérer l'entrée enrichie complète en cache pour l'adresse spécifiée.
+    /// Attempts to retrieve the full enriched cache entry for the specified IP address.
     /// </summary>
-    /// <param name="address">Adresse IP interrogée.</param>
-    /// <param name="entry">Entrée de cache enrichie ou null si absente.</param>
-    /// <returns>Vrai si l'entrée est en cache, sinon faux.</returns>
+    /// <param name="address">Target IP address to query.</param>
+    /// <param name="entry">Enriched cache entry or null if absent.</param>
+    /// <returns>True if present in cache; otherwise false.</returns>
     public bool TryGetCachedEntry(IPAddress address, out DnsCacheEntry? entry)
     {
         ArgumentNullException.ThrowIfNull(address);
@@ -200,7 +200,7 @@ public sealed class CachedHostNameResolver(
     {
         string? dnsHostName = null;
 
-        // 1. Tentative de résolution DNS inverse (PTR)
+        // 1. Attempt reverse DNS (PTR) lookup
         try
         {
             using var dnsTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -214,13 +214,12 @@ public sealed class CachedHostNameResolver(
         }
         catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
         {
-            // Toléré : L'adresse distante ne dispose pas d'enregistrement DNS PTR inverse,
-            // ou le serveur DNS est inaccessible/hors-ligne.
+            // Tolerated: Remote address lacks a reverse DNS PTR record, or local DNS server is offline/unreachable
         }
 
         IpOwnerMetadata? ownerDetails = null;
 
-        // 2. Repli : si aucun nom DNS n'a été trouvé et qu'un résolveur d'organisation est disponible
+        // 2. Fallback: If no PTR hostname was found and an organization resolver is available
         if (string.IsNullOrWhiteSpace(dnsHostName) && _organizationResolver is not null)
         {
             try
@@ -229,7 +228,7 @@ public sealed class CachedHostNameResolver(
             }
             catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
             {
-                // Toléré : Environnement isolé du réseau, serveur d'organisation inaccessible ou annulation.
+                // Tolerated: Network-isolated environment, RDAP server unreachable, or cancellation requested
             }
         }
 
@@ -309,7 +308,7 @@ public sealed class CachedHostNameResolver(
         }
         catch (OperationCanceledException)
         {
-            // Fin coopérative de la file
+            // Cooperative queue termination
         }
     }
 
@@ -372,7 +371,7 @@ public sealed class CachedHostNameResolver(
             }
             catch (OperationCanceledException)
             {
-                // Toléré lors de l'arrêt
+                // Tolerated on service shutdown
             }
         }
 

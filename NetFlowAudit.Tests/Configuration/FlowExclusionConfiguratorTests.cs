@@ -29,7 +29,7 @@ public sealed class FlowExclusionConfiguratorTests : IDisposable
             }
             catch (IOException)
             {
-                // Toléré pour nettoyage de test
+                // Tolerated for test cleanup
             }
         }
     }

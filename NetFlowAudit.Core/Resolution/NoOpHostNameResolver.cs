@@ -3,7 +3,7 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Implémentation inactive du résolveur de nom d'hôte retournant systématiquement une chaîne vide.
+/// No-op implementation of the host name resolver returning empty strings immediately.
 /// </summary>
 public sealed class NoOpHostNameResolver : IHostNameResolver
 {
@@ -24,7 +24,7 @@ public sealed class NoOpHostNameResolver : IHostNameResolver
     /// <inheritdoc />
     public void QueueResolution(IPAddress address)
     {
-        // Aucun traitement nécessaire
+        // No action required
     }
 
     /// <inheritdoc />

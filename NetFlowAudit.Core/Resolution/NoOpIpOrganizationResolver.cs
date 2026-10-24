@@ -3,7 +3,7 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Implémentation inactive (No-Op) du résolveur d'organisation IP.
+/// No-op implementation of the IP organization resolver returning null immediately.
 /// </summary>
 public sealed class NoOpIpOrganizationResolver : IIpOrganizationResolver
 {
@@ -22,6 +22,6 @@ public sealed class NoOpIpOrganizationResolver : IIpOrganizationResolver
     /// <inheritdoc />
     public void Dispose()
     {
-        // Aucun état ou ressource à libérer
+        // No unmanaged resources to release
     }
 }

@@ -1,47 +1,47 @@
 namespace NetFlowAudit.Cli.Configuration;
 
 /// <summary>
-/// Contrat de configuration dynamique et de persistance des règles d'exclusion de flux.
+/// Contract for dynamic configuration and persistent storage of flow exclusion rules.
 /// </summary>
 public interface IFlowExclusionConfigurator
 {
     /// <summary>
-    /// Configuration courante active.
+    /// Current active application configuration.
     /// </summary>
     AppConfiguration CurrentConfiguration { get; }
 
     /// <summary>
-    /// Exclut un port local en mémoire et persiste la modification dans le fichier de configuration.
+    /// Excludes a local port in memory and persists the modification to configuration file.
     /// </summary>
-    /// <param name="port">Numéro de port local à exclure.</param>
-    /// <returns>Description textuelle de l'action effectuée.</returns>
+    /// <param name="port">Local port number to exclude.</param>
+    /// <returns>Summary description of the executed action.</returns>
     string ExcludeLocalPort(int port);
 
     /// <summary>
-    /// Exclut une adresse IP ou un sous-réseau distant en mémoire et persiste la modification dans le fichier de configuration.
+    /// Excludes a remote IP address or CIDR subnet in memory and persists the modification to configuration file.
     /// </summary>
-    /// <param name="ipOrCidr">Adresse IP ou plage CIDR distante à exclure.</param>
-    /// <returns>Description textuelle de l'action effectuée.</returns>
+    /// <param name="ipOrCidr">Remote IP address or CIDR subnet to exclude.</param>
+    /// <returns>Summary description of the executed action.</returns>
     string ExcludeRemoteIp(string ipOrCidr);
 
     /// <summary>
-    /// Exclut un port distant en mémoire et persiste la modification dans le fichier de configuration.
+    /// Excludes a remote port in memory and persists the modification to configuration file.
     /// </summary>
-    /// <param name="port">Numéro de port distant à exclure.</param>
-    /// <returns>Description textuelle de l'action effectuée.</returns>
+    /// <param name="port">Remote port number to exclude.</param>
+    /// <returns>Summary description of the executed action.</returns>
     string ExcludeRemotePort(int port);
 
     /// <summary>
-    /// Exclut un nom exact de processus en mémoire et persiste la modification dans le fichier de configuration.
+    /// Excludes an exact process name in memory and persists the modification to configuration file.
     /// </summary>
-    /// <param name="processName">Nom exact du processus à exclure.</param>
-    /// <returns>Description textuelle de l'action effectuée.</returns>
+    /// <param name="processName">Exact process name to exclude.</param>
+    /// <returns>Summary description of the executed action.</returns>
     string ExcludeProcess(string processName);
 
     /// <summary>
-    /// Exclut un exécutable cible ou nom de script en mémoire et persiste la modification dans le fichier de configuration.
+    /// Excludes an application target or script executable name in memory and persists the modification to configuration file.
     /// </summary>
-    /// <param name="target">Cible applicative ou nom d'exécutable à exclure.</param>
-    /// <returns>Description textuelle de l'action effectuée.</returns>
+    /// <param name="target">Application target or binary payload name to exclude.</param>
+    /// <returns>Summary description of the executed action.</returns>
     string ExcludeTarget(string target);
 }

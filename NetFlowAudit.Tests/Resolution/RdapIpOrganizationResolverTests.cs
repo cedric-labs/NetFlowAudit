@@ -114,7 +114,7 @@ public sealed class RdapIpOrganizationResolverTests
     [Fact]
     public async Task ResolveOrganizationAsync_WhenCircuitBreakerTrips_ReturnsNullImmediatelyWithoutHttpCall()
     {
-        // Arrange : Seuil à 2 erreurs
+        // Arrange: Threshold set to 2 consecutive errors
         var httpCallCount = 0;
         var handler = new DelegatingTestHandler(_ =>
         {

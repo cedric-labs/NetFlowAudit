@@ -11,7 +11,7 @@ using SocketForge.Contracts;
 namespace NetFlowAudit.Core.Engine;
 
 /// <summary>
-/// Moteur orchestrant l'échantillonnage de SocketForge, le filtrage ProcessForge, le filtrage de flux réseau, la résolution de noms d'hôtes et la persistance FileForge.
+/// Orchestrates SocketForge socket sampling, ProcessForge filtering, flow filtering, DNS resolution, and FileForge persistent storage.
 /// </summary>
 public sealed class FlowAuditEngine(
     ISocketScanner socketScanner,
@@ -35,7 +35,7 @@ public sealed class FlowAuditEngine(
         hostNameResolver);
 
     /// <summary>
-    /// Constructeur avec filtre de flux explicite et résolveur de nom d'hôte inactif par défaut.
+    /// Overload initializing the engine with explicit flow filter and default no-op host name resolver.
     /// </summary>
     public FlowAuditEngine(
         ISocketScanner socketScanner,
@@ -60,7 +60,7 @@ public sealed class FlowAuditEngine(
     }
 
     /// <summary>
-    /// Constructeur de compatibilité sans filtre de flux explicite (utilise les options par défaut).
+    /// Compatibility overload without explicit flow filter (uses default flow filter options).
     /// </summary>
     public FlowAuditEngine(
         ISocketScanner socketScanner,
@@ -84,12 +84,12 @@ public sealed class FlowAuditEngine(
     }
 
     /// <summary>
-    /// Événement déclenché à la fin de chaque cycle de scan avec la synthèse métrique.
+    /// Event raised at the end of each scan cycle with metric and discovery summary.
     /// </summary>
     public event EventHandler<FlowAuditCycleEventArgs>? ScanCycleCompleted;
 
     /// <summary>
-    /// Exécute l'audit continu.
+    /// Executes the continuous audit loop until cancellation is requested.
     /// </summary>
     public async Task RunContinuousAuditAsync(CancellationToken cancellationToken = default)
     {
@@ -109,7 +109,7 @@ public sealed class FlowAuditEngine(
     }
 
     /// <summary>
-    /// Exécute un cycle de scan, filtrage et écriture.
+    /// Executes a single scan, filter, deduplication, and file append cycle.
     /// </summary>
     public async Task<int> ExecuteScanCycleAsync(CancellationToken cancellationToken = default)
     {

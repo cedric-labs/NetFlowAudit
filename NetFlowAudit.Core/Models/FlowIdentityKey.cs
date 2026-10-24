@@ -1,20 +1,20 @@
 namespace NetFlowAudit.Core.Models;
 
 /// <summary>
-/// Clé d'identité immuable d'un flux réseau encapsulant sa signature logique sans obsession des types primitifs.
+/// Immutable flow identity key encapsulating logical flow signature without primitive obsession.
 /// </summary>
 public readonly record struct FlowIdentityKey
 {
     /// <summary>
-    /// Valeur normalisée de la signature logique du flux.
+    /// Normalized value of the logical flow signature.
     /// </summary>
     public string Value { get; }
 
     /// <summary>
-    /// Initialise une nouvelle clé d'identité de flux à partir de sa signature.
+    /// Initializes a new flow identity key from its raw signature string.
     /// </summary>
-    /// <param name="value">Signature brute du flux.</param>
-    /// <exception cref="ArgumentException">Lancée si la signature est vide ou composée uniquement d'espaces.</exception>
+    /// <param name="value">Raw logical signature of the flow.</param>
+    /// <exception cref="ArgumentException">Thrown when signature is null, empty, or whitespace.</exception>
     public FlowIdentityKey(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -22,11 +22,11 @@ public readonly record struct FlowIdentityKey
     }
 
     /// <summary>
-    /// Crée une clé d'identité à partir d'une entrée d'audit.
+    /// Creates a flow identity key from a network audit entry.
     /// </summary>
-    /// <param name="entry">Entrée d'audit dont on extrait la clé logique.</param>
-    /// <returns>Instance de la clé d'identité du flux.</returns>
-    /// <exception cref="ArgumentNullException">Lancée si l'entrée d'audit est nulle.</exception>
+    /// <param name="entry">Audit entry to extract the logical key from.</param>
+    /// <returns>Flow identity key instance.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when entry is null.</exception>
     public static FlowIdentityKey FromEntry(NetworkAuditEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);

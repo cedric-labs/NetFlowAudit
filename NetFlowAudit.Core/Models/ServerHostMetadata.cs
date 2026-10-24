@@ -1,11 +1,11 @@
 namespace NetFlowAudit.Core.Models;
 
 /// <summary>
-/// Métadonnées d'identification et de localisation du serveur hôte.
+/// Identification and environment metadata of the host server machine.
 /// </summary>
-/// <param name="HostName">Nom d'hôte de la machine locale.</param>
-/// <param name="OperatingSystemDescription">Description et version du système d'exploitation.</param>
-/// <param name="PrimaryIpAddress">Adresse IP principale ou identifiée pour le serveur.</param>
+/// <param name="HostName">Host name of the local server machine.</param>
+/// <param name="OperatingSystemDescription">Operating system description and kernel version.</param>
+/// <param name="PrimaryIpAddress">Primary local IP address identified for the server.</param>
 public sealed record ServerHostMetadata(
     string HostName,
     string OperatingSystemDescription,

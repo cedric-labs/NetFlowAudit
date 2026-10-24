@@ -1,107 +1,107 @@
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Définition des colonnes disponibles pour l'export CSV du journal d'audit de flux réseau.
+/// Column definitions available for RFC 4180 CSV flow audit log export.
 /// </summary>
 public enum AuditCsvColumn
 {
     /// <summary>
-    /// Date et heure UTC de première observation.
+    /// UTC timestamp of first flow observation.
     /// </summary>
     FirstSeenUtc,
 
     /// <summary>
-    /// Date et heure UTC de dernière observation.
+    /// UTC timestamp of most recent flow observation.
     /// </summary>
     LastSeenUtc,
 
     /// <summary>
-    /// Compteur du nombre de fois où le flux a été observé.
+    /// Cumulative count of times this flow was observed.
     /// </summary>
     ObservationCount,
 
     /// <summary>
-    /// Nom d'hôte du serveur local.
+    /// Local server host name.
     /// </summary>
     ServerName,
 
     /// <summary>
-    /// Version du système d'exploitation du serveur local.
+    /// Local server operating system description and version.
     /// </summary>
     ServerOsVersion,
 
     /// <summary>
-    /// Adresse IP principale du serveur local.
+    /// Primary IP address of the local server.
     /// </summary>
     ServerPrimaryIp,
 
     /// <summary>
-    /// Protocole de transport (TCP, UDP).
+    /// Network transport protocol (TCP, UDP).
     /// </summary>
     Protocol,
 
     /// <summary>
-    /// Direction du flux (Inbound, Outbound, Listening).
+    /// Flow direction (Inbound, Outbound, Listening).
     /// </summary>
     Direction,
 
     /// <summary>
-    /// État de la connexion TCP.
+    /// TCP socket state.
     /// </summary>
     TcpState,
 
     /// <summary>
-    /// Adresse IP locale.
+    /// Local socket IP address.
     /// </summary>
     LocalIp,
 
     /// <summary>
-    /// Port local.
+    /// Local socket port number.
     /// </summary>
     LocalPort,
 
     /// <summary>
-    /// Adresse IP distante.
+    /// Remote socket IP address.
     /// </summary>
     RemoteIp,
 
     /// <summary>
-    /// Port distant.
+    /// Remote socket port number.
     /// </summary>
     RemotePort,
 
     /// <summary>
-    /// Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu).
+    /// Resolved remote host name or FQDN (empty if unresolved).
     /// </summary>
     RemoteHostName,
 
     /// <summary>
-    /// Identifiant numérique du processus (PID).
+    /// Operating system process ID (PID).
     /// </summary>
     ProcessId,
 
     /// <summary>
-    /// Nom court de l'exécutable.
+    /// Executable binary short process name.
     /// </summary>
     ProcessName,
 
     /// <summary>
-    /// Chemin absolu complet du binaire exécutable.
+    /// Full absolute path of the executable binary.
     /// </summary>
     ExecutablePath,
 
     /// <summary>
-    /// Ligne de commande complète de lancement du processus.
+    /// Full command line used to launch the process.
     /// </summary>
     CommandLine,
 
     /// <summary>
-    /// Cible résolue (ex: JAR, script exécuté, payload sous-jacent).
+    /// Resolved application payload target (e.g. JAR, Python/PowerShell script, DLL).
     /// </summary>
     TargetExecutable,
 
     /// <summary>
-    /// Compte utilisateur exécutant le processus.
+    /// User account running the process.
     /// </summary>
     UserName
 }

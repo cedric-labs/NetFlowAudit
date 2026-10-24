@@ -3,34 +3,34 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Contrat de service pour la résolution asynchrone des noms d'hôtes avec cache et file d'arrière-plan.
+/// Service contract for asynchronous reverse DNS and organization resolution with memory caching and background worker queue.
 /// </summary>
 public interface IHostNameResolver
 {
     /// <summary>
-    /// Événement déclenché lorsqu'une résolution asynchrone d'arrière-plan est finalisée.
+    /// Event raised when an asynchronous background resolution completes.
     /// </summary>
     event EventHandler<HostNameResolvedEventArgs>? HostNameResolved;
 
     /// <summary>
-    /// Tente d'obtenir immédiatement le nom d'hôte depuis le cache mémoire sans latence ni requête réseau.
+    /// Attempts to immediately retrieve the cached host name from memory without network latency.
     /// </summary>
-    /// <param name="address">Adresse IP à rechercher.</param>
-    /// <param name="hostName">Nom d'hôte mis en cache ou chaîne vide si aucun enregistrement PTR.</param>
-    /// <returns>True si l'adresse a déjà été évaluée/mise en cache, sinon False.</returns>
+    /// <param name="address">Target IP address to query.</param>
+    /// <param name="hostName">Cached host name or empty string if known to lack a PTR record.</param>
+    /// <returns>True if the address has already been evaluated in cache; otherwise false.</returns>
     bool TryGetCachedHostName(IPAddress address, out string hostName);
 
     /// <summary>
-    /// Enfile une adresse IP pour résolution asynchrone en arrière-plan sans bloquer l'appelant.
+    /// Enqueues an IP address for non-blocking asynchronous background resolution.
     /// </summary>
-    /// <param name="address">Adresse IP à résoudre.</param>
+    /// <param name="address">Target IP address to resolve.</param>
     void QueueResolution(IPAddress address);
 
     /// <summary>
-    /// Résout le nom d'hôte associé à une adresse IP de manière asynchrone.
+    /// Resolves the host name associated with the specified IP address asynchronously.
     /// </summary>
-    /// <param name="address">Adresse IP à résoudre.</param>
-    /// <param name="cancellationToken">Jeton d'annulation.</param>
-    /// <returns>Le nom d'hôte résolu, ou une chaîne vide si la résolution échoue ou n'est pas applicable.</returns>
+    /// <param name="address">Target IP address to resolve.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Resolved host name, or empty string if resolution failed or timed out.</returns>
     Task<string> ResolveHostNameAsync(IPAddress address, CancellationToken cancellationToken = default);
 }

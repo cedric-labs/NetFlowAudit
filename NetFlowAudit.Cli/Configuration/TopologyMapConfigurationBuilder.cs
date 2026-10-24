@@ -6,15 +6,15 @@ using TopologyForge.Rendering;
 namespace NetFlowAudit.Cli.Configuration;
 
 /// <summary>
-/// Constructeur d'options de filtrage et de rendu topologique à partir de la configuration applicative et des arguments CLI.
+/// Builds topology filtering and rendering options from application configuration and CLI arguments.
 /// </summary>
 public static class TopologyMapConfigurationBuilder
 {
     /// <summary>
-    /// Convertit la configuration globale en options de filtrage pour <see cref="TopologyForge"/>.
+    /// Converts global configuration into topology filter options for <see cref="TopologyForge"/>.
     /// </summary>
-    /// <param name="config">Configuration applicative.</param>
-    /// <returns>Options de filtrage topologique.</returns>
+    /// <param name="config">Application configuration.</param>
+    /// <returns>Configured topology filter options.</returns>
     public static TopologyFilterOptions BuildFilterOptions(AppConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -57,10 +57,10 @@ public static class TopologyMapConfigurationBuilder
     }
 
     /// <summary>
-    /// Convertit la configuration globale en options d'agencement, de tri et de routage pour <see cref="TopologyForge"/>.
+    /// Converts global configuration into layout, sorting, and routing options for <see cref="TopologyForge"/>.
     /// </summary>
-    /// <param name="config">Configuration applicative.</param>
-    /// <returns>Options de rendu topologique.</returns>
+    /// <param name="config">Application configuration.</param>
+    /// <returns>Configured topology rendering options.</returns>
     public static TopologyRenderingOptions BuildRenderingOptions(AppConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -96,11 +96,11 @@ public static class TopologyMapConfigurationBuilder
     }
 
     /// <summary>
-    /// Applique les surcharges de ligne de commande relatives à la cartographie et aux filtres d'inclusion/exclusion.
+    /// Applies CLI command-line overrides for topology map paths and inclusion/exclusion filters.
     /// </summary>
-    /// <param name="config">Configuration initiale.</param>
-    /// <param name="args">Arguments de ligne de commande.</param>
-    /// <returns>Configuration mise à jour.</returns>
+    /// <param name="config">Initial application configuration.</param>
+    /// <param name="args">Command-line argument array.</param>
+    /// <returns>Updated application configuration.</returns>
     public static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
     {
         ArgumentNullException.ThrowIfNull(config);

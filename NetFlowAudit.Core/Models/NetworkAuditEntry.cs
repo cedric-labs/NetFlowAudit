@@ -3,14 +3,14 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Models;
 
 /// <summary>
-/// Enregistrement d'audit consolidé associant une socket active et son contexte d'observation serveur.
+/// Consolidated audit record associating an active socket with server host context and observation timestamps.
 /// </summary>
-/// <param name="FirstSeenUtc">Date et heure UTC de la première détection.</param>
-/// <param name="LastSeenUtc">Date et heure UTC de la dernière détection.</param>
-/// <param name="ObservationCount">Nombre de scans successifs où la connexion était active.</param>
-/// <param name="Server">Métadonnées du serveur hôte.</param>
-/// <param name="Socket">Détails de la socket et du processus résolu via SocketForge et ProcessForge.</param>
-/// <param name="RemoteHostName">Nom d'hôte distant résolu par DNS inverse (ou vide si non résolu).</param>
+/// <param name="FirstSeenUtc">UTC timestamp of first detection.</param>
+/// <param name="LastSeenUtc">UTC timestamp of most recent detection.</param>
+/// <param name="ObservationCount">Cumulative scan observation count where the flow was active.</param>
+/// <param name="Server">Host server metadata.</param>
+/// <param name="Socket">Underlying socket and process payload details.</param>
+/// <param name="RemoteHostName">Resolved remote FQDN / host name (or empty if unresolved).</param>
 public sealed record NetworkAuditEntry(
     DateTimeOffset FirstSeenUtc,
     DateTimeOffset LastSeenUtc,
@@ -20,7 +20,7 @@ public sealed record NetworkAuditEntry(
     string RemoteHostName = "")
 {
     /// <summary>
-    /// Calcule la clé d'unicité logique de l'entrée d'audit.
+    /// Computes the logical deduplication key for this audit entry.
     /// </summary>
     public string ComputeAuditKey() => Socket.ComputeLogicalKey();
 }

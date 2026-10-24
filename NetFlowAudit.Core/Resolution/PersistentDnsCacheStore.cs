@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Gestionnaire de persistance du cache DNS inverse et métadonnées réseau dans un fichier dédié.
+/// Persistence manager storing reverse DNS and IP organization cache records into a JSON file.
 /// </summary>
-/// <param name="filePath">Chemin d'accès au fichier de cache JSON.</param>
+/// <param name="filePath">Target JSON cache file path.</param>
 public sealed class PersistentDnsCacheStore(string filePath)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -13,9 +13,9 @@ public sealed class PersistentDnsCacheStore(string filePath)
     private readonly object _syncLock = new();
 
     /// <summary>
-    /// Charge les entrées de cache enregistrées depuis le fichier JSON avec rétrocompatibilité des anciens formats plats.
+    /// Loads persistent cache entries from the JSON file with backward compatibility for legacy flat structures.
     /// </summary>
-    /// <returns>Dictionnaire des correspondances connues, ou un dictionnaire vide si le fichier est absent ou illisible.</returns>
+    /// <returns>Dictionary of known IP-to-entry mappings, or an empty dictionary if missing or unreadable.</returns>
     public Dictionary<string, DnsCacheEntry> Load()
     {
         lock (_syncLock)
@@ -42,7 +42,7 @@ public sealed class PersistentDnsCacheStore(string filePath)
 
                     if (prop.Value.ValueKind == JsonValueKind.String)
                     {
-                        // Format rétrocompatible plat : { "IP": "HostName" }
+                        // Backward-compatible flat format: { "IP": "HostName" }
                         var name = prop.Value.GetString() ?? string.Empty;
                         result[ipKey] = new DnsCacheEntry
                         {
@@ -54,7 +54,7 @@ public sealed class PersistentDnsCacheStore(string filePath)
                     }
                     else if (prop.Value.ValueKind == JsonValueKind.Object)
                     {
-                        // Nouveau format structuré avec métadonnées complètes
+                        // Modern structured format with full metadata
                         var entry = prop.Value.Deserialize<DnsCacheEntry>(JsonOptions);
                         if (entry is not null)
                         {
@@ -67,17 +67,17 @@ public sealed class PersistentDnsCacheStore(string filePath)
             }
             catch (Exception ex) when (ex is IOException or JsonException)
             {
-                // Toléré : En cas de corruption ou de verrouillage temporaire, le cache mémoire redémarre vierge
+                // Tolerated: On file corruption or transient locking, start with a clean in-memory cache
                 return new Dictionary<string, DnsCacheEntry>(StringComparer.OrdinalIgnoreCase);
             }
         }
     }
 
     /// <summary>
-    /// Sauvegarde l'état du cache de manière asynchrone sur le disque.
+    /// Saves cache entries to disk asynchronously.
     /// </summary>
-    /// <param name="cache">Dictionnaire des correspondances à persister.</param>
-    /// <param name="cancellationToken">Jeton d'annulation.</param>
+    /// <param name="cache">Dictionary of IP mappings to persist.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
     public async Task SaveAsync(IReadOnlyDictionary<string, DnsCacheEntry> cache, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(cache);
@@ -100,15 +100,15 @@ public sealed class PersistentDnsCacheStore(string filePath)
         }
         catch (IOException)
         {
-            // Toléré si le fichier est temporairement verrouillé par un processus tiers
+            // Tolerated when the file is temporarily locked by another process
         }
     }
 
     /// <summary>
-    /// Surcharge rétrocompatible sauvegardant un dictionnaire simple IP -> Nom d'hôte.
+    /// Backward-compatible overload saving a simple IP-to-hostname dictionary.
     /// </summary>
-    /// <param name="cache">Dictionnaire simple des correspondances à persister.</param>
-    /// <param name="cancellationToken">Jeton d'annulation.</param>
+    /// <param name="cache">Simple IP mappings dictionary to persist.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
     public Task SaveAsync(IReadOnlyDictionary<string, string> cache, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(cache);
@@ -126,9 +126,9 @@ public sealed class PersistentDnsCacheStore(string filePath)
     }
 
     /// <summary>
-    /// Sauvegarde l'état du cache de manière synchrone (ex: lors de l'arrêt du service).
+    /// Saves cache entries to disk synchronously (e.g. during application termination).
     /// </summary>
-    /// <param name="cache">Dictionnaire des correspondances à persister.</param>
+    /// <param name="cache">Dictionary of IP mappings to persist.</param>
     public void Save(IReadOnlyDictionary<string, DnsCacheEntry> cache)
     {
         ArgumentNullException.ThrowIfNull(cache);
@@ -151,14 +151,14 @@ public sealed class PersistentDnsCacheStore(string filePath)
         }
         catch (IOException)
         {
-            // Toléré en cas de conflit d'accès
+            // Tolerated on transient access conflict
         }
     }
 
     /// <summary>
-    /// Surcharge synchrone rétrocompatible sauvegardant un dictionnaire simple IP -> Nom d'hôte.
+    /// Backward-compatible synchronous overload saving a simple IP-to-hostname dictionary.
     /// </summary>
-    /// <param name="cache">Dictionnaire simple des correspondances à persister.</param>
+    /// <param name="cache">Simple IP mappings dictionary to persist.</param>
     public void Save(IReadOnlyDictionary<string, string> cache)
     {
         ArgumentNullException.ThrowIfNull(cache);

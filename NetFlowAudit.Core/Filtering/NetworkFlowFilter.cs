@@ -4,7 +4,7 @@ using SocketForge.Models;
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Moteur de filtrage des flux réseau selon les ports configurés, les adresses IP distantes et les adresses intra-machine avec mises à jour dynamiques thread-safe.
+/// Evaluates and filters network flows based on configured ports, remote IP addresses, and intra-machine loopback traffic with thread-safe dynamic updates.
 /// </summary>
 public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetworkFlowFilter
 {
@@ -76,9 +76,6 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
             }
 
             if (_remoteIpMatcher.HasRules && _remoteIpMatcher.IsMatch(connection.RemoteEndpoint.Address))
-
-
-
             {
                 return true;
             }
@@ -92,7 +89,7 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
         var localAddr = connection.LocalEndpoint.Address;
         var remoteAddr = connection.RemoteEndpoint.Address;
 
-        // Si la socket écoute ou communique exclusivement sur loopback, il s'agit d'un flux interne
+        // If the socket listens or communicates exclusively on loopback, it is an internal host flow
         if (IPAddress.IsLoopback(localAddr))
         {
             if (connection.Direction == SocketFlowDirection.Listening ||
@@ -105,7 +102,7 @@ public sealed class NetworkFlowFilter(NetworkFlowFilterOptions options) : INetwo
             }
         }
 
-        // Si la socket écoute sur 0.0.0.0 ou toute autre interface publique, elle n'est pas interne
+        // If the socket listens on 0.0.0.0 or any public interface, it is an exposed service
         if (connection.Direction == SocketFlowDirection.Listening ||
             remoteAddr.Equals(IPAddress.Any) ||
             remoteAddr.Equals(IPAddress.IPv6Any) ||

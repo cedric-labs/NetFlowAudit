@@ -1,27 +1,27 @@
 namespace NetFlowAudit.Core.Filtering;
 
 /// <summary>
-/// Options de filtrage des flux réseau (loopback, ports locaux, ports distants, adresses IP distantes).
+/// Network flow filtering options (loopback traffic, local ports, remote ports, remote IP addresses).
 /// </summary>
 public sealed record NetworkFlowFilterOptions
 {
     /// <summary>
-    /// Exclut les flux locaux intra-machine (LocalIp == RemoteIp ou adresses loopback).
+    /// Excludes intra-machine flows (LocalIp == RemoteIp or loopback address ranges).
     /// </summary>
     public bool ExcludeLoopbackFlows { get; init; } = true;
 
     /// <summary>
-    /// Ports locaux à exclure de l'audit.
+    /// Local ports to exclude from flow auditing.
     /// </summary>
     public IReadOnlySet<int> ExcludedLocalPorts { get; init; } = new HashSet<int>();
 
     /// <summary>
-    /// Ports distants à exclure de l'audit.
+    /// Remote ports to exclude from flow auditing.
     /// </summary>
     public IReadOnlySet<int> ExcludedRemotePorts { get; init; } = new HashSet<int>();
 
     /// <summary>
-    /// Adresses IP ou sous-réseaux distants (CIDR) à exclure de l'audit.
+    /// Remote IP addresses or CIDR subnets to exclude from flow auditing.
     /// </summary>
     public IReadOnlyList<string> ExcludedRemoteIps { get; init; } = [];
 }

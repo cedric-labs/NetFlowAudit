@@ -3,27 +3,27 @@ using System.Text.Json;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Analyseur syntaxique de réponses JSON RDAP (RFC 7483) extrayant l'organisation, le pays et le réseau propriétaire d'une adresse IP.
+/// Parser for RDAP JSON responses (RFC 7483) extracting organization, country, and network block metadata.
 /// </summary>
 public static class RdapResponseParser
 {
     private const int MaxOrganizationLength = 80;
 
     /// <summary>
-    /// Extrait le nom de l'organisation ou du détenteur d'un bloc IP à partir d'un document RDAP.
+    /// Extracts the owning organization or entity name from an RDAP JSON response.
     /// </summary>
-    /// <param name="jsonContent">Contenu JSON brut renvoyé par le service RDAP.</param>
-    /// <returns>Nom nettoyé de l'organisation ou null si introuvable.</returns>
+    /// <param name="jsonContent">Raw JSON payload returned by the RDAP service.</param>
+    /// <returns>Cleaned organization name, or null if not found.</returns>
     public static string? ExtractOrganization(string jsonContent)
     {
         return ExtractOwnerDetails(jsonContent)?.Organization;
     }
 
     /// <summary>
-    /// Extrait les métadonnées complètes du bloc IP (organisation, pays, plage réseau, handle) à partir d'un document RDAP.
+    /// Extracts complete network block metadata (organization, country, network range, handle) from an RDAP JSON response.
     /// </summary>
-    /// <param name="jsonContent">Contenu JSON brut renvoyé par le service RDAP.</param>
-    /// <returns>Métadonnées extraites ou null si le document est vide ou invalide.</returns>
+    /// <param name="jsonContent">Raw JSON payload returned by the RDAP service.</param>
+    /// <returns>Extracted metadata, or null if the payload is empty or invalid.</returns>
     public static IpOwnerMetadata? ExtractOwnerDetails(string jsonContent)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
@@ -73,14 +73,15 @@ public static class RdapResponseParser
         }
         catch (JsonException)
         {
-            // Toléré en cas de JSON tronqué ou malformé provenant du réseau
-            return null;
+            // Tolerated on truncated or malformed network responses
         }
+
+        return null;
     }
 
     private static string? ExtractOrganizationFromRoot(JsonElement root)
     {
-        // 1. Recherche prioritaire dans les entités avec rôle 'registrant'
+        // 1. Priority lookup in entities with 'registrant' role
         if (root.TryGetProperty("entities", out var entities) && entities.ValueKind == JsonValueKind.Array)
         {
             var registrantOrg = FindOrganizationInEntities(entities, targetRole: "registrant");
@@ -89,7 +90,7 @@ public static class RdapResponseParser
                 return SanitizeName(registrantOrg);
             }
 
-            // 2. Recherche secondaire dans toute autre entité
+            // 2. Secondary lookup across any other entity role
             var anyOrg = FindOrganizationInEntities(entities, targetRole: null);
             if (!string.IsNullOrWhiteSpace(anyOrg))
             {
@@ -97,7 +98,7 @@ public static class RdapResponseParser
             }
         }
 
-        // 3. Repli sur le champ racine 'name' (ex: "MSFT", "FR-PROXAD")
+        // 3. Fallback to root 'name' property (e.g. "MSFT", "FR-PROXAD")
         if (root.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
         {
             var nameVal = nameProp.GetString();
@@ -132,7 +133,7 @@ public static class RdapResponseParser
                 continue;
             }
 
-            // Extraction depuis vcardArray: ["vcard", [ [ "version", {}, "text", "4.0" ], [ "fn", {}, "text", "Name" ], ... ]]
+            // Extract from vcardArray: ["vcard", [ [ "version", {}, "text", "4.0" ], [ "fn", {}, "text", "Name" ], ... ]]
             if (entity.TryGetProperty("vcardArray", out var vcardArray) &&
                 vcardArray.ValueKind == JsonValueKind.Array &&
                 vcardArray.GetArrayLength() >= 2)
@@ -167,7 +168,7 @@ public static class RdapResponseParser
                 }
             }
 
-            // Récursion éventuelle sur entités imbriquées
+            // Recursive lookup in nested entities if present
             if (entity.TryGetProperty("entities", out var nestedEntities) && nestedEntities.ValueKind == JsonValueKind.Array)
             {
                 var nestedResult = FindOrganizationInEntities(nestedEntities, targetRole);

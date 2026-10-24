@@ -1,123 +1,123 @@
 namespace NetFlowAudit.Cli.Configuration;
 
 /// <summary>
-/// Configuration globale de l'agent d'audit réseau NetFlowAudit.
+/// Global configuration model for the NetFlowAudit network flow auditing agent.
 /// </summary>
 public sealed record AppConfiguration
 {
     /// <summary>
-    /// Intervalle de scan des connexions en secondes (par défaut : 5s).
+    /// Connection scan interval in seconds (default: 5s).
     /// </summary>
     public int ScanIntervalSeconds { get; init; } = 5;
 
     /// <summary>
-    /// Chemin du fichier CSV de sortie.
+    /// Output CSV file path.
     /// </summary>
     public string OutputCsvPath { get; init; } = "netflow_audit.csv";
 
     /// <summary>
-    /// Chemin du fichier HTML de cartographie topologique (vide si désactivé par défaut).
+    /// Output HTML topology map file path (empty if disabled by default).
     /// </summary>
     public string OutputHtmlMapPath { get; init; } = string.Empty;
 
     /// <summary>
-    /// Exclut les ports éphémères (49152-65535) lors de la génération de la cartographie HTML.
+    /// Exclude ephemeral ports (49152-65535) during HTML map generation.
     /// </summary>
     public bool MapExcludeEphemeralPorts { get; init; } = true;
 
     /// <summary>
-    /// Limite la cartographie uniquement aux ports en écoute passive.
+    /// Restrict the topology map strictly to passive listening ports.
     /// </summary>
     public bool MapListenersOnly { get; init; } = false;
 
     /// <summary>
-    /// Liste des ports ou plages de ports (ex: "80", "443", "8000-8080") à inclure dans la carte.
+    /// List of ports or port ranges (e.g. "80", "443", "8000-8080") to include in the map.
     /// </summary>
     public List<string> MapIncludedPorts { get; init; } = [];
 
     /// <summary>
-    /// Liste des ports ou plages de ports à exclure de la carte.
+    /// List of ports or port ranges to exclude from the map.
     /// </summary>
     public List<string> MapExcludedPorts { get; init; } = [];
 
     /// <summary>
-    /// Liste des motifs de noms d'hôtes à inclure dans la carte (supporte '*').
+    /// List of host name wildcard patterns to include in the map (supports '*').
     /// </summary>
     public List<string> MapIncludedHosts { get; init; } = [];
 
     /// <summary>
-    /// Liste des motifs de noms d'hôtes à exclure de la carte (supporte '*').
+    /// List of host name wildcard patterns to exclude from the map (supports '*').
     /// </summary>
     public List<string> MapExcludedHosts { get; init; } = [];
 
     /// <summary>
-    /// Liste des adresses IP ou sous-réseaux CIDR à inclure dans la carte.
+    /// List of IP addresses or CIDR subnets to include in the map.
     /// </summary>
     public List<string> MapIncludedIps { get; init; } = [];
 
     /// <summary>
-    /// Liste des adresses IP ou sous-réseaux CIDR à exclure de la carte.
+    /// List of IP addresses or CIDR subnets to exclude from the map.
     /// </summary>
     public List<string> MapExcludedIps { get; init; } = [];
 
     /// <summary>
-    /// Liste des processus ou cibles applicatives à inclure dans la carte.
+    /// List of process names or application targets to include in the map.
     /// </summary>
     public List<string> MapIncludedProcesses { get; init; } = [];
 
     /// <summary>
-    /// Liste des processus ou cibles applicatives à exclure de la carte.
+    /// List of process names or application targets to exclude from the map.
     /// </summary>
     public List<string> MapExcludedProcesses { get; init; } = [];
 
     /// <summary>
-    /// Méthode de tri initial des serveurs sur la carte ("barycentric", "degree", "alpha", "subnet").
+    /// Initial server sorting method on the map ("barycentric", "degree", "alpha", "subnet").
     /// </summary>
     public string MapSortMethod { get; init; } = "barycentric";
 
     /// <summary>
-    /// Mode de routage initial des flèches sur la carte ("bezier", "orthogonal", "straight").
+    /// Initial arrow routing mode on the map ("bezier", "orthogonal", "straight").
     /// </summary>
     public string MapRoutingMode { get; init; } = "bezier";
 
     /// <summary>
-    /// Profil d'écartement initial entre serveurs et flèches ("compact", "balanced", "spacious").
+    /// Initial spacing profile between servers and arrows ("compact", "balanced", "spacious").
     /// </summary>
     public string MapSpacingProfile { get; init; } = "balanced";
 
     /// <summary>
-    /// Colonnes ordonnées à exporter dans le fichier CSV.
-    /// Si la liste est vide, l'ensemble des 20 colonnes par défaut est exporté.
+    /// Ordered columns to export to the CSV file.
+    /// If empty, the default set of 20 columns is exported.
     /// </summary>
     public List<string> CsvColumns { get; init; } = [];
 
     /// <summary>
-    /// Séparateur de champ pour le fichier CSV (virgule ',' par défaut).
+    /// Field delimiter for the CSV file (comma ',' by default).
     /// </summary>
     public string CsvDelimiter { get; init; } = ",";
 
     /// <summary>
-    /// Active ou désactive la résolution DNS inverse des adresses IP distantes.
+    /// Enables or disables asynchronous reverse DNS resolution for remote IP addresses.
     /// </summary>
     public bool ResolveRemoteHostNames { get; init; } = true;
 
     /// <summary>
-    /// Active ou désactive la résolution de l'organisation ou du propriétaire IP (RDAP) en cas d'absence de PTR DNS.
+    /// Enables or disables RDAP IP organization resolution when PTR records are absent.
     /// </summary>
     public bool ResolveIpOwners { get; init; } = true;
 
     /// <summary>
-    /// Mode isolé / hors-ligne : désactive toute tentative de résolution externe vers Internet.
+    /// Air-gapped / offline mode: disables all external network resolution queries.
     /// </summary>
     public bool IsolatedMode { get; init; } = false;
 
     /// <summary>
-    /// Chemin du fichier de persistance du cache DNS inverse (JSON).
+    /// Reverse DNS persistent cache file path (JSON format).
     /// </summary>
     public string DnsCacheFilePath { get; init; } = "netflow_dns_cache.json";
 
     /// <summary>
-    /// Liste des sous-réseaux (CIDR) ou adresses IP exclues de la résolution DNS inverse.
+    /// List of CIDR subnets or IP addresses excluded from reverse DNS resolution.
     /// </summary>
     public List<string> DnsExcludedNetworks { get; init; } =
     [
@@ -130,67 +130,67 @@ public sealed record AppConfiguration
     ];
 
     /// <summary>
-    /// PIDs à exclure systématiquement.
+    /// Process IDs (PIDs) to exclude systematically.
     /// </summary>
     public List<int> ExcludedPids { get; init; } = [0, 4];
 
     /// <summary>
-    /// Noms exacts de processus à ignorer.
+    /// Exact process names to ignore.
     /// </summary>
     public List<string> ExcludedExactNames { get; init; } = ["System", "Idle"];
 
     /// <summary>
-    /// Préfixes de noms de processus à exclure.
+    /// Process name prefixes to exclude.
     /// </summary>
     public List<string> ExcludedPrefixes { get; init; } = [];
 
     /// <summary>
-    /// Suffixes de noms de processus à exclure.
+    /// Process name suffixes to exclude.
     /// </summary>
     public List<string> ExcludedSuffixes { get; init; } = [];
 
     /// <summary>
-    /// Segments de noms de processus à exclure.
+    /// Process name substrings to exclude.
     /// </summary>
     public List<string> ExcludedContains { get; init; } = [];
 
     /// <summary>
-    /// Exclure les processus système (NT AUTHORITY, SYSTEM, root).
+    /// Exclude system service accounts (NT AUTHORITY, SYSTEM, root).
     /// </summary>
     public bool ExcludeSystemAccounts { get; init; } = true;
 
     /// <summary>
-    /// Exclure les flux intra-machine (LocalIp == RemoteIp ou boucle locale).
+    /// Exclude intra-host flows (LocalIp == RemoteIp or loopback address range).
     /// </summary>
     public bool ExcludeLoopbackFlows { get; init; } = true;
 
     /// <summary>
-    /// Liste des ports locaux à exclure de l'audit.
+    /// List of local ports to exclude from auditing.
     /// </summary>
     public List<int> ExcludedLocalPorts { get; init; } = [];
 
     /// <summary>
-    /// Liste des ports distants à exclure de l'audit.
+    /// List of remote ports to exclude from auditing.
     /// </summary>
     public List<int> ExcludedRemotePorts { get; init; } = [];
 
     /// <summary>
-    /// Liste des adresses IP ou sous-réseaux distants (CIDR) à exclure de l'audit.
+    /// List of remote IP addresses or CIDR subnets to exclude from auditing.
     /// </summary>
     public List<string> ExcludedRemoteIps { get; init; } = [];
 
     /// <summary>
-    /// Active l'interface terminal dynamique (TUI) en mode interactif.
+    /// Enables interactive terminal dashboard (TUI) display mode.
     /// </summary>
     public bool EnableDashboard { get; init; } = true;
 
     /// <summary>
-    /// Nom de serveur fictif affichÃ© dans le tableau de bord (pour captures d'Ã©cran anonymisÃ©es).
+    /// Masked server name displayed in the dashboard header for anonymized presentations.
     /// </summary>
     public string MaskServerName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Adresse IP locale fictive affichÃ©e dans le tableau de bord (pour captures d'Ã©cran anonymisÃ©es).
+    /// Masked local IP address displayed in dashboard rows for anonymized presentations.
     /// </summary>
     public string MaskLocalIp { get; init; } = string.Empty;
 }

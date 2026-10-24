@@ -3,23 +3,23 @@ using System.Net;
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Contrat de résolution de l'organisation ou entité détentrice d'une adresse IP.
+/// Service contract for resolving the organization or entity owning an IP address.
 /// </summary>
 public interface IIpOrganizationResolver : IDisposable
 {
     /// <summary>
-    /// Résout le nom d'organisation ou entité associée à une adresse IP.
+    /// Resolves the organization or entity name associated with the specified IP address.
     /// </summary>
-    /// <param name="address">Adresse IP à résoudre.</param>
-    /// <param name="cancellationToken">Jeton d'annulation.</param>
-    /// <returns>Nom d'organisation ou null si introuvable.</returns>
+    /// <param name="address">Target IP address to resolve.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Organization name, or null if not found.</returns>
     Task<string?> ResolveOrganizationAsync(IPAddress address, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Résout les métadonnées réseau détaillées (organisation, pays, plage réseau, handle) associées à une adresse IP.
+    /// Resolves detailed network owner metadata (organization, country, network range, handle) associated with an IP address.
     /// </summary>
-    /// <param name="address">Adresse IP à résoudre.</param>
-    /// <param name="cancellationToken">Jeton d'annulation.</param>
-    /// <returns>Métadonnées détaillées ou null si introuvable.</returns>
+    /// <param name="address">Target IP address to resolve.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Detailed owner metadata, or null if not found.</returns>
     Task<IpOwnerMetadata?> ResolveOwnerDetailsAsync(IPAddress address, CancellationToken cancellationToken = default);
 }

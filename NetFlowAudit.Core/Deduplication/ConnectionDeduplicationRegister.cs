@@ -5,16 +5,16 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Deduplication;
 
 /// <summary>
-/// Registre thread-safe de dédoublonnage des entrées d'audit réseau.
+/// Thread-safe deduplication register aggregating active network flow records over time.
 /// </summary>
 public sealed class ConnectionDeduplicationRegister
 {
     private readonly ConcurrentDictionary<FlowIdentityKey, NetworkAuditEntry?> _activeFlows = new();
 
     /// <summary>
-    /// Hydrate le registre avec des clés préexistantes (ex: rechargées depuis un CSV au démarrage).
+    /// Hydrates the register with pre-existing flow keys (e.g. reloaded from disk on startup).
     /// </summary>
-    /// <param name="existingKeys">Liste des clés logiques textuelles existantes.</param>
+    /// <param name="existingKeys">Collection of pre-existing textual logical flow keys.</param>
     public void Hydrate(IEnumerable<string> existingKeys)
     {
         ArgumentNullException.ThrowIfNull(existingKeys);
@@ -29,11 +29,11 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Tente d'enregistrer une entrée d'audit. Retourne true si c'est la première occurrence observée.
+    /// Attempts to register an audit entry. Returns true if this is the first observation cycle for this flow.
     /// </summary>
-    /// <param name="candidate">Entrée d'audit candidate.</param>
-    /// <param name="registered">Entrée enregistrée ou mise à jour dans le registre.</param>
-    /// <returns>True si l'entrée est nouvelle, False s'il s'agit d'une mise à jour.</returns>
+    /// <param name="candidate">Candidate audit entry.</param>
+    /// <param name="registered">Registered or updated entry in the register.</param>
+    /// <returns>True if newly discovered; false if updating an existing flow record.</returns>
     public bool TryRegisterOrUpdate(NetworkAuditEntry candidate, out NetworkAuditEntry registered)
     {
         ArgumentNullException.ThrowIfNull(candidate);
@@ -68,9 +68,9 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Met à jour une entrée déjà enregistrée dans le registre (ex: enrichissement après résolution DNS inverse).
+    /// Updates an existing registered audit entry (e.g. after reverse DNS enrichment).
     /// </summary>
-    /// <param name="updated">Entrée enrichie à consigner dans le registre.</param>
+    /// <param name="updated">Enriched audit entry to store.</param>
     public void UpdateRegisteredEntry(NetworkAuditEntry updated)
     {
         ArgumentNullException.ThrowIfNull(updated);
@@ -79,10 +79,10 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Met à jour le nom d'hôte distant pour l'ensemble des flux enregistrés correspondant à une adresse IP distante donnée.
+    /// Updates the remote host name for all registered flows matching a specific remote IP address.
     /// </summary>
-    /// <param name="remoteAddress">Adresse IP distante dont le nom d'hôte a été résolu.</param>
-    /// <param name="resolvedHostName">Nom d'hôte résolu.</param>
+    /// <param name="remoteAddress">Remote IP address whose host name was resolved.</param>
+    /// <param name="resolvedHostName">Resolved host name or FQDN.</param>
     public void UpdateRemoteHostName(IPAddress remoteAddress, string resolvedHostName)
     {
         ArgumentNullException.ThrowIfNull(remoteAddress);
@@ -98,9 +98,9 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Retourne un instantané de l'ensemble des entrées d'audit actives enregistrées en mémoire.
+    /// Returns a point-in-time snapshot of all active audit entries stored in memory.
     /// </summary>
-    /// <returns>Liste en lecture seule des entrées d'audit.</returns>
+    /// <returns>Read-only list of audit entries.</returns>
     public IReadOnlyList<NetworkAuditEntry> GetAllEntries()
     {
         var list = new List<NetworkAuditEntry>(_activeFlows.Count);
@@ -116,7 +116,7 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
-    /// Nombre total de flux uniques répertoriés.
+    /// Total count of unique flows recorded.
     /// </summary>
     public int UniqueCount => _activeFlows.Count;
 }

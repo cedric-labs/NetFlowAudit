@@ -1,27 +1,27 @@
 namespace NetFlowAudit.Cli.Dashboard;
 
 /// <summary>
-/// Colonnes interactives sélectionnables pour exclusion directe de flux dans le tableau de bord TUI.
+/// Selectable interactive columns for inline flow exclusion in the TUI dashboard.
 /// </summary>
 public enum InteractiveExclusionColumn
 {
     /// <summary>
-    /// Port local d'écoute ou de communication.
+    /// Local listening or communicating port.
     /// </summary>
     Local = 0,
 
     /// <summary>
-    /// Adresse IP ou port distant de communication.
+    /// Remote communication IP address or port.
     /// </summary>
     Remote = 1,
 
     /// <summary>
-    /// Nom exact du processus propriétaire.
+    /// Exact owning process name.
     /// </summary>
     Process = 2,
 
     /// <summary>
-    /// Exécutable cible ou ligne de commande.
+    /// Application target executable or payload command line.
     /// </summary>
     Target = 3
 }

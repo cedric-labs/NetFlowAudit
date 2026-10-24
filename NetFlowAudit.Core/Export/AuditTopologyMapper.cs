@@ -9,10 +9,10 @@ using TopologyForge.Rendering;
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Adaptateur et orchestrateur reliant les enregistrements d'audit <see cref="NetFlowAudit"/> au moteur de cartographie <see cref="TopologyForge"/>.
+/// Adapter and orchestrator mapping <see cref="NetFlowAudit"/> audit entries to the <see cref="TopologyForge"/> graph and HTML rendering pipeline.
 /// </summary>
-/// <param name="csvParser">Analyseur de fichiers CSV topologiques (optionnel).</param>
-/// <param name="htmlRenderer">Générateur de cartes HTML autonomes (optionnel).</param>
+/// <param name="csvParser">Optional topology CSV parser.</param>
+/// <param name="htmlRenderer">Optional standalone HTML map renderer.</param>
 public sealed class AuditTopologyMapper(
     ITopologyCsvParser? csvParser = null,
     ITopologyHtmlRenderer? htmlRenderer = null)
@@ -21,10 +21,10 @@ public sealed class AuditTopologyMapper(
     private readonly ITopologyHtmlRenderer _htmlRenderer = htmlRenderer ?? new TopologyHtmlRenderer();
 
     /// <summary>
-    /// Convertit une entrée d'audit consolidée en enregistrement de flux topologique.
+    /// Converts a consolidated audit entry into a normalized topology flow record.
     /// </summary>
-    /// <param name="entry">Entrée d'audit réseau.</param>
-    /// <returns>Enregistrement topologique normalisé.</returns>
+    /// <param name="entry">Network flow audit entry.</param>
+    /// <returns>Normalized topology flow record.</returns>
     public static TopologyFlowRecord ToTopologyFlowRecord(NetworkAuditEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -63,38 +63,38 @@ public sealed class AuditTopologyMapper(
     }
 
     /// <summary>
-    /// Construit le graphe topologique filtré et génère le fichier HTML autonome à partir d'une collection d'entrées d'audit.
+    /// Builds a filtered topology graph and writes a standalone HTML5 map file from a collection of audit entries.
     /// </summary>
-    /// <param name="entries">Entrées d'audit collectées.</param>
-    /// <param name="outputHtmlPath">Chemin du fichier HTML de sortie.</param>
-    /// <param name="filterOptions">Options de filtrage d'inclusion et d'exclusion.</param>
-    /// <param name="title">Titre de la cartographie.</param>
-    /// <param name="cancellationToken">Jeton d'annulation coopératif.</param>
-    /// <returns>Graphe topologique généré.</returns>
+    /// <param name="entries">Collected audit entries.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated network topology graph.</returns>
     public Task<NetworkTopologyGraph> GenerateHtmlMapFromEntriesAsync(
         IEnumerable<NetworkAuditEntry> entries,
         string outputHtmlPath,
         TopologyFilterOptions filterOptions,
-        string title = "Cartographie NetFlowAudit",
+        string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
         => GenerateHtmlMapFromEntriesAsync(entries, outputHtmlPath, filterOptions, new TopologyRenderingOptions(), title, cancellationToken);
 
     /// <summary>
-    /// Construit le graphe topologique filtré et génère le fichier HTML autonome avec des options d'agencement personnalisées.
+    /// Builds a filtered topology graph and writes a standalone HTML5 map file with custom rendering and layout options.
     /// </summary>
-    /// <param name="entries">Entrées d'audit collectées.</param>
-    /// <param name="outputHtmlPath">Chemin du fichier HTML de sortie.</param>
-    /// <param name="filterOptions">Options de filtrage d'inclusion et d'exclusion.</param>
-    /// <param name="renderingOptions">Options de tri, routage et écartement.</param>
-    /// <param name="title">Titre de la cartographie.</param>
-    /// <param name="cancellationToken">Jeton d'annulation coopératif.</param>
-    /// <returns>Graphe topologique généré.</returns>
+    /// <param name="entries">Collected audit entries.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="renderingOptions">Sorting, routing, and spacing rendering options.</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated network topology graph.</returns>
     public async Task<NetworkTopologyGraph> GenerateHtmlMapFromEntriesAsync(
         IEnumerable<NetworkAuditEntry> entries,
         string outputHtmlPath,
         TopologyFilterOptions filterOptions,
         TopologyRenderingOptions renderingOptions,
-        string title = "Cartographie NetFlowAudit",
+        string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entries);
@@ -113,42 +113,42 @@ public sealed class AuditTopologyMapper(
     }
 
     /// <summary>
-    /// Lit un fichier CSV d'audit existant, applique les filtres d'inclusion/exclusion et génère la cartographie HTML autonome.
+    /// Reads an existing audit CSV file, applies filtering rules, and generates a standalone HTML5 topology map.
     /// </summary>
-    /// <param name="csvFilePath">Chemin du fichier CSV source.</param>
-    /// <param name="outputHtmlPath">Chemin du fichier HTML de sortie.</param>
-    /// <param name="filterOptions">Options de filtrage d'inclusion et d'exclusion.</param>
-    /// <param name="csvDelimiter">Délimiteur CSV (virgule par défaut).</param>
-    /// <param name="title">Titre de la cartographie.</param>
-    /// <param name="cancellationToken">Jeton d'annulation coopératif.</param>
-    /// <returns>Graphe topologique généré.</returns>
+    /// <param name="csvFilePath">Source audit CSV file path.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated network topology graph.</returns>
     public Task<NetworkTopologyGraph> GenerateHtmlMapFromCsvAsync(
         string csvFilePath,
         string outputHtmlPath,
         TopologyFilterOptions filterOptions,
         char csvDelimiter = ',',
-        string title = "Cartographie NetFlowAudit",
+        string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
         => GenerateHtmlMapFromCsvAsync(csvFilePath, outputHtmlPath, filterOptions, new TopologyRenderingOptions(), csvDelimiter, title, cancellationToken);
 
     /// <summary>
-    /// Lit un fichier CSV d'audit existant, applique les filtres et les options de rendu, puis génère la cartographie HTML autonome.
+    /// Reads an existing audit CSV file, applies filtering and rendering options, and generates a standalone HTML5 topology map.
     /// </summary>
-    /// <param name="csvFilePath">Chemin du fichier CSV source.</param>
-    /// <param name="outputHtmlPath">Chemin du fichier HTML de sortie.</param>
-    /// <param name="filterOptions">Options de filtrage d'inclusion et d'exclusion.</param>
-    /// <param name="renderingOptions">Options de tri, routage et écartement.</param>
-    /// <param name="csvDelimiter">Délimiteur CSV (virgule par défaut).</param>
-    /// <param name="title">Titre de la cartographie.</param>
-    /// <param name="cancellationToken">Jeton d'annulation coopératif.</param>
-    /// <returns>Graphe topologique généré.</returns>
+    /// <param name="csvFilePath">Source audit CSV file path.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="renderingOptions">Sorting, routing, and spacing rendering options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated network topology graph.</returns>
     public async Task<NetworkTopologyGraph> GenerateHtmlMapFromCsvAsync(
         string csvFilePath,
         string outputHtmlPath,
         TopologyFilterOptions filterOptions,
         TopologyRenderingOptions renderingOptions,
         char csvDelimiter = ',',
-        string title = "Cartographie NetFlowAudit",
+        string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(csvFilePath);

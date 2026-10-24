@@ -1,37 +1,37 @@
 namespace NetFlowAudit.Core.Resolution;
 
 /// <summary>
-/// Entrée structurée du cache DNS inverse persistant associant une adresse IP à ses métadonnées de résolution.
+/// Persistent reverse DNS cache entry associating an IP address with resolution metadata.
 /// </summary>
 public sealed record DnsCacheEntry
 {
     /// <summary>
-    /// Nom d'hôte résolu (nom DNS PTR prioritaire, ou organisation RDAP en repli).
+    /// Resolved host name (DNS PTR priority, or RDAP organization fallback).
     /// </summary>
     public string HostName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Nom de l'organisation détentrice de l'adresse IP (RDAP).
+    /// Organization name owning the IP address (RDAP).
     /// </summary>
     public string? Organization { get; init; }
 
     /// <summary>
-    /// Code pays ou région de l'adresse IP (RDAP).
+    /// Country code or region of the IP address (RDAP).
     /// </summary>
     public string? Country { get; init; }
 
     /// <summary>
-    /// Plage réseau déclarée (RDAP).
+    /// Allocated network range (RDAP).
     /// </summary>
     public string? NetworkRange { get; init; }
 
     /// <summary>
-    /// Source de la résolution ("DNS", "RDAP", ou "None").
+    /// Resolution source ("DNS", "RDAP", or "None").
     /// </summary>
     public string Source { get; init; } = "DNS";
 
     /// <summary>
-    /// Horodatage UTC de la résolution.
+    /// UTC timestamp of resolution completion.
     /// </summary>
     public DateTimeOffset ResolvedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 }
