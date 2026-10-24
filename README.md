@@ -8,6 +8,13 @@
 
 ---
 
+## Documentation
+
+- **[User Guide & Operations](docs/user-guide.md)**: Comprehensive guide covering installation, interactive TUI shortcuts, Windows Service / Linux `systemd` deployments, multi-server fleet consolidation, air-gapped environments, practical recipes, and configuration.
+- **[Architecture & Engineering Specification](docs/architecture.md)**: Deep dive into the internal pipeline, C4 component architecture, shared frameworks (`SocketForge`, `ProcessForge`, `FileForge.Core`, `TopologyForge`), deduplication engine, and security model.
+
+---
+
 ## Preview
 
 ### Interactive Terminal Dashboard (TUI)
