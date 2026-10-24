@@ -22,7 +22,7 @@
 
 ---
 
-## Why NetFlowAudit? (The Problem It Solves)
+## Why NetFlowAudit ?
 
 When preparing infrastructure migrations, establishing strict firewall whitelists, or conducting security audits, system administrators and security engineers face a recurring question: **"Which services does this machine actually communicate with over time, and which local application is responsible?"**
 
