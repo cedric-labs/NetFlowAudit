@@ -299,3 +299,9 @@ To run the full quality verification pipeline (formatting, Release build, unit/a
 ```powershell
 .\verify.ps1
 ```
+
+---
+
+## 6. License
+
+This project is licensed under the [MIT License](LICENSE).
