@@ -15,16 +15,16 @@ flowchart TD
     end
 
     subgraph NetFlowAudit_Core["NetFlowAudit Engine"]
-        SF["SocketForge\nSocket Table Polling"]
-        PF["ProcessForge\nPID & Runtime Resolution"]
-        DEDUP["ConnectionDeduplicationRegister\nState Machine & Hit Tracking"]
-        DNS["CachedHostNameResolver\nAsync Reverse DNS & RDAP"]
+        SF["SocketForge - Socket Table Polling"]
+        PF["ProcessForge - PID & Runtime Resolution"]
+        DEDUP["ConnectionDeduplicationRegister - State Machine & Hit Tracking"]
+        DNS["CachedHostNameResolver - Async Reverse DNS & RDAP"]
     end
 
     subgraph Persistence_Presentation["Output & Visualization"]
-        FF["FileForge.Core\nRFC 4180 Non-Blocking CSV"]
-        TF["TopologyForge\nOffline HTML5 Graph Engine"]
-        TUI["Interactive TUI Dashboard\nTerminal Presentation Layer"]
+        FF["FileForge.Core - RFC 4180 Non-Blocking CSV"]
+        TF["TopologyForge - Offline HTML5 Graph Engine"]
+        TUI["Interactive TUI Dashboard - Terminal Presentation Layer"]
     end
 
     TCP --> SF
