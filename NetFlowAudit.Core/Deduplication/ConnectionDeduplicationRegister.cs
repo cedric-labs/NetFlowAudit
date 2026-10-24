@@ -29,6 +29,48 @@ public sealed class ConnectionDeduplicationRegister
     }
 
     /// <summary>
+    /// Hydrates the register with pre-existing audit entries reloaded from disk.
+    /// </summary>
+    /// <param name="existingEntries">Collection of pre-existing network audit entries.</param>
+    public void Hydrate(IEnumerable<NetworkAuditEntry> existingEntries)
+    {
+        ArgumentNullException.ThrowIfNull(existingEntries);
+
+        foreach (var entry in existingEntries)
+        {
+            if (entry is null)
+            {
+                continue;
+            }
+
+            var key = FlowIdentityKey.FromEntry(entry);
+            _activeFlows.AddOrUpdate(
+                key,
+                _ => entry,
+                (_, existing) =>
+                {
+                    if (existing is null)
+                    {
+                        return entry;
+                    }
+
+                    var firstSeen = existing.FirstSeenUtc < entry.FirstSeenUtc ? existing.FirstSeenUtc : entry.FirstSeenUtc;
+                    var lastSeen = existing.LastSeenUtc > entry.LastSeenUtc ? existing.LastSeenUtc : entry.LastSeenUtc;
+                    var obsCount = Math.Max(existing.ObservationCount, entry.ObservationCount);
+                    return existing with
+                    {
+                        FirstSeenUtc = firstSeen,
+                        LastSeenUtc = lastSeen,
+                        ObservationCount = obsCount,
+                        RemoteHostName = !string.IsNullOrWhiteSpace(existing.RemoteHostName)
+                            ? existing.RemoteHostName
+                            : entry.RemoteHostName
+                    };
+                });
+        }
+    }
+
+    /// <summary>
     /// Attempts to register an audit entry. Returns true if this is the first observation cycle for this flow.
     /// </summary>
     /// <param name="candidate">Candidate audit entry.</param>

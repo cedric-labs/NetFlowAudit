@@ -1077,4 +1077,55 @@ public sealed class FlowAuditDashboardRendererTests
 
         return indices;
     }
+
+    [Fact]
+    public void HydrateDiscoveries_WhenHistoricalEntriesProvided_InsertsEntriesAndUpdatesCapacity()
+    {
+        // Arrange
+        var renderer = new FlowAuditDashboardRenderer(5, "audit.csv", null);
+        var proc = new ProcessMetadata(1234, "curl", @"C:\Windows\System32\curl.exe", "", "", "User1");
+        var entry1 = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow.AddMinutes(-5),
+            DateTimeOffset.UtcNow,
+            1,
+            SampleHost,
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50001),
+                new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443),
+                "Established",
+                proc));
+
+        var entry2 = new NetworkAuditEntry(
+            DateTimeOffset.UtcNow.AddMinutes(-2),
+            DateTimeOffset.UtcNow,
+            1,
+            SampleHost,
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("192.168.1.10"), 50002),
+                new SocketEndpoint(IPAddress.Parse("8.8.8.8"), 53),
+                "Established",
+                proc));
+
+        // Act
+        renderer.HydrateDiscoveries([entry1, entry2]);
+
+        // Assert
+        var result = new FlowAuditCycleResult(
+            DateTimeOffset.UtcNow,
+            TotalSocketsScanned: 0,
+            ExcludedSocketsCount: 0,
+            NewlyDiscoveredCount: 0,
+            TotalUniqueFlowsTracked: 2,
+            NewlyDiscoveredEntries: [],
+            ActiveSockets: []);
+
+        var frame = renderer.BuildDashboardFrame(result, SampleHost);
+        frame.Should().Contain("Reloaded 2 historical flows from CSV");
+        frame.Should().Contain("1.1.1.1");
+        frame.Should().Contain("8.8.8.8");
+    }
 }

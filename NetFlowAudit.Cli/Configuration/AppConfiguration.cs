@@ -198,4 +198,10 @@ public sealed record AppConfiguration
     /// User-defined static IP-to-hostname mappings taking precedence over DNS reverse PTR records.
     /// </summary>
     public Dictionary<string, string> CustomHostAliases { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Maximum number of recent historical flow records to reload from the output CSV on startup
+    /// (null or negative to reload all records, 0 to disable history reloading).
+    /// </summary>
+    public int? ReloadHistoryLimit { get; init; } = null;
 }

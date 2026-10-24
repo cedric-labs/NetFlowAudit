@@ -29,6 +29,8 @@ COMMAND-LINE OPTIONS:
   -h, --help                          Display this help message and exit.
   --no-tui, --daemon                  Disable the interactive full-screen terminal dashboard (for services).
   --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
+  --init-config, --generate-config [p]Generate a baseline JSON configuration template (default: netflowaudit.json) and exit.
+  --reload-history <all|0|n>          Historical CSV flow entries to reload at startup (default: all, 0 to disable).
   -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --interval <seconds>                Scan interval in seconds (default: 5).
@@ -122,6 +124,7 @@ INTERACTIVE DASHBOARD SHORTCUTS (TUI):
   "MapRoutingMode": "bezier",
   "MapSpacingProfile": "balanced",
   "EnableDashboard": true,
+  "ReloadHistoryLimit": null,
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,
   "IsolatedMode": false,

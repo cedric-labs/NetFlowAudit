@@ -87,6 +87,8 @@ General Options:
   -h, --help                          Display full help (including the 20 CSV columns catalog) and exit.
   --no-tui, --daemon                  Disable the interactive terminal dashboard (recommended for background services).
   --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
+  --init-config, --generate-config [p]Generate a baseline JSON configuration template (default: netflowaudit.json) and exit.
+  --reload-history <all|0|n>          Number of historical CSV entries to reload at startup (default: all, 0 to disable).
   -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --interval <seconds>                Scan interval in seconds (default: 5).
@@ -224,6 +226,7 @@ On startup, `NetFlowAudit` looks for an optional `netflowaudit.json` file in the
   "MapRoutingMode": "bezier",
   "MapSpacingProfile": "balanced",
   "EnableDashboard": true,
+  "ReloadHistoryLimit": null,
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,
   "IsolatedMode": false,
@@ -246,6 +249,11 @@ On startup, `NetFlowAudit` looks for an optional `netflowaudit.json` file in the
   "ExcludedSuffixes": [],
   "ExcludedContains": [],
   "ExcludeSystemAccounts": false,
+  "MaskServerName": "",
+  "MaskLocalIp": "",
+  "CustomHostAliases": {
+    "10.0.0.5": "srv-oracle-prod"
+  },
   "CsvDelimiter": ",",
   "CsvColumns": [
     "FirstSeenUtc",

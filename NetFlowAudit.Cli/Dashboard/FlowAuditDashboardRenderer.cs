@@ -632,6 +632,42 @@ public sealed partial class FlowAuditDashboardRenderer
     }
 
     /// <summary>
+    /// Hydrates the discoveries buffer with pre-existing audit entries reloaded from disk.
+    /// </summary>
+    /// <param name="existingEntries">Pre-existing audit entries.</param>
+    public void HydrateDiscoveries(IReadOnlyList<NetworkAuditEntry> existingEntries)
+    {
+        ArgumentNullException.ThrowIfNull(existingEntries);
+
+        if (existingEntries.Count == 0)
+        {
+            return;
+        }
+
+        lock (_syncLock)
+        {
+            for (var i = existingEntries.Count - 1; i >= 0; i--)
+            {
+                var entry = existingEntries[i];
+                if (IsEntryExcluded(entry))
+                {
+                    continue;
+                }
+
+                _recentDiscoveries.Add(entry);
+            }
+
+            if (_recentDiscoveries.Count > _maxStoredDiscoveries)
+            {
+                _maxStoredDiscoveries = _recentDiscoveries.Count;
+            }
+
+            _statusBannerMessage = $"Reloaded {existingEntries.Count} historical flows from CSV";
+            _statusBannerExpiresUtc = DateTime.UtcNow.AddSeconds(5);
+        }
+    }
+
+    /// <summary>
     /// Checks whether the terminal window was resized or scrolled and redraws immediately.
     /// </summary>
     public void CheckAndRedrawIfWindowChanged()

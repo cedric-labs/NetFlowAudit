@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
@@ -39,6 +40,16 @@ public static class Program
         if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "help"))
         {
             ConsoleHelpPrinter.PrintHelp();
+            return;
+        }
+
+        if (args.Any(a => a.Equals("--init-config", StringComparison.OrdinalIgnoreCase) ||
+                          a.Equals("--generate-config", StringComparison.OrdinalIgnoreCase)))
+        {
+            var targetPath = GetCommandLineArgumentValue(args, "--init-config") ??
+                             GetCommandLineArgumentValue(args, "--generate-config");
+            var generatedPath = ConfigurationTemplateGenerator.GenerateDefaultConfigFile(targetPath);
+            Console.WriteLine($"Baseline configuration template successfully generated at: {generatedPath}");
             return;
         }
 
@@ -302,6 +313,22 @@ public static class Program
             _ = cts.CancelAsync();
         };
 
+        if (config.ReloadHistoryLimit != 0 && File.Exists(config.OutputCsvPath))
+        {
+            var historyParser = new AuditCsvHistoryParser();
+            var historicalEntries = await historyParser.ParseHistoryAsync(
+                config.OutputCsvPath,
+                config.ReloadHistoryLimit,
+                delimiter,
+                cts.Token).ConfigureAwait(false);
+
+            if (historicalEntries.Count > 0)
+            {
+                deduplicationRegister.Hydrate(historicalEntries);
+                dashboard?.HydrateDiscoveries(historicalEntries);
+            }
+        }
+
         var auditTask = engine.RunContinuousAuditAsync(cts.Token);
 
         if (!Console.IsInputRedirected)
@@ -515,6 +542,21 @@ public static class Program
             excludedRemoteIps = excludeRemoteIpsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
 
+        var reloadHistoryStr = GetCommandLineArgumentValue(args, "--reload-history") ??
+                               GetCommandLineArgumentValue(args, "--history-limit");
+        var reloadHistoryLimit = config.ReloadHistoryLimit;
+        if (!string.IsNullOrWhiteSpace(reloadHistoryStr))
+        {
+            if (reloadHistoryStr.Equals("all", StringComparison.OrdinalIgnoreCase) || reloadHistoryStr == "-1")
+            {
+                reloadHistoryLimit = null;
+            }
+            else if (int.TryParse(reloadHistoryStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedLimit) && parsedLimit >= 0)
+            {
+                reloadHistoryLimit = parsedLimit;
+            }
+        }
+
         var maskServer = GetCommandLineArgumentValue(args, "--mask-server") ??
                          GetCommandLineArgumentValue(args, "--obfuscate-server");
         var maskIp = GetCommandLineArgumentValue(args, "--mask-ip") ??
@@ -562,7 +604,8 @@ public static class Program
             ExcludedRemoteIps = excludedRemoteIps,
             MaskServerName = maskServer ?? config.MaskServerName,
             MaskLocalIp = maskIp ?? config.MaskLocalIp,
-            CustomHostAliases = customAliases
+            CustomHostAliases = customAliases,
+            ReloadHistoryLimit = reloadHistoryLimit
         };
     }
 

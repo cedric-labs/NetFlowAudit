@@ -100,4 +100,46 @@ public sealed class ProgramCommandLineOverridesTests
         // Assert
         updated.OutputCsvPath.Should().Be("short_output.csv");
     }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenReloadHistoryAllProvided_SetsNullLimit()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { ReloadHistoryLimit = 50 };
+        var args = new[] { "--reload-history", "all" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.ReloadHistoryLimit.Should().BeNull();
+    }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenReloadHistoryZeroProvided_SetsZeroLimit()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { ReloadHistoryLimit = null };
+        var args = new[] { "--reload-history", "0" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.ReloadHistoryLimit.Should().Be(0);
+    }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenReloadHistoryPositiveIntegerProvided_SetsExplicitLimit()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { ReloadHistoryLimit = null };
+        var args = new[] { "--history-limit", "250" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.ReloadHistoryLimit.Should().Be(250);
+    }
 }

@@ -1,39 +1,23 @@
 {
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
-  "OutputHtmlMapPath": "",
+  "OutputHtmlMapPath": "netflow_topology.html",
   "MapExcludeEphemeralPorts": true,
   "MapListenersOnly": false,
   "MapIncludedPorts": [],
-  "MapExcludedPorts": [],
+  "MapExcludedPorts": [
+    "53",
+    "123"
+  ],
   "MapIncludedHosts": [],
   "MapExcludedHosts": [],
   "MapIncludedIps": [],
   "MapExcludedIps": [],
   "MapIncludedProcesses": [],
   "MapExcludedProcesses": [],
-  "EnableDashboard": true,
-  "ResolveRemoteHostNames": true,
-  "DnsCacheFilePath": "netflow_dns_cache.json",
-  "DnsExcludedNetworks": [
-    "0.0.0.0",
-    "255.255.255.255",
-    "169.254.0.0/16",
-    "224.0.0.0/4",
-    "fe80::/10",
-    "ff00::/8"
-  ],
-  "ExcludeLoopbackFlows": true,
-  "ExcludedLocalPorts": [],
-  "ExcludedRemotePorts": [],
-  "ExcludedRemoteIps": [],
-  "ExcludedPids": [ 0, 4 ],
-  "ExcludedExactNames": [ "System", "Idle" ],
-  "ExcludedPrefixes": [],
-  "ExcludedSuffixes": [],
-  "ExcludedContains": [],
-  "ExcludeSystemAccounts": false,
-  "CsvDelimiter": ",",
+  "MapSortMethod": "barycentric",
+  "MapRoutingMode": "bezier",
+  "MapSpacingProfile": "balanced",
   "CsvColumns": [
     "FirstSeenUtc",
     "LastSeenUtc",
@@ -55,5 +39,51 @@
     "CommandLine",
     "TargetExecutable",
     "UserName"
-  ]
+  ],
+  "CsvDelimiter": ",",
+  "ResolveRemoteHostNames": true,
+  "ResolveIpOwners": true,
+  "IsolatedMode": false,
+  "DnsCacheFilePath": "netflow_dns_cache.json",
+  "DnsExcludedNetworks": [
+    "0.0.0.0",
+    "255.255.255.255",
+    "169.254.0.0/16",
+    "224.0.0.0/4",
+    "fe80::/10",
+    "ff00::/8"
+  ],
+  "ExcludedPids": [
+    0,
+    4
+  ],
+  "ExcludedExactNames": [
+    "System",
+    "Idle"
+  ],
+  "ExcludedPrefixes": [
+    "svchost"
+  ],
+  "ExcludedSuffixes": [],
+  "ExcludedContains": [],
+  "ExcludeSystemAccounts": false,
+  "ExcludeLoopbackFlows": true,
+  "ExcludedLocalPorts": [
+    22,
+    3389
+  ],
+  "ExcludedRemotePorts": [
+    53
+  ],
+  "ExcludedRemoteIps": [
+    "192.168.1.50",
+    "10.0.0.0/8"
+  ],
+  "EnableDashboard": true,
+  "MaskServerName": "",
+  "MaskLocalIp": "",
+  "CustomHostAliases": {
+    "10.0.0.5": "srv-oracle-prod"
+  },
+  "ReloadHistoryLimit": null
 }
