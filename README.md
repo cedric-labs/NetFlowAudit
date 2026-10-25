@@ -33,6 +33,9 @@
 
 ## Why NetFlowAudit ?
 
+> [!NOTE]
+> **Genesis & Spirit**: NetFlowAudit was born out of a simple desire to see what was really running and talking on my personal setup (Proxmox home servers, a Windows PC, and a Linux desktop). There is zero pretense here — just a practical tool built for everyday needs, shared openly in the hope that it might help someone else.
+
 When preparing infrastructure migrations, establishing strict firewall whitelists, or conducting security audits, system administrators and security engineers face a recurring question: **"Which services does this machine actually communicate with over time, and which local application is responsible?"**
 
 Existing tools often fall into extremes:
