@@ -265,6 +265,9 @@ Once multiple server audit logs have been gathered, use `--map-only` with `--dir
   --dir "\\fileshare\audits\20261024" `
   --pattern "*.csv" `
   --map "\\fileshare\audits\datacenter_topology.html" `
+  --drawio "\\fileshare\audits\datacenter_topology.drawio" `
+  --drawio-edge-mode adaptive `
+  --drawio-theme dark `
   --exclude-ports 53,123,135-139,445
 ```
 

@@ -132,6 +132,13 @@ public static class TopologyMapConfigurationBuilder
         var sortMethod = GetArgumentValue(args, "--map-sort") ?? config.MapSortMethod;
         var routingMode = GetArgumentValue(args, "--map-routing") ?? config.MapRoutingMode;
         var spacingProfile = GetArgumentValue(args, "--map-spacing") ?? config.MapSpacingProfile;
+        var drawioPath = GetArgumentValue(args, "--export-drawio") ??
+                         GetArgumentValue(args, "--drawio") ??
+                         config.OutputDrawioPath;
+        var drawioMode = GetArgumentValue(args, "--drawio-edge-mode") ??
+                         GetArgumentValue(args, "--drawio-mode") ??
+                         config.DrawioEdgeMode;
+        var drawioTheme = GetArgumentValue(args, "--drawio-theme") ?? config.DrawioTheme;
 
         var listenersOnly = config.MapListenersOnly ||
                             args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase));
@@ -154,6 +161,9 @@ public static class TopologyMapConfigurationBuilder
             MapSortMethod = sortMethod,
             MapRoutingMode = routingMode,
             MapSpacingProfile = spacingProfile,
+            OutputDrawioPath = drawioPath,
+            DrawioEdgeMode = drawioMode,
+            DrawioTheme = drawioTheme,
             MapListenersOnly = listenersOnly,
             MapExcludeEphemeralPorts = excludeEphemeral
         };

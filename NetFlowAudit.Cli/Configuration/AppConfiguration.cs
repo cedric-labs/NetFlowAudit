@@ -26,6 +26,21 @@ public sealed record AppConfiguration
     public string OutputHtmlMapPath { get; init; } = string.Empty;
 
     /// <summary>
+    /// Output Draw.io (.drawio) XML topology diagram file path (empty if disabled by default).
+    /// </summary>
+    public string OutputDrawioPath { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Edge aggregation mode for Draw.io diagrams: adaptive, direction, or none.
+    /// </summary>
+    public string DrawioEdgeMode { get; init; } = "adaptive";
+
+    /// <summary>
+    /// Visual theme for Draw.io diagrams: dark or light.
+    /// </summary>
+    public string DrawioTheme { get; init; } = "dark";
+
+    /// <summary>
     /// Exclude ephemeral ports (49152-65535) during HTML map generation.
     /// </summary>
     public bool MapExcludeEphemeralPorts { get; init; } = true;

@@ -14,6 +14,8 @@ using NetFlowAudit.Core.Resolution;
 using ProcessForge.Filtering;
 using ProcessForge.Inspectors;
 using SocketForge.Factories;
+using TopologyForge.Export.Drawio.Adapters;
+using TopologyForge.Export.Drawio.Styling;
 using TopologyForge.Models;
 
 namespace NetFlowAudit.Cli;
@@ -75,6 +77,7 @@ public static class Program
             OutputCsvPath = OutputFilePathResolver.Resolve(config.OutputCsvPath),
             OutputNdjsonPath = OutputFilePathResolver.Resolve(config.OutputNdjsonPath),
             OutputHtmlMapPath = OutputFilePathResolver.Resolve(config.OutputHtmlMapPath),
+            OutputDrawioPath = OutputFilePathResolver.Resolve(config.OutputDrawioPath),
             DnsCacheFilePath = OutputFilePathResolver.Resolve(config.DnsCacheFilePath)
         };
 
@@ -160,6 +163,29 @@ public static class Program
             }
 
             Console.WriteLine($"Topology map generated: {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
+
+            if (!string.IsNullOrWhiteSpace(config.OutputDrawioPath))
+            {
+                var mode = config.DrawioEdgeMode.Equals("direction", StringComparison.OrdinalIgnoreCase)
+                    ? EdgeAggregationMode.ByDirection
+                    : (config.DrawioEdgeMode.Equals("none", StringComparison.OrdinalIgnoreCase)
+                        ? EdgeAggregationMode.None
+                        : EdgeAggregationMode.AdaptiveThreshold);
+
+                var theme = config.DrawioTheme.Equals("light", StringComparison.OrdinalIgnoreCase)
+                    ? DiagramTheme.EnterpriseLight
+                    : DiagramTheme.DarkModern;
+
+                await AuditTopologyMapper.ExportToDrawioAsync(
+                    graph,
+                    config.OutputDrawioPath,
+                    "NetFlowAudit Network Topology",
+                    mode,
+                    theme,
+                    CancellationToken.None).ConfigureAwait(false);
+
+                Console.WriteLine($"Draw.io diagram generated: {Path.GetFullPath(config.OutputDrawioPath)}");
+            }
             return;
         }
 

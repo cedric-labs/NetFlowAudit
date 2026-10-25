@@ -144,6 +144,9 @@ Topology Map Options (TopologyForge):
   --map-spacing <compact|balanced|spacious>
                                       Initial spacing profile between servers and arrows.
   --listeners-only                    Map passive listening ports only.
+  --export-drawio, --drawio <path.drawio> Export editable diagrams to Draw.io / Diagrams.net XML format.
+  --drawio-edge-mode <adaptive|direction|none> Draw.io edge grouping (AdaptiveThreshold, ByDirection, None).
+  --drawio-theme <dark|light>         Draw.io diagram visual theme (DarkModern or EnterpriseLight).
   --include-ephemeral-ports           Disable default ephemeral port exclusion (49152-65535).
 ```
 

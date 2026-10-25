@@ -51,6 +51,10 @@ TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
   --map <path.html>                   Generate a self-contained HTML5 topology map of servers and service ports.
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --map-only                          Generate the HTML topology map from audit logs and exit.
+  --export-drawio, --drawio <file>    Export the topology to an uncompressed Draw.io (.drawio) XML diagram.
+  --drawio-edge-mode <adaptive|direction|none>
+                                      Edge aggregation strategy for Draw.io (default: adaptive).
+  --drawio-theme <dark|light>         Visual theme for Draw.io diagrams (default: dark).
   -i, --input <path.csv>              Single input audit CSV file (default: OutputCsvPath).
   --dir, --input-dir <dir>            Consolidate all audit CSV files from a directory into a unified map.
   --pattern, --input-filter <glob>    File search filter when using --input-dir (default: *.csv).

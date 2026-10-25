@@ -1,6 +1,9 @@
 using NetFlowAudit.Core.Models;
 using SocketForge.Models;
 using TopologyForge.Builders;
+using TopologyForge.Export.Drawio;
+using TopologyForge.Export.Drawio.Adapters;
+using TopologyForge.Export.Drawio.Styling;
 using TopologyForge.Filtering;
 using TopologyForge.Models;
 using TopologyForge.Parsers;
@@ -288,5 +291,39 @@ public sealed class AuditTopologyMapper(
         var files = Directory.GetFiles(directoryPath, pattern, SearchOption.TopDirectoryOnly);
 
         return GenerateHtmlMapFromFilesAsync(files, outputHtmlPath, filterOptions, renderingOptions, csvDelimiter, title, cancellationToken);
+    }
+
+    /// <summary>
+    /// Exports the specified network topology graph to an uncompressed Draw.io (.drawio) XML file.
+    /// </summary>
+    /// <param name="graph">Consolidated topology graph.</param>
+    /// <param name="outputDrawioPath">Target Draw.io output file path.</param>
+    /// <param name="title">Diagram title.</param>
+    /// <param name="aggregationMode">Edge aggregation mode.</param>
+    /// <param name="theme">Visual diagram theme (DarkModern by default).</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    public static Task ExportToDrawioAsync(
+        NetworkTopologyGraph graph,
+        string outputDrawioPath,
+        string title = "NetFlowAudit Network Topology",
+        EdgeAggregationMode aggregationMode = EdgeAggregationMode.AdaptiveThreshold,
+        DiagramTheme? theme = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputDrawioPath);
+
+        var adapter = new TopologyToDrawioAdapter(aggregationMode: aggregationMode);
+        var diagram = adapter.Convert(graph, title);
+        var renderer = new DrawioXmlRenderer();
+        var xml = renderer.Render(diagram, theme ?? DiagramTheme.DarkModern);
+
+        var dir = Path.GetDirectoryName(Path.GetFullPath(outputDrawioPath));
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        return File.WriteAllTextAsync(outputDrawioPath, xml, System.Text.Encoding.UTF8, cancellationToken);
     }
 }
