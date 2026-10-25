@@ -121,6 +121,38 @@ public sealed class TopologyMapConfigurationBuilderTests
     }
 
     [Fact]
+    public void BuildRenderingOptions_WhenTreeLayoutConfigured_MapsToTree()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapLayoutMode = "tree"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultLayoutMode.Should().Be(TopologyLayoutMode.Tree);
+    }
+
+    [Fact]
+    public void BuildRenderingOptions_WhenHorizontalTreeLayoutConfigured_MapsToHorizontalTree()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapLayoutMode = "horizontal-tree"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultLayoutMode.Should().Be(TopologyLayoutMode.HorizontalTree);
+    }
+
+    [Fact]
     public void ApplyCommandLineOverrides_WhenMapArgumentsProvided_UpdatesAppConfiguration()
     {
         // Arrange

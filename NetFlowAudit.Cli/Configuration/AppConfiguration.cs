@@ -76,7 +76,7 @@ public sealed record AppConfiguration
     public List<string> MapExcludedProcesses { get; init; } = [];
 
     /// <summary>
-    /// Initial layout mode on the map ("layered", "organic", "circular", "grid").
+    /// Initial layout mode on the map ("layered", "tree", "horizontal-tree", "organic", "circular", "grid").
     /// </summary>
     public string MapLayoutMode { get; init; } = "layered";
 

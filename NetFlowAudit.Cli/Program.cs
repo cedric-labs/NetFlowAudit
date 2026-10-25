@@ -608,6 +608,10 @@ public static class Program
                      GetCommandLineArgumentValue(args, "--obfuscate-ip");
         var isObfuscated = args.Any(a => a.Equals("--obfuscate", StringComparison.OrdinalIgnoreCase) ||
                                          a.Equals("--anonymize", StringComparison.OrdinalIgnoreCase));
+        var mapLayout = GetCommandLineArgumentValue(args, "--map-layout");
+        var mapSort = GetCommandLineArgumentValue(args, "--map-sort");
+        var mapRouting = GetCommandLineArgumentValue(args, "--map-routing");
+        var mapSpacing = GetCommandLineArgumentValue(args, "--map-spacing");
 
         var customAliases = new Dictionary<string, string>(config.CustomHostAliases, StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < args.Length - 1; i++)
@@ -651,7 +655,11 @@ public static class Program
             MaskServerName = maskServer ?? config.MaskServerName,
             MaskLocalIp = maskIp ?? config.MaskLocalIp,
             CustomHostAliases = customAliases,
-            ReloadHistoryLimit = reloadHistoryLimit
+            ReloadHistoryLimit = reloadHistoryLimit,
+            MapLayoutMode = mapLayout ?? config.MapLayoutMode,
+            MapSortMethod = mapSort ?? config.MapSortMethod,
+            MapRoutingMode = mapRouting ?? config.MapRoutingMode,
+            MapSpacingProfile = mapSpacing ?? config.MapSpacingProfile
         };
     }
 

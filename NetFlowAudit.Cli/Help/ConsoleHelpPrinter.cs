@@ -63,7 +63,7 @@ TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
   --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
   --include-processes <proc1,...>     Include only these processes or application targets.
   --exclude-processes <proc1,...>     Exclude these processes or application targets.
-  --map-layout <layered|organic|circular|grid>
+  --map-layout <layered|tree|horizontal-tree|organic|circular|grid>
                                       Initial geometric layout algorithm (layered hierarchical by default).
   --map-sort <barycentric|tiers|subnet|degree|alpha|ip>
                                       Server sorting method (Sugiyama anti-crossing by default).

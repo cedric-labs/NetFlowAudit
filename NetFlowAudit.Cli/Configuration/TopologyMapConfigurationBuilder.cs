@@ -70,6 +70,8 @@ public static class TopologyMapConfigurationBuilder
             "ORGANIC" or "FORCE" or "FORCEDIRECTED" => TopologyLayoutMode.ForceDirectedOrganic,
             "CIRCULAR" or "RING" => TopologyLayoutMode.Circular,
             "GRID" or "MATRIX" => TopologyLayoutMode.Grid,
+            "TREE" or "TOPDOWN" or "ARBRE" => TopologyLayoutMode.Tree,
+            "HORIZONTALTREE" or "HORIZONTAL-TREE" or "HORIZONTAL" or "LEFTTORIGHT" => TopologyLayoutMode.HorizontalTree,
             _ => TopologyLayoutMode.Layered
         };
 
