@@ -1,3 +1,4 @@
+using System.Text;
 using NetFlowAudit.Core.Models;
 using SocketForge.Models;
 using TopologyForge.Builders;
@@ -402,6 +403,6 @@ public sealed class AuditTopologyMapper(
             Directory.CreateDirectory(dir);
         }
 
-        return File.WriteAllTextAsync(outputDrawioPath, xml, System.Text.Encoding.UTF8, cancellationToken);
+        return File.WriteAllTextAsync(outputDrawioPath, xml, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), cancellationToken);
     }
 }

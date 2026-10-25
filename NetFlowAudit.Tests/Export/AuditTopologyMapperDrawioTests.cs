@@ -62,6 +62,8 @@ public sealed class AuditTopologyMapperDrawioTests
 
             // Assert
             File.Exists(tempFile).Should().BeTrue();
+            var rawBytes = await File.ReadAllBytesAsync(tempFile);
+            rawBytes.Should().StartWith([(byte)'<', (byte)'?']);
             var content = await File.ReadAllTextAsync(tempFile);
             content.Should().Contain("<mxfile host=\"app.diagrams.net\"")
                 .And.Contain("name=\"Audit Topology\"")
