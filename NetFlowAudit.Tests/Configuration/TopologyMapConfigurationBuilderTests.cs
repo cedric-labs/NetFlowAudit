@@ -87,6 +87,40 @@ public sealed class TopologyMapConfigurationBuilderTests
     }
 
     [Fact]
+    public void BuildRenderingOptions_WhenOrganicLayoutAndFunctionalTierConfigured_MapsCorrectly()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapLayoutMode = "organic",
+            MapSortMethod = "tiers"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultLayoutMode.Should().Be(TopologyLayoutMode.ForceDirectedOrganic);
+        renderingOptions.DefaultSortMethod.Should().Be(TopologyNodeSortMethod.FunctionalTier);
+    }
+
+    [Fact]
+    public void BuildRenderingOptions_WhenSubnetClusterConfigured_MapsToSubnetCluster()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapSortMethod = "cluster"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultSortMethod.Should().Be(TopologyNodeSortMethod.SubnetCluster);
+    }
+
+    [Fact]
     public void ApplyCommandLineOverrides_WhenMapArgumentsProvided_UpdatesAppConfiguration()
     {
         // Arrange
@@ -102,6 +136,7 @@ public sealed class TopologyMapConfigurationBuilderTests
             "--exclude-ips", "10.99.0.0/16",
             "--include-processes", "sqlservr",
             "--exclude-processes", "svchost",
+            "--map-layout", "organic",
             "--map-sort", "alpha",
             "--map-routing", "orthogonal",
             "--map-spacing", "compact",
@@ -122,6 +157,7 @@ public sealed class TopologyMapConfigurationBuilderTests
         updated.MapExcludedIps.Should().Equal("10.99.0.0/16");
         updated.MapIncludedProcesses.Should().Equal("sqlservr");
         updated.MapExcludedProcesses.Should().Equal("svchost");
+        updated.MapLayoutMode.Should().Be("organic");
         updated.MapSortMethod.Should().Be("alpha");
         updated.MapRoutingMode.Should().Be("orthogonal");
         updated.MapSpacingProfile.Should().Be("compact");

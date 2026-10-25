@@ -65,10 +65,20 @@ public static class TopologyMapConfigurationBuilder
     {
         ArgumentNullException.ThrowIfNull(config);
 
+        var layoutMode = config.MapLayoutMode.Trim().ToUpperInvariant() switch
+        {
+            "ORGANIC" or "FORCE" or "FORCEDIRECTED" => TopologyLayoutMode.ForceDirectedOrganic,
+            "CIRCULAR" or "RING" => TopologyLayoutMode.Circular,
+            "GRID" or "MATRIX" => TopologyLayoutMode.Grid,
+            _ => TopologyLayoutMode.Layered
+        };
+
         var sortMethod = config.MapSortMethod.Trim().ToUpperInvariant() switch
         {
             "DEGREE" or "CONNECTIONDEGREE" => TopologyNodeSortMethod.ConnectionDegree,
             "ALPHA" or "ALPHABETICAL" or "NAME" => TopologyNodeSortMethod.Alphabetical,
+            "TIERS" or "TIER" or "FUNCTIONALTIER" => TopologyNodeSortMethod.FunctionalTier,
+            "CLUSTER" or "SUBNETCLUSTER" or "ZONE" or "ZONES" => TopologyNodeSortMethod.SubnetCluster,
             "SUBNET" or "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
             _ => TopologyNodeSortMethod.BarycentricSugiyama
         };
@@ -89,6 +99,7 @@ public static class TopologyMapConfigurationBuilder
 
         return new TopologyRenderingOptions
         {
+            DefaultLayoutMode = layoutMode,
             DefaultSortMethod = sortMethod,
             DefaultRoutingMode = routingMode,
             DefaultSpacingProfile = spacingProfile
@@ -115,6 +126,7 @@ public static class TopologyMapConfigurationBuilder
         var excludeIps = ParseCsvArgument(args, "--exclude-ips", config.MapExcludedIps);
         var includeProcesses = ParseCsvArgument(args, "--include-processes", config.MapIncludedProcesses);
         var excludeProcesses = ParseCsvArgument(args, "--exclude-processes", config.MapExcludedProcesses);
+        var layoutMode = GetArgumentValue(args, "--map-layout") ?? config.MapLayoutMode;
         var sortMethod = GetArgumentValue(args, "--map-sort") ?? config.MapSortMethod;
         var routingMode = GetArgumentValue(args, "--map-routing") ?? config.MapRoutingMode;
         var spacingProfile = GetArgumentValue(args, "--map-spacing") ?? config.MapSpacingProfile;
@@ -128,6 +140,7 @@ public static class TopologyMapConfigurationBuilder
         return config with
         {
             OutputHtmlMapPath = mapPath,
+            MapLayoutMode = layoutMode,
             MapIncludedPorts = includePorts,
             MapExcludedPorts = excludePorts,
             MapIncludedHosts = includeHosts,

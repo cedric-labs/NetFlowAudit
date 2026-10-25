@@ -39,6 +39,7 @@ public static class ConfigurationTemplateGenerator
             MapExcludedIps = [],
             MapIncludedProcesses = [],
             MapExcludedProcesses = [],
+            MapLayoutMode = "layered",
             MapSortMethod = "barycentric",
             MapRoutingMode = "bezier",
             MapSpacingProfile = "balanced",

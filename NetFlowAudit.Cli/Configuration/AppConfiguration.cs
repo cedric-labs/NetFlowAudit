@@ -76,7 +76,12 @@ public sealed record AppConfiguration
     public List<string> MapExcludedProcesses { get; init; } = [];
 
     /// <summary>
-    /// Initial server sorting method on the map ("barycentric", "degree", "alpha", "subnet").
+    /// Initial layout mode on the map ("layered", "organic", "circular", "grid").
+    /// </summary>
+    public string MapLayoutMode { get; init; } = "layered";
+
+    /// <summary>
+    /// Initial server sorting method on the map ("barycentric", "tiers", "subnet", "degree", "alpha", "ip").
     /// </summary>
     public string MapSortMethod { get; init; } = "barycentric";
 
