@@ -104,7 +104,12 @@ public static class Program
             return;
         }
 
-        if (args.Any(a => a.Equals("--map-only", StringComparison.OrdinalIgnoreCase)))
+        var isDrawioExportRequested = args.Any(a => a.Equals("--export-drawio", StringComparison.OrdinalIgnoreCase) ||
+                                                    a.Equals("--drawio", StringComparison.OrdinalIgnoreCase));
+        var isMapOnlyRequested = args.Any(a => a.Equals("--map-only", StringComparison.OrdinalIgnoreCase));
+        var isExplicitMapRequested = args.Any(a => a.Equals("--map", StringComparison.OrdinalIgnoreCase));
+
+        if (isMapOnlyRequested || isDrawioExportRequested)
         {
             var inputDir = GetCommandLineArgumentValue(args, "--input-dir") ??
                            GetCommandLineArgumentValue(args, "--dir");
@@ -126,45 +131,53 @@ public static class Program
             if (!string.IsNullOrWhiteSpace(inputDir))
             {
                 Console.WriteLine($"Reading audit logs from directory: {inputDir} (filter: {inputFilter})...");
-                graph = await topologyMapper.GenerateHtmlMapFromDirectoryAsync(
+                graph = await topologyMapper.BuildGraphFromDirectoryAsync(
                     inputDir,
                     inputFilter,
-                    targetHtml,
                     mapFilters,
-                    mapRendering,
                     delimiter,
-                    "Network Flow & Server Topology Map",
                     CancellationToken.None).ConfigureAwait(false);
             }
             else if (!string.IsNullOrWhiteSpace(inputsArg))
             {
                 var files = inputsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 Console.WriteLine($"Reading audit logs from {files.Length} source file(s)...");
-                graph = await topologyMapper.GenerateHtmlMapFromFilesAsync(
+                graph = await topologyMapper.BuildGraphFromFilesAsync(
                     files,
-                    targetHtml,
                     mapFilters,
-                    mapRendering,
                     delimiter,
-                    "Network Flow & Server Topology Map",
                     CancellationToken.None).ConfigureAwait(false);
             }
             else
             {
                 var sourceCsv = singleInput ?? config.OutputCsvPath;
-                graph = await topologyMapper.GenerateHtmlMapFromCsvAsync(
+                graph = await topologyMapper.BuildGraphFromCsvAsync(
                     sourceCsv,
-                    targetHtml,
                     mapFilters,
-                    mapRendering,
                     delimiter,
-                    "Network Flow & Server Topology Map",
                     CancellationToken.None).ConfigureAwait(false);
             }
 
-            Console.WriteLine($"Topology map generated: {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
+            var shouldGenerateHtml = isMapOnlyRequested || isExplicitMapRequested;
+            if (shouldGenerateHtml)
+            {
+                await topologyMapper.WriteHtmlMapAsync(
+                    graph,
+                    targetHtml,
+                    mapRendering,
+                    "Network Flow & Server Topology Map",
+                    CancellationToken.None).ConfigureAwait(false);
 
-            if (!string.IsNullOrWhiteSpace(config.OutputDrawioPath))
+                Console.WriteLine($"Topology map generated: {Path.GetFullPath(targetHtml)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
+            }
+
+            var targetDrawio = config.OutputDrawioPath;
+            if (string.IsNullOrWhiteSpace(targetDrawio) && isDrawioExportRequested)
+            {
+                targetDrawio = "netflow_topology.drawio";
+            }
+
+            if (!string.IsNullOrWhiteSpace(targetDrawio) && (isDrawioExportRequested || isMapOnlyRequested))
             {
                 var mode = config.DrawioEdgeMode.Equals("direction", StringComparison.OrdinalIgnoreCase)
                     ? EdgeAggregationMode.ByDirection
@@ -178,14 +191,15 @@ public static class Program
 
                 await AuditTopologyMapper.ExportToDrawioAsync(
                     graph,
-                    config.OutputDrawioPath,
+                    targetDrawio,
                     "NetFlowAudit Network Topology",
                     mode,
                     theme,
                     CancellationToken.None).ConfigureAwait(false);
 
-                Console.WriteLine($"Draw.io diagram generated: {Path.GetFullPath(config.OutputDrawioPath)}");
+                Console.WriteLine($"Draw.io diagram generated: {Path.GetFullPath(targetDrawio)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
             }
+
             return;
         }
 
@@ -430,13 +444,34 @@ public static class Program
                                     : config.OutputHtmlMapPath;
                                 var mapFilters = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
                                 var mapRendering = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
-                                await topologyMapper.GenerateHtmlMapFromEntriesAsync(
+                                var graph = await topologyMapper.GenerateHtmlMapFromEntriesAsync(
                                     deduplicationRegister.GetAllEntries(),
                                     targetHtml,
                                     mapFilters,
                                     mapRendering,
                                     $"Network Topology Map - {host.HostName}",
                                     cts.Token).ConfigureAwait(false);
+
+                                if (!string.IsNullOrWhiteSpace(config.OutputDrawioPath))
+                                {
+                                    var mode = config.DrawioEdgeMode.Equals("direction", StringComparison.OrdinalIgnoreCase)
+                                        ? EdgeAggregationMode.ByDirection
+                                        : (config.DrawioEdgeMode.Equals("none", StringComparison.OrdinalIgnoreCase)
+                                            ? EdgeAggregationMode.None
+                                            : EdgeAggregationMode.AdaptiveThreshold);
+
+                                    var theme = config.DrawioTheme.Equals("light", StringComparison.OrdinalIgnoreCase)
+                                        ? DiagramTheme.EnterpriseLight
+                                        : DiagramTheme.DarkModern;
+
+                                    await AuditTopologyMapper.ExportToDrawioAsync(
+                                        graph,
+                                        config.OutputDrawioPath,
+                                        $"NetFlowAudit Network Topology - {host.HostName}",
+                                        mode,
+                                        theme,
+                                        cts.Token).ConfigureAwait(false);
+                                }
                             }
                             else if (dashboard is not null)
                             {
@@ -695,7 +730,11 @@ public static class Program
         {
             if (args[i].Equals(argumentName, StringComparison.OrdinalIgnoreCase))
             {
-                return args[i + 1];
+                var candidate = args[i + 1];
+                if (!candidate.StartsWith("-", StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
             }
         }
 

@@ -132,9 +132,24 @@ public static class TopologyMapConfigurationBuilder
         var sortMethod = GetArgumentValue(args, "--map-sort") ?? config.MapSortMethod;
         var routingMode = GetArgumentValue(args, "--map-routing") ?? config.MapRoutingMode;
         var spacingProfile = GetArgumentValue(args, "--map-spacing") ?? config.MapSpacingProfile;
-        var drawioPath = GetArgumentValue(args, "--export-drawio") ??
-                         GetArgumentValue(args, "--drawio") ??
-                         config.OutputDrawioPath;
+
+        var drawioRequested = args.Any(a => a.Equals("--export-drawio", StringComparison.OrdinalIgnoreCase) ||
+                                            a.Equals("--drawio", StringComparison.OrdinalIgnoreCase));
+        var rawDrawioPath = GetArgumentValue(args, "--export-drawio") ??
+                            GetArgumentValue(args, "--drawio");
+
+        string drawioPath;
+        if (drawioRequested && string.IsNullOrWhiteSpace(rawDrawioPath))
+        {
+            drawioPath = !string.IsNullOrWhiteSpace(config.OutputDrawioPath)
+                ? config.OutputDrawioPath
+                : "netflow_topology.drawio";
+        }
+        else
+        {
+            drawioPath = rawDrawioPath ?? config.OutputDrawioPath;
+        }
+
         var drawioMode = GetArgumentValue(args, "--drawio-edge-mode") ??
                          GetArgumentValue(args, "--drawio-mode") ??
                          config.DrawioEdgeMode;
@@ -144,7 +159,7 @@ public static class TopologyMapConfigurationBuilder
                             args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase));
 
         var includeEphemeral = args.Any(a => a.Equals("--include-ephemeral-ports", StringComparison.OrdinalIgnoreCase));
-        var excludeEphemeral = includeEphemeral ? false : config.MapExcludeEphemeralPorts;
+        var excludeEphemeral = !includeEphemeral && config.MapExcludeEphemeralPorts;
 
         return config with
         {
@@ -205,7 +220,11 @@ public static class TopologyMapConfigurationBuilder
         {
             if (args[i].Equals(argumentName, StringComparison.OrdinalIgnoreCase))
             {
-                return args[i + 1];
+                var candidate = args[i + 1];
+                if (!candidate.StartsWith("-", StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
             }
         }
 

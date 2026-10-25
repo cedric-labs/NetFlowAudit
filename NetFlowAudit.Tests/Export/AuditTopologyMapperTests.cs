@@ -298,4 +298,35 @@ public sealed class AuditTopologyMapperTests
         // Assert
         act.Should().Throw<DirectoryNotFoundException>();
     }
+
+    [Fact]
+    public async Task BuildGraphFromCsvAsync_WhenCsvFileProvided_ReturnsGraphWithoutWritingHtml()
+    {
+        // Arrange
+        var mapper = new AuditTopologyMapper();
+        var tempCsv = Path.Combine(Path.GetTempPath(), $"netflow_graph_only_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            await File.WriteAllLinesAsync(tempCsv,
+            [
+                "ServerName,ServerPrimaryIp,Protocol,Direction,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessName,TargetExecutable,ObservationCount",
+                "SRV-APP-01,10.1.0.10,Tcp,Outbound,10.1.0.10,55100,10.1.0.20,5432,SRV-PGSQL-01,dotnet,App.dll,20"
+            ]);
+
+            // Act
+            var graph = await mapper.BuildGraphFromCsvAsync(tempCsv, new TopologyFilterOptions());
+
+            // Assert
+            graph.Nodes.Should().HaveCount(2);
+            graph.Edges.Should().ContainSingle(e => e.TargetPort == 5432);
+        }
+        finally
+        {
+            if (File.Exists(tempCsv))
+            {
+                File.Delete(tempCsv);
+            }
+        }
+    }
 }

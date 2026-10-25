@@ -66,6 +66,116 @@ public sealed class AuditTopologyMapper(
     }
 
     /// <summary>
+    /// Writes a standalone HTML5 topology map file for an existing network topology graph.
+    /// </summary>
+    /// <param name="graph">Constructed network topology graph.</param>
+    /// <param name="outputHtmlPath">Output HTML file path.</param>
+    /// <param name="renderingOptions">Sorting, routing, and spacing rendering options.</param>
+    /// <param name="title">Map document title.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    public Task WriteHtmlMapAsync(
+        NetworkTopologyGraph graph,
+        string outputHtmlPath,
+        TopologyRenderingOptions renderingOptions,
+        string title = "NetFlowAudit Network Topology Map",
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputHtmlPath);
+        ArgumentNullException.ThrowIfNull(renderingOptions);
+
+        var effectiveOptions = renderingOptions with { Title = title };
+        return _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads an existing audit CSV file, applies filtering rules, and builds a consolidated network topology graph without generating HTML.
+    /// </summary>
+    /// <param name="csvFilePath">Source audit CSV file path.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated network topology graph.</returns>
+    public async Task<NetworkTopologyGraph> BuildGraphFromCsvAsync(
+        string csvFilePath,
+        TopologyFilterOptions filterOptions,
+        char csvDelimiter = ',',
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(csvFilePath);
+        ArgumentNullException.ThrowIfNull(filterOptions);
+
+        var flowRecords = await _csvParser.ParseFileAsync(csvFilePath, csvDelimiter, cancellationToken).ConfigureAwait(false);
+        var evaluator = new TopologyFlowEvaluator(filterOptions);
+        var builder = new TopologyGraphBuilder(evaluator);
+        return builder.BuildGraph(flowRecords);
+    }
+
+    /// <summary>
+    /// Reads multiple audit CSV files, consolidates flows across all monitored servers, applies filtering rules, and builds a unified network topology graph without generating HTML.
+    /// </summary>
+    /// <param name="csvFilePaths">Collection of source audit CSV file paths.</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public async Task<NetworkTopologyGraph> BuildGraphFromFilesAsync(
+        IEnumerable<string> csvFilePaths,
+        TopologyFilterOptions filterOptions,
+        char csvDelimiter = ',',
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(csvFilePaths);
+        ArgumentNullException.ThrowIfNull(filterOptions);
+
+        var allFlowRecords = new List<TopologyFlowRecord>();
+        foreach (var filePath in csvFilePaths)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                continue;
+            }
+
+            var records = await _csvParser.ParseFileAsync(filePath, csvDelimiter, cancellationToken).ConfigureAwait(false);
+            allFlowRecords.AddRange(records);
+        }
+
+        var evaluator = new TopologyFlowEvaluator(filterOptions);
+        var builder = new TopologyGraphBuilder(evaluator);
+        return builder.BuildGraph(allFlowRecords);
+    }
+
+    /// <summary>
+    /// Discovers all audit CSV files matching a search pattern in a directory and builds a consolidated network topology graph without generating HTML.
+    /// </summary>
+    /// <param name="directoryPath">Directory path containing audit CSV files.</param>
+    /// <param name="searchPattern">File search pattern (e.g. "*.csv").</param>
+    /// <param name="filterOptions">Inclusion and exclusion filter options.</param>
+    /// <param name="csvDelimiter">CSV delimiter character (comma by default).</param>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>Generated consolidated network topology graph.</returns>
+    public Task<NetworkTopologyGraph> BuildGraphFromDirectoryAsync(
+        string directoryPath,
+        string searchPattern,
+        TopologyFilterOptions filterOptions,
+        char csvDelimiter = ',',
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+        ArgumentNullException.ThrowIfNull(filterOptions);
+
+        if (!Directory.Exists(directoryPath))
+        {
+            throw new DirectoryNotFoundException($"The audit directory '{directoryPath}' does not exist.");
+        }
+
+        var pattern = string.IsNullOrWhiteSpace(searchPattern) ? "*.csv" : searchPattern;
+        var files = Directory.GetFiles(directoryPath, pattern, SearchOption.TopDirectoryOnly);
+
+        return BuildGraphFromFilesAsync(files, filterOptions, csvDelimiter, cancellationToken);
+    }
+
+    /// <summary>
     /// Builds a filtered topology graph and writes a standalone HTML5 map file from a collection of audit entries.
     /// </summary>
     /// <param name="entries">Collected audit entries.</param>
@@ -109,9 +219,8 @@ public sealed class AuditTopologyMapper(
         var evaluator = new TopologyFlowEvaluator(filterOptions);
         var builder = new TopologyGraphBuilder(evaluator);
         var graph = builder.BuildGraph(flowRecords);
-        var effectiveOptions = renderingOptions with { Title = title };
 
-        await _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken).ConfigureAwait(false);
+        await WriteHtmlMapAsync(graph, outputHtmlPath, renderingOptions, title, cancellationToken).ConfigureAwait(false);
         return graph;
     }
 
@@ -154,18 +263,8 @@ public sealed class AuditTopologyMapper(
         string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(csvFilePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputHtmlPath);
-        ArgumentNullException.ThrowIfNull(filterOptions);
-        ArgumentNullException.ThrowIfNull(renderingOptions);
-
-        var flowRecords = await _csvParser.ParseFileAsync(csvFilePath, csvDelimiter, cancellationToken).ConfigureAwait(false);
-        var evaluator = new TopologyFlowEvaluator(filterOptions);
-        var builder = new TopologyGraphBuilder(evaluator);
-        var graph = builder.BuildGraph(flowRecords);
-        var effectiveOptions = renderingOptions with { Title = title };
-
-        await _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken).ConfigureAwait(false);
+        var graph = await BuildGraphFromCsvAsync(csvFilePath, filterOptions, csvDelimiter, cancellationToken).ConfigureAwait(false);
+        await WriteHtmlMapAsync(graph, outputHtmlPath, renderingOptions, title, cancellationToken).ConfigureAwait(false);
         return graph;
     }
 
@@ -208,29 +307,8 @@ public sealed class AuditTopologyMapper(
         string title = "NetFlowAudit Network Topology Map",
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(csvFilePaths);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputHtmlPath);
-        ArgumentNullException.ThrowIfNull(filterOptions);
-        ArgumentNullException.ThrowIfNull(renderingOptions);
-
-        var allFlowRecords = new List<TopologyFlowRecord>();
-        foreach (var filePath in csvFilePaths)
-        {
-            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
-            {
-                continue;
-            }
-
-            var records = await _csvParser.ParseFileAsync(filePath, csvDelimiter, cancellationToken).ConfigureAwait(false);
-            allFlowRecords.AddRange(records);
-        }
-
-        var evaluator = new TopologyFlowEvaluator(filterOptions);
-        var builder = new TopologyGraphBuilder(evaluator);
-        var graph = builder.BuildGraph(allFlowRecords);
-        var effectiveOptions = renderingOptions with { Title = title };
-
-        await _htmlRenderer.WriteHtmlFileAsync(outputHtmlPath, graph, effectiveOptions, cancellationToken).ConfigureAwait(false);
+        var graph = await BuildGraphFromFilesAsync(csvFilePaths, filterOptions, csvDelimiter, cancellationToken).ConfigureAwait(false);
+        await WriteHtmlMapAsync(graph, outputHtmlPath, renderingOptions, title, cancellationToken).ConfigureAwait(false);
         return graph;
     }
 
