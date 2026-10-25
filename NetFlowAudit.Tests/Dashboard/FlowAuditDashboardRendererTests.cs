@@ -944,7 +944,7 @@ public sealed class FlowAuditDashboardRendererTests
 
         // Assert
         // 1. Process progress bar characters are rendered in top processes pane
-        frame.Should().Contain("▮");
+        frame.Should().Contain("█");
         frame.Should().Contain("─");
         // 2. Yellow selection highlight ANSI code is used for the selected cell
         frame.Should().Contain("\x1b[30;43;1m");
