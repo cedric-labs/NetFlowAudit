@@ -4,6 +4,7 @@ using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Dashboard;
 using NetFlowAudit.Cli.Help;
+using NetFlowAudit.Cli.Terminal;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Engine;
 using NetFlowAudit.Core.Export;
@@ -36,6 +37,8 @@ public static class Program
         {
             // Environment without terminal control
         }
+
+        ConsoleVirtualTerminalActivator.TryEnable();
 
         if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "help"))
         {
