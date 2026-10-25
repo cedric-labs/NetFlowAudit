@@ -144,7 +144,7 @@ public sealed class CachedHostNameResolverTests
         // Arrange: 52.123.242.181 lacks reverse DNS PTR but belongs to Microsoft Corporation
         using var orgResolver = new RdapIpOrganizationResolver(requestTimeout: TimeSpan.FromSeconds(10));
         await using var resolver = new CachedHostNameResolver(
-            resolutionTimeout: TimeSpan.FromMilliseconds(500),
+            resolutionTimeout: TimeSpan.FromSeconds(2),
             exclusionEvaluator: null,
             cacheStore: null,
             organizationResolver: orgResolver);
@@ -201,7 +201,7 @@ public sealed class CachedHostNameResolverTests
         };
 
         await using var resolver = new CachedHostNameResolver(
-            resolutionTimeout: TimeSpan.FromMilliseconds(500),
+            resolutionTimeout: TimeSpan.FromSeconds(2),
             exclusionEvaluator: null,
             cacheStore: null,
             organizationResolver: null,

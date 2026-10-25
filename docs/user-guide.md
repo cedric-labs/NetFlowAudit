@@ -271,6 +271,48 @@ Once multiple server audit logs have been gathered, use `--map-only` with `--dir
   --exclude-ports 53,123,135-139,445
 ```
 
+### 5.3. Exporting to Draw.io & Managing Large Networks
+
+When exporting raw audit captures containing outbound traffic to public clouds, CDNs, or hundreds of external subnets, diagrams can expand significantly along the horizontal axis. Use the following recipes to produce concise, readable Draw.io diagrams:
+
+#### Recipe 1: Restrict to Internal Corporate Subnets (Eliminate Internet Sprawl)
+Filter out external public IP ranges to focus strictly on corporate infrastructure:
+```powershell
+.\NetFlowAudit.Cli.exe --export-drawio internal_network.drawio -i netflow_audit.csv `
+  --include-ips 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+```
+
+#### Recipe 2: Critical Tier Services & Infrastructure Filtering
+Map only core business services (Web, DB, Cache) while suppressing background network noise (DNS, NTP, NetBIOS, SMB):
+```powershell
+.\NetFlowAudit.Cli.exe --export-drawio tier_topology.drawio -i netflow_audit.csv `
+  --include-ports 80,443,1433,5432,3306,6379,8080,8443 `
+  --exclude-ports 53,123,135-139,445
+```
+
+#### Recipe 3: Simplified High-Level Flow Arrows (By Direction)
+Collapse multiple parallel port arrows between servers into a single bidirectional flow arrow with port badge labels:
+```powershell
+.\NetFlowAudit.Cli.exe --export-drawio high_level.drawio -i netflow_audit.csv `
+  --drawio-edge-mode direction
+```
+
+#### Recipe 4: Listening Services Inventory (Listeners Only)
+Map only passive services and daemon listeners without transient client outbound sockets:
+```powershell
+.\NetFlowAudit.Cli.exe --export-drawio listeners.drawio -i netflow_audit.csv `
+  --listeners-only
+```
+
+> [!NOTE]
+> **Readability & Layout Roadmap**:
+> In the current release, Draw.io subnets are laid out along a single horizontal sequence. Future releases will introduce an automatic 2D multi-line wrapping grid layout for subnets.
+>
+> In the meantime, to reorganize an oversized diagram in Draw.io Desktop or Web in one click:
+> 1. Select all elements (`Ctrl + A`).
+> 2. Open menu **Arrange > Layout > Hierarchical** (or **Tree / Organic**).
+> 3. Draw.io will instantly recompact all swimlanes and nodes into a balanced rectangular layout.
+
 ---
 
 ## 6. Air-Gapped & Secure Environment Operations

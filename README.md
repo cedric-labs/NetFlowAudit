@@ -201,14 +201,38 @@ Once you collect all audit CSVs into a shared directory (e.g. `./collected-audit
   --map consolidated_database_map.html
 ```
 
-### 2.5. Interactive HTML5 Topology Map Controls
+### 2.5. Exporting to Draw.io & Managing Large Diagrams
+
+NetFlowAudit exports uncompressed `.drawio` files compatible with Draw.io Desktop and Web, complete with nested subnet swimlanes, orthogonal arrow routing, and rich card formatting.
+
+When auditing endpoints communicating across dozens of public subnets (Internet, CDNs, cloud APIs), use these recipes to optimize diagram readability:
+
+- **Filter to Internal Networks (Recommended)**:
+  ```powershell
+  .\NetFlowAudit.Cli.exe --export-drawio internal.drawio -i audit.csv --include-ips 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+  ```
+- **Consolidate Parallel Arrows (`--drawio-edge-mode direction`)**:
+  Merges multiple port connections between two servers into a single bidirectional link.
+- **Isolate Core Application Tiers**:
+  ```powershell
+  .\NetFlowAudit.Cli.exe --export-drawio app_tiers.drawio -i audit.csv --include-ports 80,443,1433,5432,6379 --exclude-ports 53,123,135-139,445
+  ```
+- **Listeners Only (Service Inventory)**:
+  ```powershell
+  .\NetFlowAudit.Cli.exe --export-drawio services.drawio -i audit.csv --listeners-only
+  ```
+
+> [!NOTE]
+> **Readability Roadmap**: Subnet swimlanes currently layout sequentially along the horizontal axis. Multi-line 2D grid wrapping for subnets will be added in an upcoming release. In the meantime, large diagrams can be instantly recompacted inside Draw.io by pressing `Ctrl + A` and selecting **Arrange > Layout > Hierarchical**.
+
+### 2.6. Interactive HTML5 Topology Map Controls
 
 The generated HTML5 map is 100% self-contained and offers advanced interactive controls:
 - **Apply Filters Button & [Enter]**: Text filters only recalculate on clicking `[Apply Filters]` or pressing `[Enter]`, guaranteeing fast responsiveness even with thousands of flows.
 - **Collapsible Sidebar & Accordion**: Toggle the filter panel with the `[◀ Sidebar]` button or key `[B]`. Sections (Layout, Filters, CLI Command, Inspector) can be expanded or collapsed independently.
 - **CLI Command Reproducer**: The sidebar generates the exact CLI command matching the filters, sorting, and routing selected in the web UI with a one-click `[Copy CLI Command]` button.
 
-### 2.6. Topology Rendering Performance & Scalability
+### 2.7. Topology Rendering Performance & Scalability
 
 Automated Playwright and .NET benchmarks executed across synthetic and real-world enterprise network topologies:
 
