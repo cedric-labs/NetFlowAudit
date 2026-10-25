@@ -16,6 +16,11 @@ public sealed record AppConfiguration
     public string OutputCsvPath { get; init; } = "netflow_audit.csv";
 
     /// <summary>
+    /// Output NDJSON (newline-delimited JSON) file path (empty if disabled by default).
+    /// </summary>
+    public string OutputNdjsonPath { get; init; } = string.Empty;
+
+    /// <summary>
     /// Output HTML topology map file path (empty if disabled by default).
     /// </summary>
     public string OutputHtmlMapPath { get; init; } = string.Empty;

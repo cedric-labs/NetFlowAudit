@@ -103,6 +103,9 @@ General Options:
   --reload-history <all|0|n>          Number of historical CSV entries to reload at startup (default: all, 0 to disable).
   -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
+  --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
+                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
+  --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
   --interval <seconds>                Scan interval in seconds (default: 5).
   --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
   --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.

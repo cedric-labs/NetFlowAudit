@@ -27,6 +27,7 @@ public static class ConfigurationTemplateGenerator
         {
             ScanIntervalSeconds = 5,
             OutputCsvPath = "netflow_audit.csv",
+            OutputNdjsonPath = string.Empty,
             OutputHtmlMapPath = "netflow_topology.html",
             MapExcludeEphemeralPorts = true,
             MapListenersOnly = false,

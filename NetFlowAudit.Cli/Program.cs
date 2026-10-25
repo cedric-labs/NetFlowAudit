@@ -73,12 +73,33 @@ public static class Program
         config = config with
         {
             OutputCsvPath = OutputFilePathResolver.Resolve(config.OutputCsvPath),
+            OutputNdjsonPath = OutputFilePathResolver.Resolve(config.OutputNdjsonPath),
             OutputHtmlMapPath = OutputFilePathResolver.Resolve(config.OutputHtmlMapPath),
             DnsCacheFilePath = OutputFilePathResolver.Resolve(config.DnsCacheFilePath)
         };
 
         var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
         var topologyMapper = new AuditTopologyMapper();
+
+        if (args.Any(a => a.Equals("--export-ndjson", StringComparison.OrdinalIgnoreCase)))
+        {
+            var targetNdjson = GetCommandLineArgumentValue(args, "--export-ndjson");
+            if (string.IsNullOrWhiteSpace(targetNdjson))
+            {
+                targetNdjson = "netflow_audit.ndjson";
+            }
+            targetNdjson = OutputFilePathResolver.Resolve(targetNdjson);
+
+            var singleInput = GetCommandLineArgumentValue(args, "--input") ??
+                              GetCommandLineArgumentValue(args, "-i") ??
+                              config.OutputCsvPath;
+
+            var exporter = new AuditNdjsonExporter();
+            Console.WriteLine($"Converting CSV audit log '{singleInput}' to NDJSON: '{targetNdjson}'...");
+            var count = await exporter.ExportCsvToNdjsonAsync(singleInput, targetNdjson, delimiter, CancellationToken.None).ConfigureAwait(false);
+            Console.WriteLine($"Successfully exported {count} audit flow entries to NDJSON: {Path.GetFullPath(targetNdjson)}");
+            return;
+        }
 
         if (args.Any(a => a.Equals("--map-only", StringComparison.OrdinalIgnoreCase)))
         {
@@ -174,6 +195,10 @@ public static class Program
             Console.WriteLine($"Host server     : {host.HostName} ({host.OperatingSystemDescription})");
             Console.WriteLine($"Primary IP      : {host.PrimaryIpAddress}");
             Console.WriteLine($"CSV output      : {config.OutputCsvPath}");
+            if (!string.IsNullOrWhiteSpace(config.OutputNdjsonPath))
+            {
+                Console.WriteLine($"NDJSON output   : {config.OutputNdjsonPath}");
+            }
             if (!string.IsNullOrWhiteSpace(config.OutputHtmlMapPath))
             {
                 Console.WriteLine($"HTML map        : {config.OutputHtmlMapPath}");
@@ -239,6 +264,15 @@ public static class Program
             ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore, orgResolver, config.CustomHostAliases)
             : new NoOpHostNameResolver();
 
+        PersistentDelimitedFileWriter? ndjsonWriter = null;
+        AuditNdjsonFormatter? ndjsonFormatter = null;
+
+        if (!string.IsNullOrWhiteSpace(config.OutputNdjsonPath))
+        {
+            ndjsonFormatter = new AuditNdjsonFormatter();
+            ndjsonWriter = new PersistentDelimitedFileWriter(config.OutputNdjsonPath, string.Empty);
+        }
+
         var engine = new FlowAuditEngine(
             socketScanner,
             exclusionFilter,
@@ -248,7 +282,9 @@ public static class Program
             csvWriter,
             csvFormatter,
             hostNameResolver,
-            TimeSpan.FromSeconds(config.ScanIntervalSeconds));
+            TimeSpan.FromSeconds(config.ScanIntervalSeconds),
+            ndjsonWriter,
+            ndjsonFormatter);
 
         var exclusionConfigurator = new FlowExclusionConfigurator(config, configPath, networkFlowFilter, exclusionFilter);
 
@@ -468,6 +504,10 @@ public static class Program
         finally
         {
             dashboard?.RestoreCursor();
+            if (ndjsonWriter is not null)
+            {
+                await ndjsonWriter.DisposeAsync().ConfigureAwait(false);
+            }
             if (hostNameResolver is IAsyncDisposable asyncResolver)
             {
                 await asyncResolver.DisposeAsync().ConfigureAwait(false);
@@ -500,6 +540,8 @@ public static class Program
     internal static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
     {
         var output = GetCommandLineArgumentValue(args, "--output") ?? GetCommandLineArgumentValue(args, "-o");
+        var ndjsonOutput = GetCommandLineArgumentValue(args, "--ndjson") ??
+                           GetCommandLineArgumentValue(args, "--output-ndjson");
         var intervalStr = GetCommandLineArgumentValue(args, "--interval");
         var columnsStr = GetCommandLineArgumentValue(args, "--columns");
         var dnsStr = GetCommandLineArgumentValue(args, "--resolve-dns");
@@ -599,6 +641,7 @@ public static class Program
         return config with
         {
             OutputCsvPath = output ?? config.OutputCsvPath,
+            OutputNdjsonPath = ndjsonOutput ?? config.OutputNdjsonPath,
             ScanIntervalSeconds = interval,
             CsvColumns = columns,
             ResolveRemoteHostNames = resolveDns,

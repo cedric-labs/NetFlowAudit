@@ -22,7 +22,9 @@ public sealed class FlowAuditEngine(
     PersistentDelimitedFileWriter csvWriter,
     AuditCsvFormatter csvFormatter,
     IHostNameResolver hostNameResolver,
-    TimeSpan scanInterval)
+    TimeSpan scanInterval,
+    PersistentDelimitedFileWriter? ndjsonWriter = null,
+    AuditNdjsonFormatter? ndjsonFormatter = null)
 {
     private readonly IHostNameResolver _hostNameResolver = InitializeHostNameResolver(
         socketScanner,
@@ -55,7 +57,9 @@ public sealed class FlowAuditEngine(
             csvWriter,
             csvFormatter,
             new NoOpHostNameResolver(),
-            scanInterval)
+            scanInterval,
+            null,
+            null)
     {
     }
 
@@ -79,7 +83,9 @@ public sealed class FlowAuditEngine(
             csvWriter,
             csvFormatter,
             new NoOpHostNameResolver(),
-            scanInterval)
+            scanInterval,
+            null,
+            null)
     {
     }
 
@@ -94,6 +100,11 @@ public sealed class FlowAuditEngine(
     public async Task RunContinuousAuditAsync(CancellationToken cancellationToken = default)
     {
         await csvWriter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+
+        if (ndjsonWriter is not null)
+        {
+            await ndjsonWriter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         var existingSignatures = await csvWriter.ReadExistingLinesAsync(cancellationToken).ConfigureAwait(false);
         deduplicationRegister.Hydrate(existingSignatures);
@@ -148,6 +159,13 @@ public sealed class FlowAuditEngine(
             {
                 var line = csvFormatter.FormatEntry(registered);
                 await csvWriter.AppendLineAsync(line, cancellationToken).ConfigureAwait(false);
+
+                if (ndjsonWriter is not null && ndjsonFormatter is not null)
+                {
+                    var ndjsonLine = ndjsonFormatter.FormatEntry(registered);
+                    await ndjsonWriter.AppendLineAsync(ndjsonLine, cancellationToken).ConfigureAwait(false);
+                }
+
                 newlyDiscovered.Add(registered);
             }
         }

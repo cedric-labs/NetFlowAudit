@@ -279,6 +279,66 @@ public sealed class FlowAuditEngineTests : IAsyncLifetime
         lines[1].Should().Be("140.82.121.4,443,github.com");
     }
 
+    [Fact]
+    public async Task ExecuteScanCycleAsync_WhenNdjsonWriterConfigured_WritesBothCsvAndNdjsonLines()
+    {
+        // Arrange
+        var testCsv = Path.Combine(_testDir, "dual_output.csv");
+        var testNdjson = Path.Combine(_testDir, "dual_output.ndjson");
+        var csvFormatter = new AuditCsvFormatter(new AuditCsvOptions());
+        var ndjsonFormatter = new AuditNdjsonFormatter();
+        await using var csvWriter = new FileForge.IO.PersistentDelimitedFileWriter(testCsv, csvFormatter.BuildHeaderLine());
+        await using var ndjsonWriter = new FileForge.IO.PersistentDelimitedFileWriter(testNdjson, string.Empty);
+        await csvWriter.InitializeAsync();
+        await ndjsonWriter.InitializeAsync();
+
+        var hostProvider = new LocalServerHostProvider();
+        var deduplication = new ConnectionDeduplicationRegister();
+        var exclusion = new ProcessExclusionFilter(new ProcessExclusionOptions());
+
+        var mockScanner = new FakeSocketScanner([
+            new ActiveSocketConnection(
+                SocketTransportProtocol.Tcp,
+                SocketFlowDirection.Outbound,
+                new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 55000),
+                new SocketEndpoint(IPAddress.Parse("10.0.0.2"), 443),
+                "Established",
+                new ProcessMetadata(200, "app", "C:\\app.exe", "app", "", "User"))
+        ]);
+
+        var engine = new FlowAuditEngine(
+            mockScanner,
+            exclusion,
+            new NetworkFlowFilter(new NetworkFlowFilterOptions()),
+            deduplication,
+            hostProvider,
+            csvWriter,
+            csvFormatter,
+            new NetFlowAudit.Core.Resolution.NoOpHostNameResolver(),
+            TimeSpan.FromSeconds(1),
+            ndjsonWriter,
+            ndjsonFormatter);
+
+        // Act
+        var count = await engine.ExecuteScanCycleAsync();
+
+        // Assert
+        count.Should().Be(1);
+        await csvWriter.DisposeAsync();
+        await ndjsonWriter.DisposeAsync();
+
+        File.Exists(testCsv).Should().BeTrue();
+        File.Exists(testNdjson).Should().BeTrue();
+
+        var ndjsonLines = await File.ReadAllLinesAsync(testNdjson);
+        ndjsonLines.Should().HaveCount(1);
+
+        var parser = new AuditNdjsonParser();
+        var entry = parser.ParseLine(ndjsonLines[0]);
+        entry.Should().NotBeNull();
+        entry!.Socket.RemoteEndpoint.Port.Should().Be(443);
+    }
+
     private sealed class FakeHostNameResolver(string resolvedHost) : NetFlowAudit.Core.Resolution.IHostNameResolver
     {
         public event EventHandler<NetFlowAudit.Core.Resolution.HostNameResolvedEventArgs>? HostNameResolved;

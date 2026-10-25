@@ -129,6 +129,22 @@ public sealed class ProgramCommandLineOverridesTests
         updated.ReloadHistoryLimit.Should().Be(0);
     }
 
+    [Theory]
+    [InlineData("--ndjson")]
+    [InlineData("--output-ndjson")]
+    public void ApplyCommandLineOverrides_WhenNdjsonArgumentProvided_SetsOutputNdjsonPath(string flag)
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration { OutputNdjsonPath = string.Empty };
+        var args = new[] { flag, "audit_stream_{ServerName}.ndjson" };
+
+        // Act
+        var updated = Program.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.OutputNdjsonPath.Should().Be("audit_stream_{ServerName}.ndjson");
+    }
+
     [Fact]
     public void ApplyCommandLineOverrides_WhenReloadHistoryPositiveIntegerProvided_SetsExplicitLimit()
     {
