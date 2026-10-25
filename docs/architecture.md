@@ -95,9 +95,9 @@ classDiagram
 3. **FileForge.Core (`1.0.2`)**:
    - Implements thread-safe, non-blocking streaming I/O.
    - Enforces strict RFC 4180 escaping (commas, quotes, newlines) and maintains persistent file share locks (`FileShare.ReadWrite`), allowing real-time ingestion by SIEM agents or log shippers without locking conflicts.
-4. **TopologyForge (`1.0.6`)**:
+4. **TopologyForge (`1.1.1`)**:
    - Generates fully self-contained offline HTML5/SVG network topology visualizations.
-   - Incorporates Sugiyama anti-crossing barycentric positioning, smooth Bézier routing around server obstacles, interactive port inspection panels, and client-side pagination.
+   - Incorporates Sugiyama anti-crossing barycentric positioning, functional tier architectural column layout, subnet & security zone clustering with interactive toggle and high-contrast envelopes, force-directed organic physics simulation, smooth Bézier routing around server obstacles, interactive port inspection panels, and client-side pagination.
 
 ---
 

@@ -84,7 +84,9 @@ Existing tools often fall into extremes:
 - **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
   - Generates a 100% standalone single-file HTML5/SVG interactive map (`--map` or press `[M]` in the dashboard).
   - Priority-ranked server pagination (`100` most active/audited servers per page by default, with `◀ Prev`, `Next ▶`, `+100 Servers`, and `Show All` buttons).
-  - 5-pass anti-crossing layout engine (360° concentric sector rings, alternating Barycenter/Median sweep, exact 2-Opt crossing optimizer, force-repulsion corridor clearance, and full-border angular port distribution) with `IN` / `OUT` directional arrowheads.
+  - Multi-layout modes: Hierarchical Layered (Sugiyama), Force-Directed Organic (live physics simulation), Concentric Ring, and Multi-Column Grid.
+  - Multi-sorting methods: Sugiyama anti-crossing with 2-Opt and Spatial Hash Grid acceleration, Functional Tiers (Clients ➔ Gateways ➔ Apps ➔ Infra / DB), Subnet & Security Zones with high-contrast enclosure envelopes and interactive toggle checkbox, Connection Degree, and Hostname.
+  - Directional `IN` / `OUT` arrowheads with curved Bezier, orthogonal corridor, or direct border-to-border routing.
 
 ---
 
@@ -133,7 +135,9 @@ Topology Map Options (TopologyForge):
   --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
   --include-processes <proc1,...>     Include only these processes or application targets.
   --exclude-processes <proc1,...>     Exclude these processes or application targets.
-  --map-sort <barycentric|degree|alpha|subnet>
+  --map-layout <layered|organic|circular|grid>
+                                      Topology layout mode (Hierarchical Layered by default).
+  --map-sort <sugiyama|tiers|subnet|degree|alpha|ip>
                                       Server sorting method (Sugiyama anti-crossing by default).
   --map-routing <bezier|orthogonal|straight>
                                       Arrow routing mode with server box obstacle avoidance.
