@@ -1,8 +1,5 @@
 <Project>
   <PropertyGroup>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
     <Authors>curvecoder</Authors>
     <Company>curvecoder</Company>
     <Product>NetFlowAudit</Product>
@@ -12,9 +9,15 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultVersionPhrase>preview</MinVerDefaultVersionPhrase>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MinVer" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Roslynator.Analyzers" Version="4.13.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
