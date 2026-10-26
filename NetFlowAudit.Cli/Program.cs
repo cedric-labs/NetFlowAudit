@@ -4,6 +4,7 @@ using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Dashboard;
 using NetFlowAudit.Cli.Enrichment;
+using NetFlowAudit.Cli.Export;
 using NetFlowAudit.Cli.Help;
 using NetFlowAudit.Cli.Terminal;
 using NetFlowAudit.Core.Deduplication;
@@ -89,6 +90,15 @@ public static class Program
         {
             var offlineRunner = new OfflineResolutionCommandRunner();
             await offlineRunner.RunAsync(config, args, CancellationToken.None).ConfigureAwait(false);
+            return;
+        }
+
+        if (args.Any(a => a.Equals("--export-rules", StringComparison.OrdinalIgnoreCase) ||
+                          a.Equals("--firewall-matrix", StringComparison.OrdinalIgnoreCase) ||
+                          a.Equals("--rules-csv", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ruleRunner = new FirewallRuleExportCommandRunner();
+            await ruleRunner.RunAsync(config, args, CancellationToken.None).ConfigureAwait(false);
             return;
         }
 

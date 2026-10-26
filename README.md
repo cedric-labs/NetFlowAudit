@@ -108,6 +108,12 @@ General Options:
   --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
+  --export-rules [path.csv]           Export consolidated firewall change ticket matrix CSV and exit.
+  --min-observations <n>              Minimum observation count required for firewall rule export (default: 1).
+  --active-within-days <days>         Freshness filter: only include rules observed within the last N days.
+  --destination-zone <internal|public>Filter rules by destination zone (RFC 1918 internal vs WAN/Internet public).
+  --internal-only, --public-only      Shorthand filters for internal vs public firewall rules.
+  --exclude-ephemeral                 Exclude ephemeral destination ports (>= 49152) from firewall rules.
   --resolve-offline                   Offline post-processing: consolidate caches and enrich audit hostnames.
   --in-place                          Overwrite original audit files directly during offline resolution.
   --force-resolve                     Force replacement of existing hostnames during offline resolution.
@@ -256,7 +262,29 @@ When auditing isolated or air-gapped environments without Internet access (using
 * **Cache Conflict Detection**: Conflicting hostnames across cache sources are automatically arbitrated by timestamp and logged as informational warnings.
 * **API Rate Limiting**: RDAP queries are throttled with a configurable delay (`--rdap-delay-ms 200`) and clear console notifications to avoid registry rate limits.
 
-### 2.8. Topology Rendering Performance & Scalability
+### 2.8. Firewall Change Ticket Matrix Export (`--export-rules`)
+
+Generate clean, normalized, and consolidated firewall rule matrices from raw audit logs for Jira, ServiceNow, or network firewall change tickets:
+
+```powershell
+# Export production firewall rules matrix with noise filtering
+.\NetFlowAudit.Cli.exe --export-rules "firewall_rules.csv" `
+  -i ".\netflow_audit.csv" `
+  --exclude-ephemeral `
+  --min-observations 5 `
+  --active-within-days 14 `
+  --internal-only `
+  --exclude-ports 53,123
+
+# Export incoming service listener rules
+.\NetFlowAudit.Cli.exe --export-rules "listeners_matrix.csv" -i ".\netflow_audit.csv" --listeners-only
+```
+
+* **Normalized 5-Tuple**: Automatically normalizes source vs destination regardless of whether the flow was inbound or outbound (`SourceIp`, `SourceHost`, `DestinationIp`, `DestinationHost`, `DestinationPort`, `Protocol`).
+* **Noise Elimination**: Ephemeral destination ports (>= 49152) and transient one-shot connections are filtered out.
+* **Justification Metadata**: Includes `ProcessName`, `ExecutablePath`, `UserName`, `ObservationCount`, and activity timestamps to pass CAB security review without friction.
+
+### 2.9. Topology Rendering Performance & Scalability
 
 Automated Playwright and .NET benchmarks executed across synthetic and real-world enterprise network topologies:
 

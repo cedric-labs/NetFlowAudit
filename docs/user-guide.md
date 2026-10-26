@@ -370,6 +370,12 @@ To generate reports or screenshots without exposing genuine server hostnames or 
 NetFlowAudit.Cli --obfuscate
 ```
 
+### Recipe 5: Generating Firewall Change Ticket Matrices
+To consolidate raw connection history into a deduplicated firewall rule matrix for network administrators, excluding ephemeral destination ports and transient test flows:
+```bash
+NetFlowAudit.Cli --export-rules firewall_rules.csv -i netflow_audit.csv --exclude-ephemeral --min-observations 5 --active-within-days 14
+```
+
 ---
 
 ## 8. Keyboard Shortcuts (Interactive TUI)
