@@ -1,9 +1,10 @@
-# scripts/publish-release.ps1
+﻿# scripts/publish-release.ps1
 [CmdletBinding()]
 param (
     [string]$Tag = "",
     [string]$DistDir = "./dist",
-    [string]$Repo = "curvecoder/NetFlowAudit"
+    [string]$Repo = "curvecoder/NetFlowAudit",
+    [switch]$Prerelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,10 @@ if ([string]::IsNullOrWhiteSpace($Tag)) {
     if ([string]::IsNullOrWhiteSpace($Tag)) {
         $Tag = "v1.1.0"
     }
+}
+
+if ($Tag -match "-(preview|beta|alpha|rc)") {
+    $Prerelease = $true
 }
 
 $version = $Tag.TrimStart('v')
@@ -197,7 +202,7 @@ catch {
         name = "NetFlowAudit $Tag"
         body = $releaseBody
         draft = $false
-        prerelease = $false
+        prerelease = [bool]$Prerelease
     } | ConvertTo-Json
     $createBytes = [System.Text.Encoding]::UTF8.GetBytes($createPayload)
     $release = Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $Repo + '/releases') -Method Post -Headers $headers -Body $createBytes -ContentType "application/json; charset=utf-8"
