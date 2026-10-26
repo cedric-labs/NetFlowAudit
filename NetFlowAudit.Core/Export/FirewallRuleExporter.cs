@@ -3,7 +3,7 @@ using NetFlowAudit.Core.Models;
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Ingests raw historical network audits and exports consolidated firewall rule change ticket matrices to CSV.
+/// Ingests raw historical network audits and exports consolidated network flow matrices to CSV.
 /// </summary>
 /// <param name="csvParser">Parser for historical CSV audit logs.</param>
 /// <param name="ndjsonParser">Parser for NDJSON streaming logs.</param>

@@ -5,7 +5,7 @@ using NetFlowAudit.Core.Export;
 namespace NetFlowAudit.Cli.Export;
 
 /// <summary>
-/// CLI command runner executing the '--export-rules' workflow to consolidate historical audits into a firewall change ticket matrix CSV.
+/// CLI command runner executing the '--export-rules' workflow to consolidate historical audits into a network flow matrix CSV.
 /// </summary>
 /// <param name="exporter">Underlying exporter consolidating flows and formatting the CSV matrix.</param>
 public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? exporter = null)
@@ -25,7 +25,7 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
         ArgumentNullException.ThrowIfNull(args);
 
         Console.WriteLine("========================================================================");
-        Console.WriteLine("  NetFlowAudit - Matrice de Flux Pare-Feu & Tickets Réseau (--export-rules)");
+        Console.WriteLine("  NetFlowAudit - Export de la Matrice de Flux Réseau (--export-rules)");
         Console.WriteLine("========================================================================");
 
         var outputPath = GetArgumentValue(args, ["--export-rules", "--firewall-matrix", "--rules-csv"]);

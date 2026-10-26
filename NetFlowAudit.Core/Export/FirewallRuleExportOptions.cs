@@ -1,7 +1,7 @@
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Filtering and formatting options for consolidating network audits into firewall change ticket matrices.
+/// Filtering and formatting options for consolidating network audits into firewall and security flow matrices.
 /// </summary>
 public sealed record FirewallRuleExportOptions
 {

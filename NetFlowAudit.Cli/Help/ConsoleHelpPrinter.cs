@@ -36,7 +36,7 @@ COMMAND-LINE OPTIONS:
   --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
-  --export-rules [path.csv]           Export consolidated firewall change ticket matrix CSV and exit.
+  --export-rules [path.csv]           Export consolidated network flow matrix CSV and exit.
   --min-observations <n>              Minimum observation count required for firewall rule export (default: 1).
   --active-within-days <days>         Freshness filter: only include rules observed within the last N days.
   --destination-zone <internal|public>Filter rules by destination zone (RFC 1918 internal vs WAN/Internet public).

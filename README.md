@@ -108,7 +108,7 @@ General Options:
   --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
-  --export-rules [path.csv]           Export consolidated firewall change ticket matrix CSV and exit.
+  --export-rules [path.csv]           Export consolidated network flow matrix CSV and exit.
   --min-observations <n>              Minimum observation count required for firewall rule export (default: 1).
   --active-within-days <days>         Freshness filter: only include rules observed within the last N days.
   --destination-zone <internal|public>Filter rules by destination zone (RFC 1918 internal vs WAN/Internet public).
@@ -262,9 +262,9 @@ When auditing isolated or air-gapped environments without Internet access (using
 * **Cache Conflict Detection**: Conflicting hostnames across cache sources are automatically arbitrated by timestamp and logged as informational warnings.
 * **API Rate Limiting**: RDAP queries are throttled with a configurable delay (`--rdap-delay-ms 200`) and clear console notifications to avoid registry rate limits.
 
-### 2.8. Firewall Change Ticket Matrix Export (`--export-rules`)
+### 2.8. Network Flow Matrix Export (`--export-rules`)
 
-Generate clean, normalized, and consolidated firewall rule matrices from raw audit logs for Jira, ServiceNow, or network firewall change tickets:
+Generate clean, normalized, and consolidated network flow matrices from raw audit logs for firewall engineering and security governance:
 
 ```powershell
 # Export production firewall rules matrix with noise filtering

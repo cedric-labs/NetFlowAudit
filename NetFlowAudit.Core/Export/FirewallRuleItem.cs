@@ -1,7 +1,7 @@
 namespace NetFlowAudit.Core.Export;
 
 /// <summary>
-/// Represents a consolidated, normalized network flow rule suitable for firewall configuration and ITSM change tickets.
+/// Represents a consolidated, normalized network flow rule suitable for firewall policies and flow matrices.
 /// </summary>
 public sealed record FirewallRuleItem
 {
