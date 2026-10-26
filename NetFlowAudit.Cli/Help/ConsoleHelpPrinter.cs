@@ -36,6 +36,11 @@ COMMAND-LINE OPTIONS:
   --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
+  --resolve-offline                   Offline post-processing: consolidate caches and enrich audit hostnames.
+  --in-place                          Overwrite original audit files directly during offline resolution.
+  --force-resolve                     Force replacement of existing hostnames during offline resolution.
+  --cache, --caches <path1,...>       Input cache files or directories to consolidate into master cache.
+  --output-cache <path.json>          Output path for consolidated master DNS cache (default: netflow_dns_cache.json).
   --interval <seconds>                Scan interval in seconds (default: 5).
   --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
   --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.

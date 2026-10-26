@@ -108,6 +108,11 @@ General Options:
   --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
                                       Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
   --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
+  --resolve-offline                   Offline post-processing: consolidate caches and enrich audit hostnames.
+  --in-place                          Overwrite original audit files directly during offline resolution.
+  --force-resolve                     Force replacement of existing hostnames during offline resolution.
+  --cache, --caches <path1,...>       Input cache files or directories to consolidate into master cache.
+  --output-cache <path.json>          Output path for consolidated master DNS cache (default: netflow_dns_cache.json).
   --interval <seconds>                Scan interval in seconds (default: 5).
   --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
   --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.
@@ -233,7 +238,25 @@ The generated HTML5 map is 100% self-contained and offers advanced interactive c
 - **Collapsible Sidebar & Accordion**: Toggle the filter panel with the `[◀ Sidebar]` button or key `[B]`. Sections (Layout, Filters, CLI Command, Inspector) can be expanded or collapsed independently.
 - **CLI Command Reproducer**: The sidebar generates the exact CLI command matching the filters, sorting, and routing selected in the web UI with a one-click `[Copy CLI Command]` button.
 
-### 2.7. Topology Rendering Performance & Scalability
+### 2.7. Offline Cache Consolidation & Audit Enrichment (`--resolve-offline`)
+
+When auditing isolated or air-gapped environments without Internet access (using `--isolated`), audit files contain unresolved IP addresses. Export the audit logs and cache files to a connected workstation to consolidate caches, resolve missing hostnames (DNS PTR + RDAP/ASN), and enrich the audit logs:
+
+```powershell
+# Consolidate multiple cache files, resolve missing IPs online, and enrich audit logs
+.\NetFlowAudit.Cli.exe --resolve-offline `
+  -i ".\audits\*.csv" `
+  --caches ".\caches\*.json" `
+  --output-cache ".\master_dns_cache.json"
+
+# In-place enrichment strictly offline (without querying the Internet)
+.\NetFlowAudit.Cli.exe --resolve-offline -i ".\audits\audit.csv" --cache master_cache.json --in-place --isolated
+```
+
+* **Cache Conflict Detection**: Conflicting hostnames across cache sources are automatically arbitrated by timestamp and logged as informational warnings.
+* **API Rate Limiting**: RDAP queries are throttled with a configurable delay (`--rdap-delay-ms 200`) and clear console notifications to avoid registry rate limits.
+
+### 2.8. Topology Rendering Performance & Scalability
 
 Automated Playwright and .NET benchmarks executed across synthetic and real-world enterprise network topologies:
 

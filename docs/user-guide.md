@@ -334,6 +334,12 @@ In isolated networks with no Internet or internal DNS reachability:
    ```
 3. **Pre-Seed Persistent DNS Cache**:
    Populate `netflow_dns_cache.json` with pre-resolved entries. NetFlowAudit will read the cache directly from disk without performing network queries.
+4. **Post-Process Audits with Offline Resolution (`--resolve-offline`)**:
+   Retrieve audit files and local cache files from isolated servers, then run offline consolidation and enrichment on a connected machine:
+   ```powershell
+   .\NetFlowAudit.Cli.exe --resolve-offline -i ".\audits\*.csv" --caches ".\caches\*.json" --output-cache master_cache.json
+   ```
+   The consolidated `master_cache.json` can be redistributed back to the isolated servers for future scans.
 
 ---
 
