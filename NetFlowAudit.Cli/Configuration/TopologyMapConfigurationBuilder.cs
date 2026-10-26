@@ -39,12 +39,15 @@ public static class TopologyMapConfigurationBuilder
             }
         }
 
+        var includeInbound = !config.MapListenersOnly && !string.Equals(config.MapDirection, "out", StringComparison.OrdinalIgnoreCase);
+        var includeOutbound = !config.MapListenersOnly && !string.Equals(config.MapDirection, "in", StringComparison.OrdinalIgnoreCase);
+
         return new TopologyFilterOptions
         {
             ExcludeEphemeralPorts = config.MapExcludeEphemeralPorts,
             IncludeListeners = true,
-            IncludeInboundFlows = !config.MapListenersOnly,
-            IncludeOutboundFlows = !config.MapListenersOnly,
+            IncludeInboundFlows = includeInbound,
+            IncludeOutboundFlows = includeOutbound,
             IncludedPorts = includedPorts,
             ExcludedPorts = excludedPorts,
             IncludedHostPatterns = config.MapIncludedHosts,
@@ -80,8 +83,8 @@ public static class TopologyMapConfigurationBuilder
             "DEGREE" or "CONNECTIONDEGREE" => TopologyNodeSortMethod.ConnectionDegree,
             "ALPHA" or "ALPHABETICAL" or "NAME" => TopologyNodeSortMethod.Alphabetical,
             "TIERS" or "TIER" or "FUNCTIONALTIER" => TopologyNodeSortMethod.FunctionalTier,
-            "CLUSTER" or "SUBNETCLUSTER" or "ZONE" or "ZONES" => TopologyNodeSortMethod.SubnetCluster,
-            "SUBNET" or "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
+            "CLUSTER" or "SUBNETCLUSTER" or "ZONE" or "ZONES" or "SUBNET" => TopologyNodeSortMethod.SubnetCluster,
+            "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
             _ => TopologyNodeSortMethod.BarycentricSugiyama
         };
 
@@ -99,12 +102,27 @@ public static class TopologyMapConfigurationBuilder
             _ => TopologySpacingProfile.Balanced
         };
 
+        var initialIncludePorts = config.MapIncludedPorts.Count > 0 ? string.Join(", ", config.MapIncludedPorts) : string.Empty;
+        var initialExcludePorts = config.MapExcludedPorts.Count > 0 ? string.Join(", ", config.MapExcludedPorts) : string.Empty;
+        var initialExcludeHosts = config.MapExcludedHosts.Count > 0 ? string.Join(", ", config.MapExcludedHosts) : string.Empty;
+        var initialDirection = config.MapListenersOnly
+            ? "IN"
+            : (string.Equals(config.MapDirection, "out", StringComparison.OrdinalIgnoreCase)
+                ? "OUT"
+                : (string.Equals(config.MapDirection, "in", StringComparison.OrdinalIgnoreCase)
+                    ? "IN"
+                    : "all"));
+
         return new TopologyRenderingOptions
         {
             DefaultLayoutMode = layoutMode,
             DefaultSortMethod = sortMethod,
             DefaultRoutingMode = routingMode,
-            DefaultSpacingProfile = spacingProfile
+            DefaultSpacingProfile = spacingProfile,
+            InitialIncludePorts = initialIncludePorts,
+            InitialExcludePorts = initialExcludePorts,
+            InitialExcludeHosts = initialExcludeHosts,
+            InitialDirection = initialDirection
         };
     }
 
@@ -119,24 +137,25 @@ public static class TopologyMapConfigurationBuilder
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(args);
 
-        var mapPath = GetArgumentValue(args, "--map") ?? config.OutputHtmlMapPath;
-        var includePorts = ParseCsvArgument(args, "--include-ports", config.MapIncludedPorts);
-        var excludePorts = ParseCsvArgument(args, "--exclude-ports", config.MapExcludedPorts);
-        var includeHosts = ParseCsvArgument(args, "--include-hosts", config.MapIncludedHosts);
-        var excludeHosts = ParseCsvArgument(args, "--exclude-hosts", config.MapExcludedHosts);
-        var includeIps = ParseCsvArgument(args, "--include-ips", config.MapIncludedIps);
-        var excludeIps = ParseCsvArgument(args, "--exclude-ips", config.MapExcludedIps);
-        var includeProcesses = ParseCsvArgument(args, "--include-processes", config.MapIncludedProcesses);
-        var excludeProcesses = ParseCsvArgument(args, "--exclude-processes", config.MapExcludedProcesses);
-        var layoutMode = GetArgumentValue(args, "--map-layout") ?? config.MapLayoutMode;
-        var sortMethod = GetArgumentValue(args, "--map-sort") ?? config.MapSortMethod;
-        var routingMode = GetArgumentValue(args, "--map-routing") ?? config.MapRoutingMode;
-        var spacingProfile = GetArgumentValue(args, "--map-spacing") ?? config.MapSpacingProfile;
+        var mapPath = GetArgumentValue(args, ["--map"]) ?? config.OutputHtmlMapPath;
+        var includePorts = ParseCsvArgument(args, ["--include-ports", "--include-port"], config.MapIncludedPorts);
+        var excludePorts = ParseCsvArgument(args, ["--exclude-ports", "--exclude-port"], config.MapExcludedPorts);
+        var includeHosts = ParseCsvArgument(args, ["--include-hosts", "--include-host"], config.MapIncludedHosts);
+        var excludeHosts = ParseCsvArgument(args, ["--exclude-hosts", "--exclude-host"], config.MapExcludedHosts);
+        var includeIps = ParseCsvArgument(args, ["--include-ips", "--include-ip"], config.MapIncludedIps);
+        var excludeIps = ParseCsvArgument(args, ["--exclude-ips", "--exclude-ip"], config.MapExcludedIps);
+        var includeProcesses = ParseCsvArgument(args, ["--include-processes", "--include-process"], config.MapIncludedProcesses);
+        var excludeProcesses = ParseCsvArgument(args, ["--exclude-processes", "--exclude-process"], config.MapExcludedProcesses);
+        var layoutMode = GetArgumentValue(args, ["--map-layout", "--layout", "--algorithm", "--map-algorithm"]) ?? config.MapLayoutMode;
+        var sortMethod = GetArgumentValue(args, ["--map-sort", "--sort"]) ?? config.MapSortMethod;
+        var routingMode = GetArgumentValue(args, ["--map-routing", "--routing"]) ?? config.MapRoutingMode;
+        var spacingProfile = GetArgumentValue(args, ["--map-spacing", "--spacing"]) ?? config.MapSpacingProfile;
+        var directionArg = GetArgumentValue(args, ["--direction"]);
+        var mapDirection = !string.IsNullOrWhiteSpace(directionArg) ? directionArg.ToLowerInvariant() : config.MapDirection;
 
         var drawioRequested = args.Any(a => a.Equals("--export-drawio", StringComparison.OrdinalIgnoreCase) ||
                                             a.Equals("--drawio", StringComparison.OrdinalIgnoreCase));
-        var rawDrawioPath = GetArgumentValue(args, "--export-drawio") ??
-                            GetArgumentValue(args, "--drawio");
+        var rawDrawioPath = GetArgumentValue(args, ["--export-drawio", "--drawio"]);
 
         string drawioPath;
         if (drawioRequested && string.IsNullOrWhiteSpace(rawDrawioPath))
@@ -150,13 +169,12 @@ public static class TopologyMapConfigurationBuilder
             drawioPath = rawDrawioPath ?? config.OutputDrawioPath;
         }
 
-        var drawioMode = GetArgumentValue(args, "--drawio-edge-mode") ??
-                         GetArgumentValue(args, "--drawio-mode") ??
-                         config.DrawioEdgeMode;
-        var drawioTheme = GetArgumentValue(args, "--drawio-theme") ?? config.DrawioTheme;
+        var drawioMode = GetArgumentValue(args, ["--drawio-edge-mode", "--drawio-mode"]) ?? config.DrawioEdgeMode;
+        var drawioTheme = GetArgumentValue(args, ["--drawio-theme"]) ?? config.DrawioTheme;
 
         var listenersOnly = config.MapListenersOnly ||
-                            args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase));
+                            args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase)) ||
+                            string.Equals(mapDirection, "listening", StringComparison.OrdinalIgnoreCase);
 
         var includeEphemeral = args.Any(a => a.Equals("--include-ephemeral-ports", StringComparison.OrdinalIgnoreCase));
         var excludeEphemeral = !includeEphemeral && config.MapExcludeEphemeralPorts;
@@ -180,7 +198,8 @@ public static class TopologyMapConfigurationBuilder
             DrawioEdgeMode = drawioMode,
             DrawioTheme = drawioTheme,
             MapListenersOnly = listenersOnly,
-            MapExcludeEphemeralPorts = excludeEphemeral
+            MapExcludeEphemeralPorts = excludeEphemeral,
+            MapDirection = mapDirection
         };
     }
 
@@ -203,9 +222,9 @@ public static class TopologyMapConfigurationBuilder
         return result;
     }
 
-    private static List<string> ParseCsvArgument(string[] args, string argName, List<string> fallback)
+    private static List<string> ParseCsvArgument(string[] args, string[] argumentNames, List<string> fallback)
     {
-        var raw = GetArgumentValue(args, argName);
+        var raw = GetArgumentValue(args, argumentNames);
         if (string.IsNullOrWhiteSpace(raw))
         {
             return fallback;
@@ -214,16 +233,19 @@ public static class TopologyMapConfigurationBuilder
         return raw.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     }
 
-    private static string? GetArgumentValue(string[] args, string argumentName)
+    private static string? GetArgumentValue(string[] args, string[] argumentNames)
     {
         for (var i = 0; i < args.Length - 1; i++)
         {
-            if (args[i].Equals(argumentName, StringComparison.OrdinalIgnoreCase))
+            foreach (var argumentName in argumentNames)
             {
-                var candidate = args[i + 1];
-                if (!candidate.StartsWith("-", StringComparison.Ordinal))
+                if (args[i].Equals(argumentName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return candidate;
+                    var candidate = args[i + 1];
+                    if (!candidate.StartsWith("-", StringComparison.Ordinal))
+                    {
+                        return candidate;
+                    }
                 }
             }
         }

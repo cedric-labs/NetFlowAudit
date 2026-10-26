@@ -51,6 +51,11 @@ public sealed record AppConfiguration
     public bool MapListenersOnly { get; init; } = false;
 
     /// <summary>
+    /// Flow direction filter for map generation ("all", "out", "in").
+    /// </summary>
+    public string MapDirection { get; init; } = "all";
+
+    /// <summary>
     /// List of ports or port ranges (e.g. "80", "443", "8000-8080") to include in the map.
     /// </summary>
     public List<string> MapIncludedPorts { get; init; } = [];

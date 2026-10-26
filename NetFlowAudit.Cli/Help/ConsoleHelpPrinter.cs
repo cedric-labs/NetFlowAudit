@@ -59,22 +59,31 @@ TOPOLOGY MAP OPTIONS (TopologyForge - Self-Contained Offline HTML):
   --dir, --input-dir <dir>            Consolidate all audit CSV files from a directory into a unified map.
   --pattern, --input-filter <glob>    File search filter when using --input-dir (default: *.csv).
   --inputs, --input-files <f1,f2,...> Comma-separated list of audit CSV files to consolidate.
-  --include-ports <p1,p2-p3,...>      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
-  --exclude-ports <p1,p2-p3,...>      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
-  --include-hosts <m1,m2,...>         Include only servers matching wildcard patterns (e.g. SRV-*,*SQL*).
-  --exclude-hosts <m1,m2,...>         Exclude servers matching wildcard patterns (e.g. *.local,SRV-MON-*).
-  --include-ips <ip1,cidr2,...>       Include only these IP addresses or CIDR subnets (e.g. 10.0.0.0/8).
-  --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
-  --include-processes <proc1,...>     Include only these processes or application targets.
-  --exclude-processes <proc1,...>     Exclude these processes or application targets.
-  --map-layout <layered|tree|horizontal-tree|organic|circular|grid>
+  --include-ports, --include-port <p1,p2-p3,...>
+                                      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
+  --exclude-ports, --exclude-port <p1,p2-p3,...>
+                                      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
+  --include-hosts, --include-host <m1,m2,...>
+                                      Include only servers matching wildcard or substring patterns (e.g. SRV-*,*SQL*).
+  --exclude-hosts, --exclude-host <m1,m2,...>
+                                      Exclude servers matching wildcard or substring patterns (e.g. *.local,SRV-MON-*).
+  --include-ips, --include-ip <ip1,cidr2,...>
+                                      Include only these IP addresses or CIDR subnets (e.g. 10.0.0.0/8).
+  --exclude-ips, --exclude-ip <ip1,cidr2,...>
+                                      Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
+  --include-processes, --include-process <proc1,...>
+                                      Include only these processes or application targets.
+  --exclude-processes, --exclude-process <proc1,...>
+                                      Exclude these processes or application targets.
+  --map-layout, --layout, --algorithm <layered|tree|horizontal-tree|organic|circular|grid>
                                       Initial geometric layout algorithm (layered hierarchical by default).
-  --map-sort <barycentric|tiers|subnet|degree|alpha|ip>
+  --map-sort, --sort <barycentric|tiers|subnet|degree|alpha|ip>
                                       Server sorting method (Sugiyama anti-crossing by default).
-  --map-routing <bezier|orthogonal|straight>
+  --map-routing, --routing <bezier|orthogonal|straight>
                                       Arrow routing mode with server box obstacle avoidance.
-  --map-spacing <compact|balanced|spacious>
+  --map-spacing, --spacing <compact|balanced|spacious>
                                       Initial spacing profile between servers and arrows.
+  --direction <all|out|in>            Directional flow filtering (all flows by default).
   --listeners-only                    Map passive listening ports only.
   --include-ephemeral-ports           Disable default ephemeral port exclusion (49152-65535).
 

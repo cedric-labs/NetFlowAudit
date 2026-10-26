@@ -196,4 +196,100 @@ public sealed class TopologyMapConfigurationBuilderTests
         updated.MapListenersOnly.Should().BeTrue();
         updated.MapExcludeEphemeralPorts.Should().BeFalse();
     }
+
+    [Fact]
+    public void BuildRenderingOptions_WhenSubnetConfigured_MapsToSubnetCluster()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapSortMethod = "subnet"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.DefaultSortMethod.Should().Be(TopologyNodeSortMethod.SubnetCluster);
+    }
+
+    [Fact]
+    public void BuildRenderingOptions_WhenFiltersConfigured_PopulatesInitialFilterProperties()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapIncludedPorts = ["80", "443"],
+            MapExcludedPorts = ["53"],
+            MapExcludedHosts = ["*.local", "SRV-MON-*"],
+            MapDirection = "out"
+        };
+
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(config);
+
+        // Assert
+        renderingOptions.InitialIncludePorts.Should().Be("80, 443");
+        renderingOptions.InitialExcludePorts.Should().Be("53");
+        renderingOptions.InitialExcludeHosts.Should().Be("*.local, SRV-MON-*");
+        renderingOptions.InitialDirection.Should().Be("OUT");
+    }
+
+    [Fact]
+    public void ApplyCommandLineOverrides_WhenArgumentAliasesUsed_UpdatesAppConfiguration()
+    {
+        // Arrange
+        var baseConfig = new AppConfiguration();
+        var args = new[]
+        {
+            "--layout", "organic",
+            "--sort", "degree",
+            "--routing", "straight",
+            "--spacing", "spacious",
+            "--exclude-host", "SRV-MON",
+            "--include-host", "SRV-WEB",
+            "--exclude-port", "53",
+            "--include-port", "443",
+            "--exclude-ip", "10.99.0.0/16",
+            "--include-ip", "10.0.0.0/8",
+            "--exclude-process", "chrome",
+            "--include-process", "dotnet",
+            "--direction", "out"
+        };
+
+        // Act
+        var updated = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(baseConfig, args);
+
+        // Assert
+        updated.MapLayoutMode.Should().Be("organic");
+        updated.MapSortMethod.Should().Be("degree");
+        updated.MapRoutingMode.Should().Be("straight");
+        updated.MapSpacingProfile.Should().Be("spacious");
+        updated.MapExcludedHosts.Should().Equal("SRV-MON");
+        updated.MapIncludedHosts.Should().Equal("SRV-WEB");
+        updated.MapExcludedPorts.Should().Equal("53");
+        updated.MapIncludedPorts.Should().Equal("443");
+        updated.MapExcludedIps.Should().Equal("10.99.0.0/16");
+        updated.MapIncludedIps.Should().Equal("10.0.0.0/8");
+        updated.MapExcludedProcesses.Should().Equal("chrome");
+        updated.MapIncludedProcesses.Should().Equal("dotnet");
+        updated.MapDirection.Should().Be("out");
+    }
+
+    [Fact]
+    public void BuildFilterOptions_WhenDirectionIsOut_ExcludesInboundFlows()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            MapDirection = "out"
+        };
+
+        // Act
+        var options = TopologyMapConfigurationBuilder.BuildFilterOptions(config);
+
+        // Assert
+        options.IncludeInboundFlows.Should().BeFalse();
+        options.IncludeOutboundFlows.Should().BeTrue();
+    }
 }

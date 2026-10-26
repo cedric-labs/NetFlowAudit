@@ -135,14 +135,15 @@ Topology Map Options (TopologyForge):
   --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
   --include-processes <proc1,...>     Include only these processes or application targets.
   --exclude-processes <proc1,...>     Exclude these processes or application targets.
-  --map-layout <layered|organic|circular|grid>
+  --map-layout, --layout, --algorithm <layered|tree|horizontal-tree|organic|circular|grid>
                                       Topology layout mode (Hierarchical Layered by default).
-  --map-sort <sugiyama|tiers|subnet|degree|alpha|ip>
+  --map-sort, --sort <barycentric|tiers|subnet|degree|alpha|ip>
                                       Server sorting method (Sugiyama anti-crossing by default).
-  --map-routing <bezier|orthogonal|straight>
+  --map-routing, --routing <bezier|orthogonal|straight>
                                       Arrow routing mode with server box obstacle avoidance.
-  --map-spacing <compact|balanced|spacious>
+  --map-spacing, --spacing <compact|balanced|spacious>
                                       Initial spacing profile between servers and arrows.
+  --direction <all|out|in>            Directional flow filtering (all flows by default).
   --listeners-only                    Map passive listening ports only.
   --export-drawio, --drawio <path.drawio> Export editable diagrams to Draw.io / Diagrams.net XML format.
   --drawio-edge-mode <adaptive|direction|none> Draw.io edge grouping (AdaptiveThreshold, ByDirection, None).
