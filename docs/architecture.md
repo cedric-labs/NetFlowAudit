@@ -1,32 +1,32 @@
-> **Langue / Language**: **[ 🇫🇷 Français ]** · [ 🇬🇧 English (architecture.en.md)](architecture.en.md)
+> **Language / Langue**: **English** · [Français](architecture.fr.md)
 
-# NetFlowAudit - Spécification d'Architecture & Ingénierie Système
+# NetFlowAudit - Architecture & Engineering Specification
 
-## 1. Résumé Exécutif de l'Architecture
+## 1. Executive Architecture Summary
 
-**NetFlowAudit** est un agent d'audit des flux réseau et de cartographie d'infrastructure léger et multiplateforme (Windows & Linux). Contrairement aux outils traditionnels de capture de paquets (tels que Wireshark ou Zeek), NetFlowAudit opère **strictement au niveau de la couche des sockets du système d'exploitation sans pilote de capture de paquets** (aucun pilote Npcap, WinPcap ou libpcap requis).
+**NetFlowAudit** is a lightweight, cross-platform (Windows & Linux) network flow auditing and infrastructure discovery agent. Unlike traditional network capture tools (such as Wireshark or Zeek), NetFlowAudit operates **strictly at the operating system socket layer without packet inspection drivers** (no Npcap, WinPcap, or libpcap required). 
 
-Il audite en continu l'ensemble des sockets TCP/UDP entrants, sortants et en écoute, les corrèle avec les arborescences de processus propriétaires et les runtimes applicatifs, déduplique les connexions éphémères en flux historiques consolidés, et génère simultanément une piste d'audit CSV conforme au standard RFC 4180 ainsi que des cartographies topologiques HTML5/SVG interactives et autonomes.
+It continuously audits all inbound, outbound, and listening TCP/UDP sockets, correlates them with owning process trees and application runtimes, deduplicates transient connections into consolidated historical flows, and produces both an RFC 4180 CSV audit trail and interactive offline HTML5/SVG topology maps.
 
 ```mermaid
 flowchart TD
-    subgraph OS_Kernel["Noyau du Système d'Exploitation"]
-        TCP["Table des Sockets TCP"]
-        UDP["Table des Sockets UDP"]
-        PROC["Table des Processus /proc"]
+    subgraph OS_Kernel["Operating System Kernel"]
+        TCP["TCP Socket Table"]
+        UDP["UDP Socket Table"]
+        PROC["Process Table /proc"]
     end
 
-    subgraph NetFlowAudit_Core["Moteur NetFlowAudit"]
-        SF["SocketForge - Scrutation des Sockets"]
-        PF["ProcessForge - Résolution PID & Runtimes"]
-        DEDUP["ConnectionDeduplicationRegister - Machine d'État & Compteurs"]
-        DNS["CachedHostNameResolver - DNS Inverse & RDAP Asynchrone"]
+    subgraph NetFlowAudit_Core["NetFlowAudit Engine"]
+        SF["SocketForge - Socket Table Polling"]
+        PF["ProcessForge - PID & Runtime Resolution"]
+        DEDUP["ConnectionDeduplicationRegister - State Machine & Hit Tracking"]
+        DNS["CachedHostNameResolver - Async Reverse DNS & RDAP"]
     end
 
-    subgraph Persistence_Presentation["Sorties & Visualisation"]
-        FF["FileForge.Core - Flux CSV RFC 4180 Non-Bloquant"]
-        TF["TopologyForge - Moteur de Graphe HTML5 Autonome"]
-        TUI["Tableau de Bord TUI - Interface Terminal Interactive"]
+    subgraph Persistence_Presentation["Output & Visualization"]
+        FF["FileForge.Core - RFC 4180 Non-Blocking CSV"]
+        TF["TopologyForge - Offline HTML5 Graph Engine"]
+        TUI["Interactive TUI Dashboard - Terminal Presentation Layer"]
     end
 
     TCP --> SF
@@ -42,9 +42,9 @@ flowchart TD
 
 ---
 
-## 2. Architecture Découplée des Frameworks Partagés
+## 2. Decoupled Shared Framework Architecture
 
-NetFlowAudit respecte scrupuleusement les principes de la Clean Architecture et de l'inversion de dépendance. La logique métier et les adaptateurs d'infrastructure sont répartis entre 4 frameworks partagés modulaires et indépendants :
+NetFlowAudit adheres to Clean Architecture and strict Dependency Inversion principles. Domain logic and infrastructure adapters are separated across 4 independent, modular shared frameworks maintained in dedicated repositories:
 
 ```mermaid
 classDiagram
@@ -87,25 +87,25 @@ classDiagram
     NetFlowAudit_Core --> TopologyForge
 ```
 
-### Responsabilités des Frameworks
-1. **SocketForge (`1.0.2`)** :
-   - **Windows** : Interagit avec l'API native `iphlpapi.dll` (`GetExtendedTcpTable`, `GetExtendedUdpTable`) pour extraire les structures des sockets IPv4 et IPv6 (`MIB_TCPTABLE_OWNER_PID`, `MIB_UDPTABLE_OWNER_PID`).
-   - **Linux** : Analyse les structures de sockets du noyau depuis `/proc/net/tcp`, `/proc/net/tcp6`, `/proc/net/udp` et `/proc/net/udp6`, en associant les descripteurs d'inodes aux descripteurs `/proc/[pid]/fd/*`.
-2. **ProcessForge (`1.0.2`)** :
-   - Récupère les métadonnées de l'exécutable (`ProcessName`, `ExecutablePath`, `CommandLine`, `UserName`).
-   - **Débrouillage de runtime (*Runtime Unwrapping*)** : Analyse la ligne de commande des lanceurs génériques (`dotnet`, `java`, `python`, `node`, `powershell`, `bash`) afin d'identifier la véritable cible applicative (ex. `catalog-service.jar`, `worker.py`, `backup.ps1`).
-3. **FileForge.Core (`1.0.2`)** :
-   - Assure des écritures séquentielles thread-safe et non-bloquantes.
-   - Applique rigoureusement les règles d'échappement RFC 4180 (virgules, guillemets, retours chariot) et maintient un verrou de partage persistant (`FileShare.ReadWrite`), autorisant la lecture en temps réel par des agents SIEM ou des collecteurs de logs sans conflit de verrouillage.
-4. **TopologyForge (`1.1.1`)** :
-   - Génère des visualisations topologiques réseau HTML5/SVG interactives 100 % autonomes (zéro dépendance externe).
-   - Intègre le placement barycentrique anti-croisement de Sugiyama, l'organisation par colonnes architecturales fonctionnelles (*Functional Tiers*), le regroupement par sous-réseaux et zones de sécurité avec enveloppes à fort contraste et case à cocher interactive, la simulation physique organique dirigée par les forces, le routage de courbes de Bézier lisses contournant les serveurs, les panneaux interactifs d'inspection des ports et la pagination côté client.
+### Framework Roles
+1. **SocketForge (`1.0.2`)**:
+   - **Windows**: Interacts with `iphlpapi.dll` (`GetExtendedTcpTable`, `GetExtendedUdpTable`) to retrieve IPv4 and IPv6 socket structures (`MIB_TCPTABLE_OWNER_PID`, `MIB_UDPTABLE_OWNER_PID`).
+   - **Linux**: Parses kernel socket structures from `/proc/net/tcp`, `/proc/net/tcp6`, `/proc/net/udp`, and `/proc/net/udp6`, mapping inode descriptors to `/proc/[pid]/fd/*`.
+2. **ProcessForge (`1.0.2`)**:
+   - Gathers executable metadata (`ProcessName`, `ExecutablePath`, `CommandLine`, `UserName`).
+   - **Runtime Unwrapping**: Inspects command lines of launcher processes (`dotnet`, `java`, `python`, `node`, `powershell`, `bash`) to extract the genuine application target (e.g. `catalog-service.jar`, `worker.py`, `backup.ps1`).
+3. **FileForge.Core (`1.0.2`)**:
+   - Implements thread-safe, non-blocking streaming I/O.
+   - Enforces strict RFC 4180 escaping (commas, quotes, newlines) and maintains persistent file share locks (`FileShare.ReadWrite`), allowing real-time ingestion by SIEM agents or log shippers without locking conflicts.
+4. **TopologyForge (`1.1.1`)**:
+   - Generates fully self-contained offline HTML5/SVG network topology visualizations.
+   - Incorporates Sugiyama anti-crossing barycentric positioning, functional tier architectural column layout, subnet & security zone clustering with interactive toggle and high-contrast envelopes, force-directed organic physics simulation, smooth Bézier routing around server obstacles, interactive port inspection panels, and client-side pagination.
 
 ---
 
-## 3. Flux de Données & Pipeline de Traitement
+## 3. Data Flow & Processing Pipeline
 
-Le cycle d'audit s'exécute périodiquement (par défaut toutes les 5 secondes) sous la forme d'une boucle asynchrone gouvernée par l'annulation coopérative (*CancellationToken*) :
+The audit cycle executes periodically (default every 5 seconds) as an asynchronous loop governed by cooperative cancellation:
 
 ```mermaid
 sequenceDiagram
@@ -122,14 +122,14 @@ sequenceDiagram
     Engine->>SF: GetActiveSocketsAsync(token)
     SF-->>Engine: IReadOnlyList~SocketSnapshot~
     
-    loop Pour chaque socket
+    loop For each socket
         Engine->>PF: ResolveProcessMetadata(PID)
         PF-->>Engine: ProcessMetadata
         Engine->>Filter: ShouldAudit(socket, process)
-        alt Socket autorisé par les filtres
+        alt Socket allowed by filters
             Engine->>Dedup: RecordObservation(socket, process)
-            Dedup-->>Engine: DeduplicatedFlow (Nouveau ou Mis à jour)
-            opt Flux nécessitant un nom d'hôte & non en cache
+            Dedup-->>Engine: DeduplicatedFlow (New or Updated)
+            opt Flow requires hostname & not cached
                 Engine->>DNS: QueueResolution(remoteIp)
             end
         end
@@ -139,47 +139,47 @@ sequenceDiagram
     Engine->>UI: UpdateSnapshot(flowMetrics)
 ```
 
-### Étapes du Pipeline
+### Pipeline Stages
 
-1. **Découverte des Sockets** :
-   - Collecte les sockets TCP dans tous les états (`Listen`, `Established`, `TimeWait`, `CloseWait`, `FinWait1`, `FinWait2`, `SynSent`, `SynReceived`).
-   - Collecte les points de terminaison UDP actifs liés localement.
-2. **Corrélation des Processus & Enrichissement des Métadonnées** :
-   - Associe le PID propriétaire de chaque socket au nom du binaire, chemin d'accès, ligne de commande et compte utilisateur d'exécution.
-   - Si le processus se termine avant sa résolution, l'appartenance est marquée `[Terminated]` tout en conservant les métriques du socket.
-3. **Filtrage Multi-Niveaux (`NetworkFlowFilter`)** :
-   - Évalue les critères d'exclusion : bouclage local (`127.0.0.1`, `::1`), comptes système, ports locaux (ex. 3389, 22), ports distants (ex. 53 DNS), plages CIDR d'IP distantes (ex. `10.0.0.0/8`), préfixes de noms de processus et PID spécifiques (ex. 0, 4).
-4. **Déduplication & Machine d'État (`ConnectionDeduplicationRegister`)** :
-   - Les ports clients éphémères (49152–65535 sous Windows/Linux) sont neutralisés lors de la déduplication.
-   - Les connexions distinctes issues du même binaire client vers le même port de service distant sont consolidées en une seule entité d'audit horodatée (`FirstSeenUtc`, `LastSeenUtc`) avec un compteur cumulé (`ObservationCount`).
-5. **Résolution Asynchrone Non-Bloquante des Noms d'Hôtes (`CachedHostNameResolver`)** :
-   - Évalue les exclusions CIDR via `DnsAddressExclusionEvaluator` pour ignorer les résolutions broadcast, multicast ou link-local.
-   - Interroge le cache mémoire local puis le cache disque persistant (`netflow_dns_cache.json`).
-   - Enfile les adresses IP publiques non résolues dans un canal d'arrière-plan sans blocage avec une concurrence régulée par `SemaphoreSlim(10, 10)` et un délai d'attente borné (500 ms).
-   - En cas d'absence d'enregistrement PTR DNS inverse, bascule automatiquement vers le protocole RDAP (*Registration Data Access Protocol*) en interrogeant les registres régionaux ARIN/RIPE/APNIC/LACNIC/AFRINIC pour identifier l'organisation propriétaire.
-6. **Persistance en Flux Continu & Visualisation** :
-   - Écrit les lots modifiés sur disque via `FileForge.Core`.
-   - Transmet les métriques au tableau de bord interactif Spectre.Console TUI et régénère la cartographie HTML5 `TopologyForge` à la demande.
-
----
-
-## 4. Concurrence & Gouvernance des Ressources
-
-NetFlowAudit est optimisé pour une empreinte minimale sur les serveurs de production à forte charge :
-
-- **Annulation Coopérative** : Chaque méthode d'I/O asynchrone accepte un `CancellationToken` et respecte les signaux de terminaison gracieuse (`Ctrl+C`, `SIGTERM`, `SIGINT`).
-- **Files de Travail Régulées** : Les requêtes DNS inverses et RDAP transitent par un `Channel<IPAddress>` avec un parallélisme borné à 10 workers pour prévenir l'épuisement des descripteurs de sockets.
-- **Accès au Cache Sans Verrou** : Le cache DNS repose sur un `ConcurrentDictionary<IPAddress, DnsCacheEntry>`, garantissant que les boucles de traitement haute fréquence ne subissent aucune contention de verrou.
-- **Empreinte Mémoire Maîtrisée** : La mémoire de travail reste stable entre **35 Mo et 65 Mo**, y compris sur les nœuds gérant plus de 10 000 connexions concurrentes actives, grâce au pliage opéré par la déduplication.
-- **Consommation CPU Négligeable** : La charge CPU typique est **< 0,5 %** sur les processeurs modernes avec l'intervalle de scrutation par défaut de 5 secondes.
+1. **Socket Discovery**:
+   - Collects TCP sockets across all states (`Listen`, `Established`, `TimeWait`, `CloseWait`, `FinWait1`, `FinWait2`, `SynSent`, `SynReceived`).
+   - Collects active UDP endpoints bound locally.
+2. **Process Correlation & Metadata Enrichment**:
+   - Maps each socket's owning PID to binary name, path, command line, and executing user context.
+   - If the process terminates before resolution, flags ownership as `[Terminated]` while retaining socket metrics.
+3. **Multi-Stage Filtering (`NetworkFlowFilter`)**:
+   - Evaluates exclusion criteria: Loopback (`127.0.0.1`, `::1`), system accounts, local ports (e.g. 3389, 22), remote ports (e.g. 53 DNS), remote IP CIDR blocks (e.g. `10.0.0.0/8`), process name prefixes, and PIDs (e.g. 0, 4).
+4. **Deduplication & State Machine (`ConnectionDeduplicationRegister`)**:
+   - Ephemeral client ports (49152–65535 on Windows/Linux) are normalized during deduplication.
+   - Distinct connections from the same client binary to the same destination service port are collapsed into a single audit entity tracking `FirstSeenUtc`, `LastSeenUtc`, and cumulative `ObservationCount`.
+5. **Non-Blocking Hostname Enrichment (`CachedHostNameResolver`)**:
+   - Evaluates CIDR exclusions via `DnsAddressExclusionEvaluator` to skip broadcast, multicast, or link-local lookups.
+   - Consults local memory cache and persistent disk cache (`netflow_dns_cache.json`).
+   - Queues unresolved public IPs to a background unbounded channel worker with concurrency throttled via `SemaphoreSlim(10, 10)` and bounded timeout (500 ms).
+   - If reverse DNS PTR is missing, falls back to RDAP (Registration Data Access Protocol) querying ARIN/RIPE/APNIC/LACNIC/AFRINIC regional registries to resolve organization ownership.
+6. **Streaming Persistence & Visualization**:
+   - Writes batch changes to disk via `FileForge.Core`.
+   - Dispatches state updates to the Spectre.Console TUI and generates/refreshes the `TopologyForge` HTML5 map on demand.
 
 ---
 
-## 5. Modèle de Sécurité & d'Isolation
+## 4. Concurrency & Resource Governance
 
-| Aspect | Implémentation & Justification Technique |
+NetFlowAudit is designed for minimal footprint on high-density production hosts:
+
+- **Cooperative Cancellation**: Every async I/O method accepts a `CancellationToken` and respects graceful shutdown signals (`Ctrl+C`, `SIGTERM`, `SIGINT`).
+- **Bounded Worker Queues**: Reverse DNS queries are scheduled through a `Channel<IPAddress>` with a maximum concurrency of 10 workers to avoid socket exhaustion.
+- **Lock-Free Cache Access**: The DNS cache uses `ConcurrentDictionary<IPAddress, DnsCacheEntry>`, ensuring that high-frequency packet loops never block on lock contention.
+- **Memory Footprint**: Working set memory remains bounded between **35 MB and 65 MB**, even on nodes with over 10,000 active concurrent connections, thanks to deduplication folding.
+- **CPU Overhead**: Typical CPU utilization is **< 0.5%** on modern multicore servers with the default 5-second sampling interval.
+
+---
+
+## 5. Security & Isolation Model
+
+| Aspect | Implementation & Rationale |
 |---|---|
-| **Exécution Sans Pilote** | Aucun pilote en espace noyau installé ; s'exécute en espace utilisateur standard pour les sockets appartenant à l'utilisateur, ou avec privilèges Administrateur / `CAP_NET_ADMIN` / `root` pour auditer l'ensemble des processus de la machine. |
-| **Mode Isolé / Air-Gap** | Lorsque `--offline` ou `--isolated` est activé, toutes les requêtes réseau sortantes DNS PTR et RDAP sont rigoureusement désactivées. Aucun paquet réseau n'est émis par NetFlowAudit. |
-| **Inspection Passive en Lecture Seule** | NetFlowAudit est strictement passif ; il n'interrompt jamais de connexion, n'injecte aucun paquet et ne modifie aucune table de routage ou de socket. |
-| **Obscurcissement des Données** | Propose l'anonymisation à l'exécution (`--obfuscate`, `--mask-server`, `--mask-ip`) pour masquer les noms d'hôtes et plans d'adressage IP internes lors des audits externes ou captures d'écran de documentation. |
+| **Driverless Execution** | Zero kernel drivers installed; operates in unprivileged user space for self-owned sockets, or local Administrator / `CAP_NET_ADMIN` / `root` to inspect foreign process sockets. |
+| **Air-Gapped / Isolated Mode** | When `--offline` or `--isolated` is set, all outbound DNS PTR and RDAP network queries are completely suppressed. No traffic is emitted by NetFlowAudit itself. |
+| **Read-Only Inspection** | NetFlowAudit is strictly passive; it never terminates connections, injects packets, or alters socket routing tables. |
+| **Data Masking** | Provides runtime obfuscation (`--obfuscate`, `--mask-server`, `--mask-ip`) to anonymize server hostnames and internal IP schemes for external audits or documentation screenshots. |
