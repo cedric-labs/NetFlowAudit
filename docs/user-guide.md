@@ -1,147 +1,149 @@
-# NetFlowAudit - User Guide & Production Operations
+> **Langue / Language**: **[ 🇫🇷 Français ]** · [ 🇬🇧 English (user-guide.en.md)](user-guide.en.md)
+
+# NetFlowAudit - Guide d'Utilisation & Exploitation en Production
 
 ## 1. Installation & Distribution
 
-NetFlowAudit is packaged as standalone, self-contained, single-file executables for **x64 Windows** and **x64 Linux**. The .NET 8 runtime is embedded inside the binary; no runtime or SDK installation is required on target servers.
+NetFlowAudit est distribué sous forme de binaires autonomes (*single-file*), précompilés et auto-contenus pour architectures **x64 Windows** et **x64 Linux**. Le runtime .NET 8 est directement intégré dans l'exécutable ; aucune installation de runtime ou de SDK préalable n'est nécessaire sur les serveurs cibles.
 
-### 1.1. Download Pre-Built Binaries
-Pre-compiled packages and standalone executables are published on GitHub Releases:
-- **GitHub Release**: [NetFlowAudit Releases](https://github.com/curvecoder/NetFlowAudit/releases)
+### 1.1. Téléchargement des Binaires Précompilés
+Les packages et exécutables autonomes sont publiés sur les Releases GitHub du projet :
+- **Releases GitHub** : [NetFlowAudit Releases](https://github.com/curvecoder/NetFlowAudit/releases)
 
-| OS / Architecture | Artifact | Usage |
+| Système / Architecture | Artefact | Description |
 |---|---|---|
-| **Windows x64** | `NetFlowAudit-1.6.0-preview.2-win-x64.zip` | Archive containing `NetFlowAudit.Cli.exe` and default `netflowaudit.json`. |
-| **Windows x64 (Direct)** | `NetFlowAudit-1.6.0-preview.2-win-x64.exe` | Single standalone `.exe` without archive extraction. |
-| **Linux x64** | `NetFlowAudit-1.6.0-preview.2-linux-x64.tar.gz` | Archive containing executable binary and baseline configuration. |
-| **Linux x64 (Direct)** | `NetFlowAudit-1.6.0-preview.2-linux-x64` | Single standalone ELF executable. |
+| **Windows x64** | `NetFlowAudit-1.6.0-preview.2-win-x64.zip` | Archive contenant `NetFlowAudit.Cli.exe` et la configuration type `netflowaudit.json`. |
+| **Windows x64 (Direct)** | `NetFlowAudit-1.6.0-preview.2-win-x64.exe` | Exécutable unique autonome sans décompression d'archive. |
+| **Linux x64** | `NetFlowAudit-1.6.0-preview.2-linux-x64.tar.gz` | Archive tarball contenant le binaire ELF et le fichier de configuration de base. |
+| **Linux x64 (Direct)** | `NetFlowAudit-1.6.0-preview.2-linux-x64` | Exécutable binaire ELF unique autonome. |
 
-### 1.2. Building from Source
-To compile directly from source:
+### 1.2. Compilation depuis les Sources
+Pour compiler directement depuis le code source :
 ```bash
-# Clone the repository
+# Cloner le dépôt
 git clone https://github.com/curvecoder/NetFlowAudit.git
 cd NetFlowAudit
 
-# Build self-contained Windows executable
+# Générer l'exécutable autonome pour Windows
 dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/win-x64
 
-# Build self-contained Linux executable
+# Générer l'exécutable autonome pour Linux
 dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/linux-x64
 ```
 
 ---
 
-## 2. Command-Line Options Reference
+## 2. Référentiel des Options de Ligne de Commande
 
-### 2.1. Complete Command-Line Options Catalog
+### 2.1. Catalogue Complet des Options CLI
 
-| Option | Alias / Short | Default | Description |
+| Option | Alias / Raccourci | Valeur par défaut | Description |
 |---|---|---|---|
-| `--help` | `-h`, `-?` | — | Display the CLI help message and exit. |
-| `--config <path>` | — | `netflowaudit.json` | Path to the JSON configuration file. |
-| `--init-config [path]` | `--generate-config` | `netflowaudit.json` | Generate a baseline JSON configuration file and exit immediately. |
-| `--daemon` | `--no-tui` | `false` | Run in headless mode without the interactive terminal dashboard (suitable for Windows Services / systemd). |
-| `--output <path>` | `-o` | `netflow_audit.csv` | Output path for deduplicated CSV flow records. Supports dynamic tokens `{ServerName}`, `{HostName}`, `{Date}`, `{Timestamp}`. |
-| `--output-ndjson <path>` | `--ndjson` | — | Continuous output path for streaming NDJSON (JSON Lines) flow records. |
-| `--export-ndjson [path]` | — | `netflow_audit.ndjson` | Convert an existing CSV audit log into NDJSON format and exit. |
-| `--export-rules [path]` | `--firewall-matrix`, `--rules-csv` | `firewall_rules.csv` | Aggregate flow history into a normalized 5-tuple firewall rule matrix and exit. |
-| `--min-observations <n>` | — | `1` | Filter for `--export-rules`: minimum observation count required to retain a rule. |
-| `--active-within-days <n>` | — | `null` (all) | Filter for `--export-rules`: only retain rules observed within the last N days. |
-| `--destination-zone <zone>` | — | `all` | Filter for `--export-rules`: filter by destination zone (`internal` vs `public`). |
-| `--internal-only` | — | `false` | Shorthand filter for `--export-rules`: retain only internal-to-internal flows. |
-| `--public-only` | — | `false` | Shorthand filter for `--export-rules`: retain only public/WAN flows. |
-| `--exclude-ephemeral` | — | `false` | Filter for `--export-rules`: exclude destination ports >= 49152 (dynamic/ephemeral ports). |
-| `--direction <dir>` | — | `all` | Filter for topology map and rules: `inbound`, `outbound`, or `all`. |
-| `--resolve-offline` | — | `false` | Consolidate DNS caches and enrich audit files offline in air-gapped environments, then exit. |
-| `--in-place` | — | `false` | Used with `--resolve-offline`: overwrite original audit files directly instead of creating `*_enriched.csv`. |
-| `--force-resolve` | — | `false` | Used with `--resolve-offline`: re-resolve hostnames even if already present in input files. |
-| `--caches <paths>` | `--cache` | — | Used with `--resolve-offline`: input cache files or directories to consolidate into master cache. |
-| `--output-cache <path>` | — | `netflow_dns_cache.json` | Destination path for the consolidated master DNS cache. |
-| `--test-ip <ip>` | `--lookup` | — | Perform verbose 6-stage DNS and RDAP resolution diagnostics for a single IP address and exit. |
-| `--interval <seconds>` | — | `5` | Scan interval in seconds for continuous socket polling. |
-| `--columns <c1,c2,..>` | — | Default 16 cols | Ordered list of CSV columns to record. |
-| `--resolve-dns <bool>` | — | `true` | Enable or disable reverse DNS PTR lookups for remote endpoints. |
-| `--resolve-ip-owners <bool>` | — | `true` | Enable or disable RDAP queries for organization and autonomous system names. |
-| `--isolated` | `--offline` | `false` | Completely disable outbound network queries (DNS PTR and RDAP). Zero network packets emitted. |
-| `--exclude-remote-ips <ips>` | `--exclude-remote-ip` | — | Comma-separated list of remote IP addresses or CIDR subnets to exclude from auditing. |
-| `--alias <ip>=<host>` | `--aliases` | — | Static IP-to-hostname mapping taking precedence over DNS resolution. |
-| `--reload-history <n / all / 0>` | `--history-limit` | `all` | Number of historical CSV flow records loaded into memory at startup to resume deduplication. |
-| `--mask-server <name>` | `--obfuscate-server` | — | Fictitious server name used for screenshots and sanitized exports. |
-| `--mask-ip <ip>` | `--obfuscate-ip` | — | Fictitious IP address used for screenshots and sanitized exports. |
-| `--obfuscate` | `--anonymize` | `false` | Shorthand: masks server name as `SRV-AUDIT-01` and local IP as `10.0.0.10`. |
-| `--map-only` | — | `false` | Generate an HTML/Draw.io topology map from existing CSV files and exit immediately. |
-| `--map <path>` | — | `netflow_topology.html` | Path for the generated interactive HTML5 topology diagram. |
-| `--export-drawio [path]` | `--drawio` | `netflow_topology.drawio` | Export an editable Draw.io XML topology diagram and exit immediately. |
-| `--drawio-theme <theme>` | — | `dark` | Visual theme for Draw.io diagrams (`dark` or `light`). |
-| `--drawio-edge-mode <mode>` | — | `adaptive` | Draw.io edge routing mode: `direction`, `port`, or `adaptive`. |
-| `--drawio-swimlanes <bool>` | — | `true` | Group nodes into subnet swimlane containers in Draw.io. |
-| `--include-ports <ports>` | — | — | Filter for topology map / rules: only include specified ports or ranges (e.g. `80,443,1433-1434`). |
-| `--exclude-ports <ports>` | — | — | Filter for topology map / rules: exclude specified ports or ranges (e.g. `53,135-139,445`). |
-| `--include-ips <ips>` | — | — | Filter for topology map / rules: only include specified remote IPs or CIDR blocks. |
-| `--include-processes <names>` | — | — | Filter for topology map: only include specified process names. |
-| `--include-hosts <patterns>` | — | — | Filter for topology map: only include specified hostnames (supports wildcards `*web*`). |
-| `--listeners-only` | — | `false` | Filter for topology map / rules: include only listening service sockets. |
+| `--help` | `-h`, `-?` | — | Affiche l'aide en ligne de commande et quitte. |
+| `--config <chemin>` | — | `netflowaudit.json` | Chemin vers le fichier de configuration JSON. |
+| `--init-config [chemin]` | `--generate-config` | `netflowaudit.json` | Génère un fichier modèle de configuration JSON et quitte immédiatement. |
+| `--daemon` | `--no-tui` | `false` | Exécute l'agent en tâche de fond sans tableau de bord interactif (adapté aux services Windows / systemd). |
+| `--output <chemin>` | `-o` | `netflow_audit.csv` | Chemin du fichier CSV de sortie. Accepte les jetons dynamiques `{ServerName}`, `{HostName}`, `{Date}`, `{Timestamp}`. |
+| `--output-ndjson <chemin>` | `--ndjson` | — | Chemin d'écriture continue du flux NDJSON (JSON Lines). |
+| `--export-ndjson [chemin]` | — | `netflow_audit.ndjson` | Convertit un historique d'audit CSV existant au format NDJSON et quitte. |
+| `--export-rules [chemin]` | `--firewall-matrix`, `--rules-csv` | `firewall_rules.csv` | Agrège l'historique des flux en une matrice 5-tuple normalisée pour règles de pare-feu et quitte. |
+| `--min-observations <n>` | — | `1` | Filtre pour `--export-rules` : nombre minimum d'observations requis pour conserver une règle. |
+| `--active-within-days <n>` | — | `null` (tous) | Filtre pour `--export-rules` : ne retient que les flux observés au cours des N derniers jours. |
+| `--destination-zone <zone>` | — | `all` | Filtre pour `--export-rules` : filtre par zone de destination (`internal` ou `public`). |
+| `--internal-only` | — | `false` | Filtre raccourci pour `--export-rules` : conserve uniquement les flux internes vers internes. |
+| `--public-only` | — | `false` | Filtre raccourci pour `--export-rules` : conserve uniquement les flux vers les IPs publiques WAN. |
+| `--exclude-ephemeral` | — | `false` | Filtre pour `--export-rules` : exclut les ports destination éphémères (>= 49152). |
+| `--direction <dir>` | — | `all` | Filtre de direction pour la topologie et les règles : `inbound`, `outbound` ou `all`. |
+| `--resolve-offline` | — | `false` | Consolide les caches DNS et enrichit les fichiers d'audit en environnement isolé, puis quitte. |
+| `--in-place` | — | `false` | Utilisé avec `--resolve-offline` : remplace directement les fichiers d'audit d'origine au lieu de créer `*_enriched.csv`. |
+| `--force-resolve` | — | `false` | Utilisé avec `--resolve-offline` : force la réévaluation des noms même si déjà présents dans les fichiers sources. |
+| `--caches <chemins>` | `--cache` | — | Utilisé avec `--resolve-offline` : fichiers ou répertoires de caches DNS à fusionner. |
+| `--output-cache <chemin>` | — | `netflow_dns_cache.json` | Chemin de destination pour le cache DNS maître consolidé. |
+| `--test-ip <ip>` | `--lookup` | — | Exécute un diagnostic verbeux de résolution DNS et RDAP en 6 étapes pour une adresse IP et quitte. |
+| `--interval <secondes>` | — | `5` | Intervalle en secondes entre deux analyses consécutives des tables de sockets. |
+| `--columns <c1,c2,..>` | — | 16 cols standard | Liste ordonnée personnalisée des colonnes CSV à exporter. |
+| `--resolve-dns <bool>` | — | `true` | Active ou désactive la résolution inverse DNS (PTR) pour les adresses IP distantes. |
+| `--resolve-ip-owners <bool>` | — | `true` | Active ou désactive l'interrogation RDAP pour identifier l'organisation propriétaire du bloc IP. |
+| `--isolated` | `--offline` | `false` | Désactive totalement les requêtes réseau sortantes (DNS PTR et RDAP). Émission de zéro paquet réseau. |
+| `--exclude-remote-ips <ips>` | `--exclude-remote-ip` | — | Liste d'adresses IP distantes ou de sous-réseaux CIDR à exclure de l'audit. |
+| `--alias <ip>=<nom>` | `--aliases` | — | Alias statique IP-vers-nom d'hôte prioritaire sur toute résolution DNS. |
+| `--reload-history <n / all / 0>` | `--history-limit` | `all` | Nombre de lignes CSV historiques rechargées en mémoire au démarrage pour assurer la déduplication. |
+| `--mask-server <nom>` | `--obfuscate-server` | — | Nom de serveur fictif affiché dans le terminal et les captures. |
+| `--mask-ip <ip>` | `--obfuscate-ip` | — | Adresse IP fictive affichée dans le terminal et les captures. |
+| `--obfuscate` | `--anonymize` | `false` | Raccourci : masque le nom du serveur en `SRV-AUDIT-01` et l'IP locale en `10.0.0.10`. |
+| `--map-only` | — | `false` | Génère une carte topologique HTML / Draw.io depuis les fichiers CSV d'entrée et quitte immédiatement. |
+| `--map <chemin>` | — | `netflow_topology.html` | Chemin du diagramme topologique interactif HTML5 généré. |
+| `--export-drawio [chemin]` | `--drawio` | `netflow_topology.drawio` | Exporte un diagramme topologique vectoriel modifiable Draw.io XML et quitte immédiatement. |
+| `--drawio-theme <thème>` | — | `dark` | Thème visuel du diagramme Draw.io (`dark` ou `light`). |
+| `--drawio-edge-mode <mode>` | — | `adaptive` | Mode de routage des flèches Draw.io : `direction`, `port` ou `adaptive`. |
+| `--drawio-swimlanes <bool>` | — | `true` | Regroupe les nœuds par couloirs (*swimlanes*) de sous-réseaux dans Draw.io. |
+| `--include-ports <ports>` | — | — | Filtre pour la topologie / règles : ne conserve que les ports indiqués (ex. `80,443,1433-1434`). |
+| `--exclude-ports <ports>` | — | — | Filtre pour la topologie / règles : exclut les ports indiqués (ex. `53,135-139,445`). |
+| `--include-ips <ips>` | — | — | Filtre pour la topologie / règles : ne conserve que les IPs ou blocs CIDR spécifiés. |
+| `--include-processes <noms>` | — | — | Filtre pour la topologie : ne conserve que les noms de processus indiqués. |
+| `--include-hosts <motifs>` | — | — | Filtre pour la topologie : ne conserve que les noms d'hôtes ciblés (supporte les jokers `*web*`). |
+| `--listeners-only` | — | `false` | Filtre pour la topologie / règles : ne conserve que les sockets de services en écoute passive. |
 
 ---
 
-## 3. Options Compatibility & Mutual Exclusivity Matrix
+## 3. Matrice de Compatibilité des Options & Exclusions Mutuelles
 
-### 3.1. Execution Mode Hierarchy
+### 3.1. Hiérarchie des Modes d'Exécution
 
-NetFlowAudit provides **7 distinct execution modes**. Standalone modes exit immediately upon task completion without launching background socket polling or the interactive TUI.
+NetFlowAudit propose **7 modes d'exécution distincts**. Les modes autonomes s'exécutent en une seule passe et quittent immédiatement sans lancer l'audit continu ni l'interface TUI.
 
-| Execution Mode | Triggering Option | Behavior |
+| Mode d'Exécution | Déclencheur Principal | Comportement Opérationnel |
 |---|---|---|
-| **1. Diagnostic Lookup** | `--test-ip <ip>` / `--lookup <ip>` | Executes 6-stage verbose resolution report and exits. |
-| **2. Config Template Generation** | `--init-config` / `--generate-config` | Writes default `netflowaudit.json` template and exits. |
-| **3. Offline Consolidation & Enrichment** | `--resolve-offline` | Merges DNS caches, enriches audit files, and exits. |
-| **4. Firewall Rule Matrix Export** | `--export-rules` / `--firewall-matrix` | Aggregates flows into normalized 5-tuple CSV and exits. |
-| **5. NDJSON Conversion** | `--export-ndjson` | Converts CSV audit log to NDJSON format and exits. |
-| **6. Topology Map Generation** | `--map-only` / `--export-drawio` | Generates HTML / Draw.io diagrams from CSV inputs and exits. |
-| **7. Continuous Socket Auditing** | *(default)* | Continuously polls socket tables, correlations, and deduplication. |
+| **1. Diagnostic Ponctuel** | `--test-ip <ip>` / `--lookup <ip>` | Exécute le rapport de diagnostic verbeux en 6 étapes et quitte. |
+| **2. Génération de Modèle JSON** | `--init-config` / `--generate-config` | Écrit le fichier modèle `netflowaudit.json` et quitte. |
+| **3. Consolidation & Enrichissement Hors-Ligne** | `--resolve-offline` | Fusionne les caches DNS, enrichit les logs d'audit et quitte. |
+| **4. Export de Matrice Pare-Feu** | `--export-rules` / `--firewall-matrix` | Agrège les flux en matrice 5-tuple CSV normalisée et quitte. |
+| **5. Conversion NDJSON** | `--export-ndjson` | Convertit le journal d'audit CSV au format NDJSON et quitte. |
+| **6. Rendu Topologique Dédié** | `--map-only` / `--export-drawio` | Génère les diagrammes HTML / Draw.io depuis des fichiers d'audit et quitte. |
+| **7. Audit Continu des Sockets** | *(par défaut)* | Scrute les sockets en continu, déduplique les flux et affiche la console TUI. |
 
-### 3.2. Option Incompatibility and Dependency Rules
+### 3.2. Règles d'Incompatibilité et Dépendances
 
-| Option | Requires / Prerequisite | Incompatible With |
+| Option | Dépendance Requise | Incompatible Avec |
 |---|---|---|
-| `--in-place` | `--resolve-offline` | Continuous auditing, `--map-only` |
-| `--force-resolve` | `--resolve-offline` | Continuous auditing, `--map-only` |
-| `--output-cache` | `--resolve-offline` | Continuous auditing (uses `DnsCachePath`) |
+| `--in-place` | `--resolve-offline` | Audit continu, `--map-only` |
+| `--force-resolve` | `--resolve-offline` | Audit continu, `--map-only` |
+| `--output-cache` | `--resolve-offline` | Audit continu (utilise `DnsCachePath`) |
 | `--min-observations` | `--export-rules` | `--resolve-offline`, `--test-ip` |
 | `--active-within-days` | `--export-rules` | `--resolve-offline`, `--test-ip` |
 | `--destination-zone` | `--export-rules` | `--resolve-offline`, `--test-ip` |
 | `--exclude-ephemeral` | `--export-rules` | `--resolve-offline`, `--test-ip` |
-| `--drawio-*` | `--export-drawio` or `--map-only` | `--export-rules`, `--resolve-offline` |
-| `--daemon` / `--no-tui` | Continuous mode (default) | Standalone modes (`--map-only`, etc.) |
-| `--isolated` / `--offline` | Any mode | Forces `--resolve-dns=false` & RDAP=off |
+| `--drawio-*` | `--export-drawio` ou `--map-only` | `--export-rules`, `--resolve-offline` |
+| `--daemon` / `--no-tui` | Mode continu (défaut) | Modes autonomes (`--map-only`, etc.) |
+| `--isolated` / `--offline` | Tous modes | Force `--resolve-dns=false` & RDAP désactivé |
 
 > [!WARNING]
-> Combining mutually exclusive flags (e.g. `--resolve-offline` with `--export-rules`) is not supported: the CLI dispatches standalone modes in order of precedence: `--test-ip` > `--resolve-offline` > `--export-rules` > `--export-ndjson` > `--map-only`.
+> La combinaison d'options autonomes mutuellement exclusives (ex. `--resolve-offline` avec `--export-rules`) n'est pas supportée. La CLI traite les commandes selon l'ordre de priorité : `--test-ip` > `--resolve-offline` > `--export-rules` > `--export-ndjson` > `--map-only`.
 
 ---
 
-## 4. Operational Modes
+## 4. Modes d'Exploitation
 
-### 4.1. Interactive Terminal Dashboard (TUI)
-Designed for active administrator sessions, real-time troubleshooting, and ad-hoc investigations:
+### 4.1. Tableau de Bord Interactif (TUI)
+Destiné aux sessions d'administration interactives, au diagnostic en temps réel et aux investigations :
 ```powershell
-# Windows (Administrator prompt recommended to correlate system PIDs)
+# Windows (Invite Administrateur recommandée pour corréler les PIDs système)
 .\NetFlowAudit.Cli.exe
 
-# Linux (Root / sudo recommended to inspect foreign socket descriptors)
+# Linux (Root / sudo recommandé pour inspecter les descripteurs des autres utilisateurs)
 sudo ./NetFlowAudit.Cli
 ```
 
-The TUI provides:
-- Live KPI banners (Active Sockets, Discovered Flows, Resolved Hostnames, Cache Hits).
-- Two switchable viewports: **Discovered Flows** (consolidated historical log) and **Active Sockets** (instantaneous snapshot).
-- Interactive pagination (`[N]` / `[P]` or `[PgDn]` / `[PgUp]`).
-- Incremental buffer loading (`[L]` to add +100 rows, `[A]` to load all).
-- Instant HTML map generation (`[M]`).
-- In-place exclusion toggling (`[Enter]` or `[X]`).
+Fonctionnalités du TUI :
+- Bandeaux KPI en direct (Sockets actifs, Flux découverts, Noms résolus, Taux de succès cache).
+- Deux vues basculables : **Flux Découverts** (historique consolidé) et **Sockets Actifs** (instantané immédiat).
+- Pagination interactive (`[N]` / `[P]` ou `[PgDn]` / `[PgUp]`).
+- Chargement progressif du tampon (`[L]` pour charger +100 lignes, `[A]` pour tout charger).
+- Génération instantanée de la carte HTML (`[M]`).
+- Exclusion contextuelle à la volée (`[Entrée]` ou `[X]`).
 
-### 4.2. Headless Daemon / Background Service
-Designed for 24/7 background auditing, data center fleet monitoring, and automated SIEM ingestion:
+### 4.2. Mode Démon / Service en Arrière-Plan
+Conçu pour l'audit permanent 24/7 sur serveurs de production et l'ingestion par un collecteur SIEM :
 ```bash
 # Windows
 .\NetFlowAudit.Cli.exe --daemon --output "C:\Logs\netflow_audit_{ServerName}.csv"
@@ -149,56 +151,56 @@ Designed for 24/7 background auditing, data center fleet monitoring, and automat
 # Linux
 sudo ./NetFlowAudit.Cli --no-tui --output "/var/log/netflow/netflow_{ServerName}.csv"
 ```
-In headless mode, the TUI is disabled, and the agent logs standard startup/shutdown banners to standard output while quietly persisting deduplicated flows to the CSV file.
+En mode démon, l'interface TUI est désactivée. L'agent consigne uniquement les messages de démarrage et d'arrêt standard tout en écrivant en flux continu les enregistrements dédupliqués dans le fichier CSV.
 
-### 4.3. Verbose Single IP Diagnostics (`--test-ip`)
-To troubleshoot DNS and RDAP resolution discrepancies or test why an IP is not resolving as expected:
+### 4.3. Diagnostic Verbeux d'une Adresse IP (`--test-ip`)
+Pour analyser les divergences de résolution entre l'OS et .NET ou comprendre pourquoi une IP ne résout pas :
 ```bash
 NetFlowAudit.Cli --test-ip 34.120.255.184
 ```
-Outputs a full 6-stage diagnostic report including classification, local cache status, OS network configuration, reverse DNS PTR execution time, RDAP HTTP response code and payload, and the final consolidated cache model.
+Affiche un rapport technique en 6 étapes : analyse syntaxique/zone, présence dans le cache local, configuration des interfaces et suffixes DNS de l'OS, test reverse DNS PTR avec latence et erreurs SocketException, test HTTP direct RDAP, et modèle final de cache.
 
 ---
 
-## 5. Production Deployment
+## 5. Déploiement en Production
 
-### 5.1. Windows Service Deployment
+### 5.1. Déploiement en Service Windows
 
-#### Option A: Using NSSM (Non-Sucking Service Manager)
+#### Option A : Utilisation de NSSM (Non-Sucking Service Manager)
 > [!NOTE]
-> NSSM is an open-source service wrapper that enables standard CLI applications to run as native Windows services with automatic restarts and logging. It is not preinstalled on Windows and can be installed in seconds:
+> NSSM est un wrapper open-source permettant d'exécuter toute application console en tant que service natif Windows avec redémarrages automatiques et gestion des journaux.
 
 ```powershell
-# Install via Winget (Windows 11 / Windows 10 modern)
+# Installation via Winget (Windows 11 / Windows 10 moderne)
 winget install NSSM.NSSM
 
-# Or install via Chocolatey
+# Ou installation via Chocolatey
 choco install nssm -y
 
-# Or install via Scoop
+# Ou installation via Scoop
 scoop install nssm
 ```
 
-Once installed, register and launch the NetFlowAudit background service:
+Une fois installé, enregistrez et lancez le service :
 ```cmd
-:: 1. Create and configure the service
+:: 1. Déclarer et configurer le service
 nssm install NetFlowAudit "C:\Program Files\NetFlowAudit\NetFlowAudit.Cli.exe"
 nssm set NetFlowAudit AppParameters "--daemon --config \"C:\Program Files\NetFlowAudit\netflowaudit.json\""
 nssm set NetFlowAudit AppDirectory "C:\Program Files\NetFlowAudit"
 nssm set NetFlowAudit DisplayName "NetFlowAudit Flow Monitoring Service"
-nssm set NetFlowAudit Description "Continuous background network socket and flow auditing agent."
+nssm set NetFlowAudit Description "Agent d'audit continu des flux et sockets réseau."
 nssm set NetFlowAudit Start SERVICE_AUTO_START
 
-:: 2. Configure stdout/stderr log rotation
+:: 2. Configurer la rotation des logs console
 nssm set NetFlowAudit AppStdout "C:\ProgramData\NetFlowAudit\service.log"
 nssm set NetFlowAudit AppStderr "C:\ProgramData\NetFlowAudit\service_error.log"
 
-:: 3. Start the service
+:: 3. Démarrer le service
 nssm start NetFlowAudit
 ```
 
-#### Option B: Windows Task Scheduler (No Third-Party Tools)
-For strict enterprise environments where installing NSSM is restricted:
+#### Option B : Planificateur de Tâches Windows (Sans outil tiers)
+Pour les environnements d'entreprise stricts interdisant l'installation de logiciels tiers :
 ```powershell
 $Action = New-ScheduledTaskAction -Execute "C:\Program Files\NetFlowAudit\NetFlowAudit.Cli.exe" -Argument "--daemon --config `"C:\Program Files\NetFlowAudit\netflowaudit.json`""
 $Trigger = New-ScheduledTaskTrigger -AtStartup
@@ -211,7 +213,7 @@ Start-ScheduledTask -TaskName "NetFlowAudit-Daemon"
 
 ---
 
-## 6. Configuration File Reference (`netflowaudit.json`)
+## 6. Structure du Fichier de Configuration (`netflowaudit.json`)
 
 ```json
 {
@@ -271,14 +273,14 @@ Start-ScheduledTask -TaskName "NetFlowAudit-Daemon"
 
 ---
 
-## 7. Practical Recipes
+## 7. Recettes Pratiques d'Exploitation
 
-### Recipe 1: Verbose IP Diagnostic & Resolution Analysis
+### Recette 1 : Diagnostic Verbeux de Résolution d'une IP
 ```bash
 NetFlowAudit.Cli --test-ip 34.120.255.184
 ```
 
-### Recipe 2: Normalized Firewall Rule Matrix Export
+### Recette 2 : Export d'une Matrice de Pare-Feu Normalisée
 ```bash
 NetFlowAudit.Cli --export-rules firewall_rules.csv -i netflow_audit.csv \
   --destination-zone internal \
@@ -287,7 +289,7 @@ NetFlowAudit.Cli --export-rules firewall_rules.csv -i netflow_audit.csv \
   --active-within-days 30
 ```
 
-### Recipe 3: Multi-Cache Consolidation in Air-Gapped Networks
+### Recette 3 : Consolidation Multi-Caches en Réseau Isolé (*Air-Gapped*)
 ```powershell
 .\NetFlowAudit.Cli.exe --resolve-offline `
   -i ".\audits\*.csv" `
@@ -296,12 +298,12 @@ NetFlowAudit.Cli --export-rules firewall_rules.csv -i netflow_audit.csv \
   --in-place
 ```
 
-### Recipe 4: Listening Services Inventory (Listeners Only)
+### Recette 4 : Cartographie Exclusive des Services en Écoute
 ```bash
 NetFlowAudit.Cli --map-only -i netflow_audit.csv --listeners-only --map listening_services.html
 ```
 
-### Recipe 5: Core Business Services Map (Web, DB, Cache)
+### Recette 5 : Cartographie Isolée des Tiers Applicatifs (Web, DB, Cache)
 ```bash
 NetFlowAudit.Cli --map-only -i netflow_audit.csv \
   --include-ports 80,443,1433,5432,3306,6379,8080,8443 \
@@ -311,45 +313,45 @@ NetFlowAudit.Cli --map-only -i netflow_audit.csv \
 
 ---
 
-## 8. Troubleshooting DNS & RDAP Resolution
+## 8. Dépannage & Diagnostic de Résolution DNS / RDAP
 
-### Why Does `ping -a` Resolve an IP While .NET DNS Fails?
+### Pourquoi `ping -a` résout-il une IP alors que la résolution .NET échoue ?
 
-When running `ping -a <IP>` on a Windows corporate workstation, the Windows operating system performs name resolution using multiple successive protocols:
-1. **Local DNS Cache & Hosts file** (`%SystemRoot%\System32\drivers\etc\hosts`).
-2. **NetBIOS over TCP/IP (NBT)** and **LLMNR (Link-Local Multicast Name Resolution)** broadcast queries.
-3. **Primary and Secondary DNS servers** using the network adapter's **DNS Suffix Search List** (e.g. `corp.internal.contoso.com`).
-4. **Active Directory WINS servers**.
+Lorsqu'on exécute `ping -a <IP>` sur un poste de travail Windows d'entreprise, le système d'exploitation tente de résoudre le nom via une succession de mécanismes :
+1. **Cache DNS local de l'OS et fichier Hosts** (`%SystemRoot%\System32\drivers\etc\hosts`).
+2. **Requêtes broadcast NetBIOS sur TCP/IP (NBT)** et **LLMNR (Link-Local Multicast Name Resolution)**.
+3. **Serveurs DNS configurés** combinés à la **liste de recherche des suffixes DNS** du domaine d'entreprise (`corp.contoso.com`).
+4. **Serveurs WINS d'Active Directory**.
 
-In contrast, `.NET`'s `Dns.GetHostEntryAsync` performs a strict standard **DNS PTR query** (`x.x.x.x.in-addr.arpa`) against the configured DNS resolver:
-* If the corporate internal DNS zones do not maintain in-addr.arpa reverse lookup zones, or if the DNS server returns `NXDOMAIN`, .NET raises a `SocketException (HostNotFound)`.
-* If the endpoint has a NetBIOS name but no DNS PTR record, `ping -a` succeeds via NetBIOS while .NET PTR fails.
-* **Solution**:
-  1. Run `NetFlowAudit.Cli --test-ip <IP>` to see the exact OS DNS suffix, queried servers, and socket error codes.
-  2. Map unresolvable internal servers in `"CustomHostAliases"` (`netflowaudit.json`) or via `--alias <IP>=<HostName>`.
+À l'inverse, l'appel `Dns.GetHostEntryAsync` de `.NET` réalise une requête standard stricte de **reverse DNS (PTR)** (`x.x.x.x.in-addr.arpa`) auprès du serveur DNS :
+* Si les zones DNS internes de l'entreprise ne possèdent pas de zone de recherche inversée (`in-addr.arpa`) ou renvoient `NXDOMAIN`, .NET lève une `SocketException (HostNotFound)`.
+* Si l'équipement possède un nom NetBIOS mais aucun enregistrement PTR DNS, `ping -a` réussit via NetBIOS alors que le reverse DNS .NET échoue.
+* **Solutions** :
+  1. Lancer `NetFlowAudit.Cli --test-ip <IP>` pour observer les serveurs DNS interrogés, les suffixes de l'OS et le code d'erreur socket exact.
+  2. Déclarer les serveurs internes non résolus dans `"CustomHostAliases"` (`netflowaudit.json`) ou via l'option `--alias <IP>=<NomDHote>`.
 
-### Unspecified and Non-Routable Addresses (`0.0.0.0`, `::`, `255.255.255.255`)
-In NetFlow and socket table traces, passive listening sockets or unrouted broadcast flows report destination addresses like `0.0.0.0`, `::`, or `255.255.255.255`.
-* NetFlowAudit intercepts these addresses before invoking `Dns.GetHostEntryAsync` to prevent unhandled runtime exceptions.
-* They are assigned `Source = "Excluded"` and skipped during remote resolution.
+### Adresses non spécifiées et non routables (`0.0.0.0`, `::`, `255.255.255.255`)
+Dans les traces NetFlow et les tables de sockets, les écoutes passives ou flux de broadcast présentent des adresses comme `0.0.0.0`, `::` ou `255.255.255.255`.
+* NetFlowAudit intercepte ces adresses avant tout appel à `Dns.GetHostEntryAsync` pour éviter les exceptions `ArgumentException` du runtime .NET.
+* Elles reçoivent directement le statut `Source = "Excluded"` et ne consomment aucune ressource réseau.
 
-### Missing Organization for Public External Addresses
-* Reverse DNS PTR records provide the host FQDN (e.g. `184.255.120.34.bc.googleusercontent.com`) but do not include autonomous system or organization metadata.
-* NetFlowAudit automatically supplements successful DNS lookups with an RDAP query for public routable IP blocks to populate `Organization`, `Country`, and `NetworkRange`.
+### Enrichissement RDAP des Adresses IP Publiques
+* Les enregistrements DNS PTR retournent le FQDN (ex. `184.255.120.34.bc.googleusercontent.com`) mais ne contiennent pas l'organisation propriétaire du bloc IP.
+* NetFlowAudit complète systématiquement la résolution par une requête RDAP pour les blocs IP publics afin de renseigner `Organization`, `Country` et `NetworkRange`.
 
 ---
 
-## 9. Keyboard Shortcuts (Interactive TUI)
+## 9. Raccourcis Clavier (Tableau de Bord TUI)
 
-| Keybinding | Action |
+| Raccourci | Action |
 |---|---|
-| `[Q]` | Graceful shutdown, flush pending writes, and exit. |
-| `[C]` | Clear console buffer and force complete screen redraw. |
-| `[V]` | Toggle view mode: **Audit Log Discoveries** vs **Active Sockets Snapshot**. |
-| `[M]` | Instantly generate/refresh the HTML topology map (`netflow_topology.html`). |
-| `[N]` or `[PageDown]` | Navigate to the **Next** page of flow discoveries. |
-| `[P]` or `[PageUp]` | Navigate to the **Previous** page of flow discoveries. |
-| `[L]` or `[+]` | Load **+100 additional flow rows** into the paginated buffer. |
-| `[A]` | Load **all discovered flows** into the paginated buffer. |
-| `[↑ / ↓ / ← / →]` | Navigate rows and columns on the active page. |
-| `[Enter]` or `[X]` | Exclude the selected Local Port, Remote IP, Process, or Target. |
+| `[Q]` | Fermeture propre de l'agent, purge des écritures en attente et sortie. |
+| `[C]` | Efface le tampon console et force le réaffichage complet de l'écran. |
+| `[V]` | Bascule entre **Journal des Flux Découverts** et **Instantané des Sockets Actifs**. |
+| `[M]` | Génère ou rafraîchit immédiatement la carte interactive HTML5 (`netflow_topology.html`). |
+| `[N]` ou `[PageDown]` | Page suivante dans la liste des flux découverts. |
+| `[P]` ou `[PageUp]` | Page précédente dans la liste des flux découverts. |
+| `[L]` ou `[+]` | Charge **+100 lignes de flux supplémentaires** dans le tampon paginé. |
+| `[A]` | Charge **l'intégralité des flux découverts** dans le tampon paginé. |
+| `[↑ / ↓ / ← / →]` | Déplacement dans la grille de la page active. |
+| `[Entrée]` ou `[X]` | Exclut l'élément sélectionné (Port local, IP distante, Processus ou Cible). |

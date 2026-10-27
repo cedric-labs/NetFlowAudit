@@ -12,8 +12,13 @@
 
 ## Documentation
 
-- **[User Guide & Operations](docs/user-guide.md)**: Comprehensive guide covering installation, interactive TUI shortcuts, Windows Service / Linux `systemd` deployments, multi-server fleet consolidation, air-gapped environments, practical recipes, and configuration.
-- **[Architecture & Engineering Specification](docs/architecture.md)**: Deep dive into the internal pipeline, C4 component architecture, shared frameworks (`SocketForge`, `ProcessForge`, `FileForge.Core`, `TopologyForge`), deduplication engine, and security model.
+- **User Guide & Production Operations**:
+  - 🇫🇷 **[Guide Utilisateur (docs/user-guide.md)](docs/user-guide.md)** — Guide exhaustif : installation, raccourcis TUI, services Windows / daemons Linux `systemd`, consolidation multi-serveurs, environnements isolés air-gap, recettes et options.
+  - 🇬🇧 **[User Guide (docs/user-guide.en.md)](docs/user-guide.en.md)** — Comprehensive operations guide: installation, interactive TUI, Windows Service / Linux `systemd`, fleet consolidation, air-gap mode, and CLI reference.
+- **Architecture & Technical Specifications**:
+  - 🇫🇷 **[Spécification d'Architecture (docs/architecture.md)](docs/architecture.md)** — Pipeline interne, architecture en frameworks partagés (`SocketForge`, `ProcessForge`, `FileForge.Core`, `TopologyForge`), déduplication et sécurité.
+  - 🇬🇧 **[Architecture Specification (docs/architecture.en.md)](docs/architecture.en.md)** — Internal pipeline, decoupled shared frameworks architecture, deduplication state machine, concurrency, and security model.
+
 
 ---
 
