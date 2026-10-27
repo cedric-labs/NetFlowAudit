@@ -10,9 +10,12 @@ namespace NetFlowAudit.Cli.Diagnostics;
 /// <summary>
 /// Diagnostic reporter executing granular, verbose probes for reverse DNS (PTR) and RDAP registration against a target IP address.
 /// </summary>
-public sealed class IpResolutionDiagnosticReporter
+/// <param name="output">Writer receiving the report; the console when omitted.</param>
+public sealed class IpResolutionDiagnosticReporter(TextWriter? output = null)
 {
     private static readonly HttpClient RdapHttpClient = CreateRdapHttpClient();
+
+    private readonly TextWriter _output = output ?? Console.Out;
 
     private static HttpClient CreateRdapHttpClient()
     {
@@ -41,18 +44,18 @@ public sealed class IpResolutionDiagnosticReporter
         ArgumentNullException.ThrowIfNull(targetIpString);
         ArgumentNullException.ThrowIfNull(config);
 
-        Console.WriteLine("================================================================================");
-        Console.WriteLine("           NetFlowAudit - IP & Network Resolution Diagnostic");
-        Console.WriteLine("================================================================================");
+        await _output.WriteLineAsync("================================================================================").ConfigureAwait(false);
+        await _output.WriteLineAsync("           NetFlowAudit - IP & Network Resolution Diagnostic").ConfigureAwait(false);
+        await _output.WriteLineAsync("================================================================================").ConfigureAwait(false);
 
         // [1/6] Syntax analysis & classification
-        Console.WriteLine("\n[1/6] Syntax Analysis & Classification");
-        Console.WriteLine($"  * Input provided         : {targetIpString}");
+        await _output.WriteLineAsync("\n[1/6] Syntax Analysis & Classification").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Input provided         : {targetIpString}").ConfigureAwait(false);
 
         if (!IPAddress.TryParse(targetIpString.Trim(), out var address))
         {
-            Console.WriteLine("  * Status                 : ERROR - Invalid IP address format.");
-            Console.WriteLine("================================================================================");
+            await _output.WriteLineAsync("  * Status                 : ERROR - Invalid IP address format.").ConfigureAwait(false);
+            await _output.WriteLineAsync("================================================================================").ConfigureAwait(false);
             return;
         }
 
@@ -63,15 +66,15 @@ public sealed class IpResolutionDiagnosticReporter
         var exclusionEvaluator = new DnsAddressExclusionEvaluator(config.ExcludedRemoteIps);
         var isConfigExcluded = exclusionEvaluator.ShouldExclude(address);
 
-        Console.WriteLine($"  * Normalized IP          : {address} ({address.AddressFamily})");
-        Console.WriteLine($"  * Loopback / Local       : {(isLoopback ? "YES (127.0.0.1 / ::1)" : "NO")}");
-        Console.WriteLine($"  * Unspecified / Any      : {(isAny ? "YES (0.0.0.0 / ::)" : "NO")}");
-        Console.WriteLine($"  * Broadcast / None       : {(isNone ? "YES (255.255.255.255)" : "NO")}");
-        Console.WriteLine($"  * Publicly routable      : {(isPublic ? "YES (Public WAN / Internet)" : "NO (Private RFC 1918 / CGNAT / Link-Local / Reserved)")}");
-        Console.WriteLine($"  * Excluded by config     : {(isConfigExcluded ? "YES (--exclude-remote-ips)" : "NO")}");
+        await _output.WriteLineAsync($"  * Normalized IP          : {address} ({address.AddressFamily})").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Loopback / Local       : {(isLoopback ? "YES (127.0.0.1 / ::1)" : "NO")}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Unspecified / Any      : {(isAny ? "YES (0.0.0.0 / ::)" : "NO")}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Broadcast / None       : {(isNone ? "YES (255.255.255.255)" : "NO")}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Publicly routable      : {(isPublic ? "YES (Public WAN / Internet)" : "NO (Private RFC 1918 / CGNAT / Link-Local / Reserved)")}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Excluded by config     : {(isConfigExcluded ? "YES (--exclude-remote-ips)" : "NO")}").ConfigureAwait(false);
 
         // [2/6] Cache inspection
-        Console.WriteLine($"\n[2/6] Local Cache Inspection (File: {config.DnsCacheFilePath})");
+        await _output.WriteLineAsync($"\n[2/6] Local Cache Inspection (File: {config.DnsCacheFilePath})").ConfigureAwait(false);
         DnsCacheEntry? cachedEntry = null;
         if (File.Exists(config.DnsCacheFilePath))
         {
@@ -81,34 +84,34 @@ public sealed class IpResolutionDiagnosticReporter
                 var loaded = cacheStore.Load();
                 if (loaded.TryGetValue(address.ToString(), out cachedEntry))
                 {
-                    Console.WriteLine("  * Found in cache         : YES");
-                    Console.WriteLine($"    - HostName             : {cachedEntry.HostName}");
-                    Console.WriteLine($"    - Organization         : {cachedEntry.Organization ?? "(not populated)"}");
-                    Console.WriteLine($"    - Country              : {cachedEntry.Country ?? "(not populated)"}");
-                    Console.WriteLine($"    - Network Range        : {cachedEntry.NetworkRange ?? "(not populated)"}");
-                    Console.WriteLine($"    - Source               : {cachedEntry.Source}");
-                    Console.WriteLine($"    - Resolved at (UTC)    : {cachedEntry.ResolvedAtUtc:yyyy-MM-dd HH:mm:ss}Z");
+                    await _output.WriteLineAsync("  * Found in cache         : YES").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - HostName             : {cachedEntry.HostName}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Organization         : {cachedEntry.Organization ?? "(not populated)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Country              : {cachedEntry.Country ?? "(not populated)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Network Range        : {cachedEntry.NetworkRange ?? "(not populated)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Source               : {cachedEntry.Source}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Resolved at (UTC)    : {cachedEntry.ResolvedAtUtc:yyyy-MM-dd HH:mm:ss}Z").ConfigureAwait(false);
                 }
                 else
                 {
-                    Console.WriteLine("  * Found in cache         : NO (Entry not present in file)");
+                    await _output.WriteLineAsync("  * Found in cache         : NO (Entry not present in file)").ConfigureAwait(false);
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"  * Cache access error     : {ex.GetType().Name} - {ex.Message}");
+                await _output.WriteLineAsync($"  * Cache access error     : {ex.GetType().Name} - {ex.Message}").ConfigureAwait(false);
             }
         }
         else
         {
-            Console.WriteLine("  * Found in cache         : NO (Cache file does not exist)");
+            await _output.WriteLineAsync("  * Found in cache         : NO (Cache file does not exist)").ConfigureAwait(false);
         }
 
         // [3/6] System Network Configuration
-        Console.WriteLine("\n[3/6] OS Network Configuration & DNS Resolvers");
+        await _output.WriteLineAsync("\n[3/6] OS Network Configuration & DNS Resolvers").ConfigureAwait(false);
         try
         {
-            Console.WriteLine($"  * OS Host Name           : {Dns.GetHostName()}");
+            await _output.WriteLineAsync($"  * OS Host Name           : {Dns.GetHostName()}").ConfigureAwait(false);
             var interfaces = NetworkInterface.GetAllNetworkInterfaces()
                 .Where(nic => nic.OperationalStatus == OperationalStatus.Up &&
                               nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
@@ -116,7 +119,7 @@ public sealed class IpResolutionDiagnosticReporter
 
             if (interfaces.Count == 0)
             {
-                Console.WriteLine("  * Active Interfaces      : No active physical network interface detected.");
+                await _output.WriteLineAsync("  * Active Interfaces      : No active physical network interface detected.").ConfigureAwait(false);
             }
             else
             {
@@ -125,27 +128,27 @@ public sealed class IpResolutionDiagnosticReporter
                     var ipProps = nic.GetIPProperties();
                     var dnsServers = ipProps.DnsAddresses.Select(d => d.ToString()).ToList();
                     var suffix = string.IsNullOrWhiteSpace(ipProps.DnsSuffix) ? "(none)" : ipProps.DnsSuffix;
-                    Console.WriteLine($"  * Interface: {nic.Name} ({nic.Description})");
-                    Console.WriteLine($"    - Local DNS Suffix     : {suffix}");
-                    Console.WriteLine($"    - DNS Servers          : {(dnsServers.Count > 0 ? string.Join(", ", dnsServers) : "(not configured)")}");
+                    await _output.WriteLineAsync($"  * Interface: {nic.Name} ({nic.Description})").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Local DNS Suffix     : {suffix}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - DNS Servers          : {(dnsServers.Count > 0 ? string.Join(", ", dnsServers) : "(not configured)")}").ConfigureAwait(false);
                 }
             }
         }
         catch (Exception ex) when (ex is NetworkInformationException or SocketException)
         {
-            Console.WriteLine($"  * Network probe error    : {ex.Message}");
+            await _output.WriteLineAsync($"  * Network probe error    : {ex.Message}").ConfigureAwait(false);
         }
 
         // [4/6] Live Reverse DNS (PTR) Probe
-        Console.WriteLine("\n[4/6] Live .NET Reverse DNS Probe (PTR)");
+        await _output.WriteLineAsync("\n[4/6] Live .NET Reverse DNS Probe (PTR)").ConfigureAwait(false);
         string? reverseDnsResult = null;
         var dnsSw = Stopwatch.StartNew();
 
         if (isAny || isNone)
         {
             dnsSw.Stop();
-            Console.WriteLine("  * Query Dns.GetHostEntryAsync skipped (unspecified or non-resolvable address).");
-            Console.WriteLine("  * Status                 : SKIPPED (Defensive guard)");
+            await _output.WriteLineAsync("  * Query Dns.GetHostEntryAsync skipped (unspecified or non-resolvable address).").ConfigureAwait(false);
+            await _output.WriteLineAsync("  * Status                 : SKIPPED (Defensive guard)").ConfigureAwait(false);
         }
         else
         {
@@ -154,22 +157,22 @@ public sealed class IpResolutionDiagnosticReporter
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
 
-                Console.WriteLine($"  * Query target           : {address}");
-                Console.WriteLine("  * Configured timeout     : 3000 ms");
+                await _output.WriteLineAsync($"  * Query target           : {address}").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Configured timeout     : 3000 ms").ConfigureAwait(false);
 
                 var hostEntry = await Dns.GetHostEntryAsync(address.ToString(), timeoutCts.Token).ConfigureAwait(false);
                 dnsSw.Stop();
 
-                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * Status                 : SUCCESS");
-                Console.WriteLine($"  * Returned HostName      : {hostEntry.HostName}");
+                await _output.WriteLineAsync($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Status                 : SUCCESS").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Returned HostName      : {hostEntry.HostName}").ConfigureAwait(false);
                 if (hostEntry.Aliases.Length > 0)
                 {
-                    Console.WriteLine($"  * Returned Aliases       : {string.Join(", ", hostEntry.Aliases)}");
+                    await _output.WriteLineAsync($"  * Returned Aliases       : {string.Join(", ", hostEntry.Aliases)}").ConfigureAwait(false);
                 }
                 if (hostEntry.AddressList.Length > 0)
                 {
-                    Console.WriteLine($"  * Associated Addresses   : {string.Join(", ", hostEntry.AddressList.Select(a => a.ToString()))}");
+                    await _output.WriteLineAsync($"  * Associated Addresses   : {string.Join(", ", hostEntry.AddressList.Select(a => a.ToString()))}").ConfigureAwait(false);
                 }
 
                 if (!string.IsNullOrWhiteSpace(hostEntry.HostName) &&
@@ -181,41 +184,41 @@ public sealed class IpResolutionDiagnosticReporter
             catch (SocketException ex)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * Status                 : FAILED SocketException (Code: {ex.SocketErrorCode})");
-                Console.WriteLine($"  * Raw message            : {ex.Message}");
-                Console.WriteLine("  * Explanation            : The queried DNS server did not find a PTR record or returned NXDOMAIN.");
+                await _output.WriteLineAsync($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Status                 : FAILED SocketException (Code: {ex.SocketErrorCode})").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Raw message            : {ex.Message}").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Explanation            : The queried DNS server did not find a PTR record or returned NXDOMAIN.").ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * Status                 : TIMEOUT / CANCELED");
-                Console.WriteLine("  * Explanation            : The DNS server did not respond within the allocated timeout (3000 ms).");
+                await _output.WriteLineAsync($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Status                 : TIMEOUT / CANCELED").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Explanation            : The DNS server did not respond within the allocated timeout (3000 ms).").ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Status                 : ERROR ArgumentException - {ex.Message}");
+                await _output.WriteLineAsync($"  * Status                 : ERROR ArgumentException - {ex.Message}").ConfigureAwait(false);
             }
         }
 
         // [5/6] Live RDAP Probe
-        Console.WriteLine("\n[5/6] Live RDAP Probe (RFC 7480/7482/7484)");
+        await _output.WriteLineAsync("\n[5/6] Live RDAP Probe (RFC 7480/7482/7484)").ConfigureAwait(false);
         IpOwnerMetadata? rdapDetails = null;
         var rdapSw = Stopwatch.StartNew();
 
         if (!isPublic)
         {
             rdapSw.Stop();
-            Console.WriteLine("  * RDAP query skipped     : Address is not a publicly routable Internet address.");
-            Console.WriteLine("  * Status                 : SKIPPED (RIR registry queries are reserved for public IP blocks)");
+            await _output.WriteLineAsync("  * RDAP query skipped     : Address is not a publicly routable Internet address.").ConfigureAwait(false);
+            await _output.WriteLineAsync("  * Status                 : SKIPPED (RIR registry queries are reserved for public IP blocks)").ConfigureAwait(false);
         }
         else
         {
             var rdapUri = $"https://rdap.org/ip/{address}";
-            Console.WriteLine($"  * HTTP request target    : GET {rdapUri}");
-            Console.WriteLine("  * Configured timeout     : 4000 ms");
+            await _output.WriteLineAsync($"  * HTTP request target    : GET {rdapUri}").ConfigureAwait(false);
+            await _output.WriteLineAsync("  * Configured timeout     : 4000 ms").ConfigureAwait(false);
 
             try
             {
@@ -225,46 +228,46 @@ public sealed class IpResolutionDiagnosticReporter
                 using var response = await RdapHttpClient.GetAsync(rdapUri, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
                 rdapSw.Stop();
 
-                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * Returned HTTP Status   : {(int)response.StatusCode} {response.ReasonPhrase}");
+                await _output.WriteLineAsync($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Returned HTTP Status   : {(int)response.StatusCode} {response.ReasonPhrase}").ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
                     rdapDetails = RdapResponseParser.ExtractOwnerDetails(content);
 
-                    Console.WriteLine("  * RDAP Status            : SUCCESS");
-                    Console.WriteLine($"    - Organization         : {rdapDetails?.Organization ?? "(not found in JSON payload)"}");
-                    Console.WriteLine($"    - Country              : {rdapDetails?.Country ?? "(not populated)"}");
-                    Console.WriteLine($"    - Network Range        : {rdapDetails?.NetworkRange ?? "(not populated)"}");
-                    Console.WriteLine($"    - RIR Handle           : {rdapDetails?.Handle ?? "(not populated)"}");
+                    await _output.WriteLineAsync("  * RDAP Status            : SUCCESS").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Organization         : {rdapDetails?.Organization ?? "(not found in JSON payload)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Country              : {rdapDetails?.Country ?? "(not populated)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - Network Range        : {rdapDetails?.NetworkRange ?? "(not populated)"}").ConfigureAwait(false);
+                    await _output.WriteLineAsync($"    - RIR Handle           : {rdapDetails?.Handle ?? "(not populated)"}").ConfigureAwait(false);
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    Console.WriteLine("  * RDAP Status            : 404 NOT FOUND - No record present in RIR databases (ARIN, RIPE, etc.).");
+                    await _output.WriteLineAsync("  * RDAP Status            : 404 NOT FOUND - No record present in RIR databases (ARIN, RIPE, etc.).").ConfigureAwait(false);
                 }
                 else
                 {
-                    Console.WriteLine($"  * RDAP Status            : HTTP Error {(int)response.StatusCode}");
+                    await _output.WriteLineAsync($"  * RDAP Status            : HTTP Error {(int)response.StatusCode}").ConfigureAwait(false);
                 }
             }
             catch (HttpRequestException ex)
             {
                 rdapSw.Stop();
-                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * RDAP Status            : FAILED HttpRequestException - {ex.Message}");
-                Console.WriteLine("  * Explanation            : No Internet access, proxy required, or rdap.org unreachable.");
+                await _output.WriteLineAsync($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * RDAP Status            : FAILED HttpRequestException - {ex.Message}").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * Explanation            : No Internet access, proxy required, or rdap.org unreachable.").ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 rdapSw.Stop();
-                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * RDAP Status            : TIMEOUT (rdap.org did not respond within 4000 ms).");
+                await _output.WriteLineAsync($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
+                await _output.WriteLineAsync("  * RDAP Status            : TIMEOUT (rdap.org did not respond within 4000 ms).").ConfigureAwait(false);
             }
         }
 
         // [6/6] Synthesis & Pipeline Simulation
-        Console.WriteLine("\n[6/6] Synthesis & NetFlowAudit Cache Model");
+        await _output.WriteLineAsync("\n[6/6] Synthesis & NetFlowAudit Cache Model").ConfigureAwait(false);
         string synthesizedHostName;
         string synthesizedSource;
 
@@ -294,17 +297,17 @@ public sealed class IpResolutionDiagnosticReporter
             synthesizedSource = "None";
         }
 
-        Console.WriteLine($"  * Synthesized HostName   : {(string.IsNullOrEmpty(synthesizedHostName) ? "(none)" : synthesizedHostName)}");
-        Console.WriteLine($"  * Organization           : {rdapDetails?.Organization ?? "(none)"}");
-        Console.WriteLine($"  * Country                : {rdapDetails?.Country ?? "(none)"}");
-        Console.WriteLine($"  * Network Range          : {rdapDetails?.NetworkRange ?? "(none)"}");
-        Console.WriteLine($"  * Synthesized Source     : {synthesizedSource}");
+        await _output.WriteLineAsync($"  * Synthesized HostName   : {(string.IsNullOrEmpty(synthesizedHostName) ? "(none)" : synthesizedHostName)}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Organization           : {rdapDetails?.Organization ?? "(none)"}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Country                : {rdapDetails?.Country ?? "(none)"}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Network Range          : {rdapDetails?.NetworkRange ?? "(none)"}").ConfigureAwait(false);
+        await _output.WriteLineAsync($"  * Synthesized Source     : {synthesizedSource}").ConfigureAwait(false);
 
         if (cachedEntry is not null && !string.Equals(cachedEntry.HostName, synthesizedHostName, StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine($"  * NOTE                   : Local cache differs from live resolution ({cachedEntry.HostName} vs {synthesizedHostName}).");
+            await _output.WriteLineAsync($"  * NOTE                   : Local cache differs from live resolution ({cachedEntry.HostName} vs {synthesizedHostName}).").ConfigureAwait(false);
         }
 
-        Console.WriteLine("================================================================================");
+        await _output.WriteLineAsync("================================================================================").ConfigureAwait(false);
     }
 }

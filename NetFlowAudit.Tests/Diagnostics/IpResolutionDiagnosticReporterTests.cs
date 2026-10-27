@@ -5,14 +5,13 @@ using Xunit;
 
 namespace NetFlowAudit.Tests.Diagnostics;
 
-[Collection(ConsoleOutputCollection.Name)]
 public sealed class IpResolutionDiagnosticReporterTests
 {
     [Fact]
     public Task RunDiagnosticAsync_WhenTargetIpStringIsNull_ThrowsArgumentNullException()
     {
         // Arrange
-        var reporter = new IpResolutionDiagnosticReporter();
+        var reporter = new IpResolutionDiagnosticReporter(TextWriter.Null);
         var config = new AppConfiguration();
 
         // Act
@@ -26,7 +25,7 @@ public sealed class IpResolutionDiagnosticReporterTests
     public Task RunDiagnosticAsync_WhenConfigIsNull_ThrowsArgumentNullException()
     {
         // Arrange
-        var reporter = new IpResolutionDiagnosticReporter();
+        var reporter = new IpResolutionDiagnosticReporter(TextWriter.Null);
 
         // Act
         var act = () => reporter.RunDiagnosticAsync("127.0.0.1", null!);
@@ -39,81 +38,47 @@ public sealed class IpResolutionDiagnosticReporterTests
     public async Task RunDiagnosticAsync_WhenInvalidIpString_OutputsErrorMessageWithoutThrowing()
     {
         // Arrange
-        var reporter = new IpResolutionDiagnosticReporter();
-        var config = new AppConfiguration();
+        using var output = new StringWriter();
+        var reporter = new IpResolutionDiagnosticReporter(output);
 
-        using var sw = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(sw);
+        // Act
+        await reporter.RunDiagnosticAsync("not-an-ip", new AppConfiguration());
 
-            // Act
-            await reporter.RunDiagnosticAsync("not-an-ip", config);
-
-            // Assert
-            var output = sw.ToString();
-            output.Should().Contain("Invalid IP address format");
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        // Assert
+        output.ToString().Should().Contain("Invalid IP address format");
     }
 
     [Fact]
     public async Task RunDiagnosticAsync_WhenLoopbackIp_ExecutesAllStagesAndIdentifiesLocalSource()
     {
         // Arrange
-        var reporter = new IpResolutionDiagnosticReporter();
-        var config = new AppConfiguration();
+        using var output = new StringWriter();
+        var reporter = new IpResolutionDiagnosticReporter(output);
 
-        using var sw = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(sw);
+        // Act
+        await reporter.RunDiagnosticAsync("127.0.0.1", new AppConfiguration());
 
-            // Act
-            await reporter.RunDiagnosticAsync("127.0.0.1", config);
-
-            // Assert
-            var output = sw.ToString();
-            output.Should().Contain("[1/6] Syntax Analysis & Classification");
-            output.Should().Contain("Loopback / Local       : YES");
-            output.Should().Contain("Synthesized Source     : Local");
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        // Assert
+        var report = output.ToString();
+        report.Should().Contain("[1/6] Syntax Analysis & Classification");
+        report.Should().Contain("Loopback / Local       : YES");
+        report.Should().Contain("Synthesized Source     : Local");
     }
 
     [Fact]
     public async Task RunDiagnosticAsync_WhenUnspecifiedIp_SkipsDnsCallWithDefensiveExclusion()
     {
         // Arrange
-        var reporter = new IpResolutionDiagnosticReporter();
-        var config = new AppConfiguration();
+        using var output = new StringWriter();
+        var reporter = new IpResolutionDiagnosticReporter(output);
 
-        using var sw = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(sw);
+        // Act
+        await reporter.RunDiagnosticAsync("0.0.0.0", new AppConfiguration());
 
-            // Act
-            await reporter.RunDiagnosticAsync("0.0.0.0", config);
-
-            // Assert
-            var output = sw.ToString();
-            output.Should().Contain("Unspecified / Any      : YES");
-            output.Should().Contain("SKIPPED (Defensive guard)");
-            output.Should().Contain("Synthesized Source     : Excluded");
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        // Assert
+        var report = output.ToString();
+        report.Should().Contain("Unspecified / Any      : YES");
+        report.Should().Contain("SKIPPED (Defensive guard)");
+        report.Should().Contain("Synthesized Source     : Excluded");
     }
 }

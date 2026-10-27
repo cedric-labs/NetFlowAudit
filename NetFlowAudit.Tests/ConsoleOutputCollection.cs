@@ -3,8 +3,8 @@ using Xunit;
 namespace NetFlowAudit.Tests;
 
 /// <summary>
-/// Serializes test classes that touch the process-wide console: Program.Main sets Console.OutputEncoding,
-/// which replaces Console.Out and would discard the writer captured by a test running in parallel.
+/// Serializes the test classes that run Program.Main: it sets Console.OutputEncoding, which replaces Console.Out
+/// for the whole process while another test of the class may be writing to it.
 /// </summary>
 [CollectionDefinition(Name)]
 public sealed class ConsoleOutputCollection
