@@ -8,6 +8,20 @@ namespace NetFlowAudit.Tests.Configuration;
 public sealed class TopologyMapConfigurationBuilderTests
 {
     [Fact]
+    public void BuildRenderingOptions_WhenBuilt_ProposesTheMapCommandSyntaxForCopy()
+    {
+        // Act
+        var format = TopologyMapConfigurationBuilder.BuildRenderingOptions(new AppConfiguration()).CliCommandFormat;
+
+        // Assert
+        format.Prefix.Should().Be("NetFlowAudit.Cli map");
+        format.LayoutOption.Should().Be("--layout");
+        format.SortOption.Should().Be("--sort");
+        format.RoutingOption.Should().Be("--routing");
+        format.SpacingOption.Should().Be("--spacing");
+    }
+
+    [Fact]
     public void BuildFilterOptions_WhenDefaultAppConfiguration_EnablesEphemeralPortExclusionAndAllDirections()
     {
         // Arrange

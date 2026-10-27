@@ -124,9 +124,20 @@ public static class TopologyMapConfigurationBuilder
             InitialIncludePorts = initialIncludePorts,
             InitialExcludePorts = initialExcludePorts,
             InitialExcludeHosts = initialExcludeHosts,
-            InitialDirection = initialDirection
+            InitialDirection = initialDirection,
+            CliCommandFormat = MapCommandFormat
         };
     }
+
+    // Syntax of the "map" command (ADR-0001), copied from the HTML map to reproduce the displayed view.
+    private static readonly TopologyCliCommandFormat MapCommandFormat = new()
+    {
+        Prefix = "NetFlowAudit.Cli map",
+        LayoutOption = "--layout",
+        SortOption = "--sort",
+        RoutingOption = "--routing",
+        SpacingOption = "--spacing"
+    };
 
     /// <summary>
     /// Converts the configured Draw.io edge mode (<c>adaptive</c>, <c>direction</c>, <c>none</c>) into the exporter setting.
