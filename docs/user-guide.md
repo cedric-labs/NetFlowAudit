@@ -35,16 +35,16 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 
 
 ### 2.1. Complete Command-Line Options Catalog
 
-| Flag | Short | Default | Description |
+| Option | Alias / Short | Default | Description |
 |---|---|---|---|
 | `--help` | `-h`, `-?` | — | Display the CLI help message and exit. |
 | `--config <path>` | — | `netflowaudit.json` | Path to the JSON configuration file. |
 | `--init-config [path]` | `--generate-config` | `netflowaudit.json` | Generate a baseline JSON configuration file and exit immediately. |
-| `--no-tui` | `--daemon` | `false` | Run in headless mode without the interactive terminal dashboard (suitable for Windows Services / systemd). |
-| `-o <path>` | `--output` | `netflow_audit.csv` | Output path for deduplicated CSV flow records. Supports dynamic tokens `{ServerName}`, `{HostName}`, `{Date}`, `{Timestamp}`. |
-| `--ndjson <path>` | `--output-ndjson` | — | Continuous output path for streaming NDJSON (JSON Lines) flow records. |
+| `--daemon` | `--no-tui` | `false` | Run in headless mode without the interactive terminal dashboard (suitable for Windows Services / systemd). |
+| `--output <path>` | `-o` | `netflow_audit.csv` | Output path for deduplicated CSV flow records. Supports dynamic tokens `{ServerName}`, `{HostName}`, `{Date}`, `{Timestamp}`. |
+| `--output-ndjson <path>` | `--ndjson` | — | Continuous output path for streaming NDJSON (JSON Lines) flow records. |
 | `--export-ndjson [path]` | — | `netflow_audit.ndjson` | Convert an existing CSV audit log into NDJSON format and exit. |
-| `--export-rules [path]` | `--firewall-matrix` | `firewall_rules.csv` | Aggregate flow history into a normalized 5-tuple firewall rule matrix and exit. |
+| `--export-rules [path]` | `--firewall-matrix`, `--rules-csv` | `firewall_rules.csv` | Aggregate flow history into a normalized 5-tuple firewall rule matrix and exit. |
 | `--min-observations <n>` | — | `1` | Filter for `--export-rules`: minimum observation count required to retain a rule. |
 | `--active-within-days <n>` | — | `null` (all) | Filter for `--export-rules`: only retain rules observed within the last N days. |
 | `--destination-zone <zone>` | — | `all` | Filter for `--export-rules`: filter by destination zone (`internal` vs `public`). |
@@ -55,31 +55,31 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 
 | `--resolve-offline` | — | `false` | Consolidate DNS caches and enrich audit files offline in air-gapped environments, then exit. |
 | `--in-place` | — | `false` | Used with `--resolve-offline`: overwrite original audit files directly instead of creating `*_enriched.csv`. |
 | `--force-resolve` | — | `false` | Used with `--resolve-offline`: re-resolve hostnames even if already present in input files. |
-| `--cache, --caches <path>` | — | — | Used with `--resolve-offline`: input cache files or directories to consolidate into master cache. |
-| `--output-cache <path>` | — | `netflow_dns_cache.json`| Destination path for the consolidated master DNS cache. |
+| `--caches <paths>` | `--cache` | — | Used with `--resolve-offline`: input cache files or directories to consolidate into master cache. |
+| `--output-cache <path>` | — | `netflow_dns_cache.json` | Destination path for the consolidated master DNS cache. |
 | `--test-ip <ip>` | `--lookup` | — | Perform verbose 6-stage DNS and RDAP resolution diagnostics for a single IP address and exit. |
 | `--interval <seconds>` | — | `5` | Scan interval in seconds for continuous socket polling. |
 | `--columns <c1,c2,..>` | — | Default 16 cols | Ordered list of CSV columns to record. |
 | `--resolve-dns <bool>` | — | `true` | Enable or disable reverse DNS PTR lookups for remote endpoints. |
-| `--resolve-ip-owners <bool>`| — | `true` | Enable or disable RDAP queries for organization and autonomous system names. |
+| `--resolve-ip-owners <bool>` | — | `true` | Enable or disable RDAP queries for organization and autonomous system names. |
 | `--isolated` | `--offline` | `false` | Completely disable outbound network queries (DNS PTR and RDAP). Zero network packets emitted. |
-| `--exclude-remote-ips <ips>`| `--exclude-remote-ip`| — | Comma-separated list of remote IP addresses or CIDR subnets to exclude from auditing. |
+| `--exclude-remote-ips <ips>` | `--exclude-remote-ip` | — | Comma-separated list of remote IP addresses or CIDR subnets to exclude from auditing. |
 | `--alias <ip>=<host>` | `--aliases` | — | Static IP-to-hostname mapping taking precedence over DNS resolution. |
-| `--reload-history <n|all|0>`| `--history-limit`| `all` | Number of historical CSV flow records loaded into memory at startup to resume deduplication. |
-| `--mask-server <name>` | `--obfuscate-server`| — | Fictitious server name used for screenshots and sanitized exports. |
+| `--reload-history <n / all / 0>` | `--history-limit` | `all` | Number of historical CSV flow records loaded into memory at startup to resume deduplication. |
+| `--mask-server <name>` | `--obfuscate-server` | — | Fictitious server name used for screenshots and sanitized exports. |
 | `--mask-ip <ip>` | `--obfuscate-ip` | — | Fictitious IP address used for screenshots and sanitized exports. |
 | `--obfuscate` | `--anonymize` | `false` | Shorthand: masks server name as `SRV-AUDIT-01` and local IP as `10.0.0.10`. |
 | `--map-only` | — | `false` | Generate an HTML/Draw.io topology map from existing CSV files and exit immediately. |
 | `--map <path>` | — | `netflow_topology.html` | Path for the generated interactive HTML5 topology diagram. |
-| `--export-drawio [path]` | `--drawio` | `netflow_topology.drawio`| Export an editable Draw.io XML topology diagram and exit immediately. |
-| `--drawio-theme <dark|light>`| — | `dark` | Visual theme for Draw.io diagrams (`dark` or `light`). |
-| `--drawio-edge-mode <mode>`| — | `adaptive` | Draw.io edge routing mode: `direction`, `port`, or `adaptive`. |
-| `--drawio-swimlanes <bool>`| — | `true` | Group nodes into subnet swimlane containers in Draw.io. |
-| `--include-ports <p1,p2,..>`| — | — | Filter for topology map / rules: only include specified ports or ranges (e.g. `80,443,1433-1434`). |
-| `--exclude-ports <p1,p2,..>`| — | — | Filter for topology map / rules: exclude specified ports or ranges (e.g. `53,135-139,445`). |
-| `--include-ips <ip1,cidr2>`| — | — | Filter for topology map / rules: only include specified remote IPs or CIDR blocks. |
-| `--include-processes <p1,..>`| — | — | Filter for topology map: only include specified process names. |
-| `--include-hosts <h1,h2,..>`| — | — | Filter for topology map: only include specified hostnames (supports wildcards `*web*`). |
+| `--export-drawio [path]` | `--drawio` | `netflow_topology.drawio` | Export an editable Draw.io XML topology diagram and exit immediately. |
+| `--drawio-theme <theme>` | — | `dark` | Visual theme for Draw.io diagrams (`dark` or `light`). |
+| `--drawio-edge-mode <mode>` | — | `adaptive` | Draw.io edge routing mode: `direction`, `port`, or `adaptive`. |
+| `--drawio-swimlanes <bool>` | — | `true` | Group nodes into subnet swimlane containers in Draw.io. |
+| `--include-ports <ports>` | — | — | Filter for topology map / rules: only include specified ports or ranges (e.g. `80,443,1433-1434`). |
+| `--exclude-ports <ports>` | — | — | Filter for topology map / rules: exclude specified ports or ranges (e.g. `53,135-139,445`). |
+| `--include-ips <ips>` | — | — | Filter for topology map / rules: only include specified remote IPs or CIDR blocks. |
+| `--include-processes <names>` | — | — | Filter for topology map: only include specified process names. |
+| `--include-hosts <patterns>` | — | — | Filter for topology map: only include specified hostnames (supports wildcards `*web*`). |
 | `--listeners-only` | — | `false` | Filter for topology map / rules: include only listening service sockets. |
 
 ---
