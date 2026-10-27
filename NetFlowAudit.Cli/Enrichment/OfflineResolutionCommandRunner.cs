@@ -1,12 +1,10 @@
-using System.Globalization;
-using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Core.Enrichment;
 using NetFlowAudit.Core.Resolution;
 
 namespace NetFlowAudit.Cli.Enrichment;
 
 /// <summary>
-/// CLI command runner executing the '--resolve-offline' workflow for cache consolidation and audit enrichment.
+/// Runs the <c>resolve</c> command: consolidates DNS caches, enriches audit logs and reports the outcome on the console.
 /// </summary>
 /// <param name="enricher">Enricher orchestrating offline analysis and file updates.</param>
 public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enricher = null)
@@ -18,62 +16,34 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
         logger: Console.WriteLine);
 
     /// <summary>
-    /// Executes the offline resolution and consolidation command.
+    /// Consolidates the caches and enriches the audit logs.
     /// </summary>
-    /// <param name="config">Application configuration.</param>
-    /// <param name="args">Command-line arguments.</param>
+    /// <param name="auditFiles">Audit log files (CSV or NDJSON) to enrich.</param>
+    /// <param name="cacheFiles">DNS cache files to merge into the master cache.</param>
+    /// <param name="options">Enrichment options, including the master cache path.</param>
     /// <param name="cancellationToken">Cooperative cancellation token.</param>
     /// <returns>Exit code (0 on success).</returns>
-    public async Task<int> RunAsync(AppConfiguration config, string[] args, CancellationToken cancellationToken = default)
+    /// <exception cref="ArgumentNullException">When an argument is null.</exception>
+    public async Task<int> RunAsync(
+        IReadOnlyList<string> auditFiles,
+        IReadOnlyList<string> cacheFiles,
+        OfflineAuditEnrichmentOptions options,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(config);
-        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(auditFiles);
+        ArgumentNullException.ThrowIfNull(cacheFiles);
+        ArgumentNullException.ThrowIfNull(options);
 
         Console.WriteLine("========================================================================");
-        Console.WriteLine("  NetFlowAudit - Offline DNS Resolution & Cache Consolidation (--resolve-offline)");
+        Console.WriteLine("  NetFlowAudit - Offline DNS Resolution & Cache Consolidation (resolve)");
         Console.WriteLine("========================================================================");
-
-        var auditInputs = ExtractArgumentValues(args, ["-i", "--input", "--inputs", "--input-audits"]);
-        if (auditInputs.Count == 0 && !string.IsNullOrWhiteSpace(config.OutputCsvPath))
-        {
-            auditInputs.Add(config.OutputCsvPath);
-        }
-
-        var cacheInputs = ExtractArgumentValues(args, ["--cache", "--caches", "--input-cache", "--input-caches"]);
-        if (cacheInputs.Count == 0 && !string.IsNullOrWhiteSpace(config.DnsCacheFilePath))
-        {
-            cacheInputs.Add(config.DnsCacheFilePath);
-        }
-
-        var outputCachePath = GetArgumentValue(args, ["--output-cache"]) ?? config.DnsCacheFilePath ?? "netflow_dns_cache.json";
-        var inPlace = HasArgumentFlag(args, ["--in-place"]);
-        var forceResolve = HasArgumentFlag(args, ["--force-resolve", "--force"]);
-        var isolated = config.IsolatedMode || HasArgumentFlag(args, ["--isolated"]);
-
-        var rdapDelayMs = 200;
-        var rdapDelayRaw = GetArgumentValue(args, ["--rdap-delay-ms", "--delay"]);
-        if (int.TryParse(rdapDelayRaw, CultureInfo.InvariantCulture, out var parsedDelay) && parsedDelay >= 0)
-        {
-            rdapDelayMs = parsedDelay;
-        }
-
-        var options = new OfflineAuditEnrichmentOptions
-        {
-            InPlace = inPlace,
-            ForceResolve = forceResolve,
-            Isolated = isolated,
-            RdapThrottleDelay = TimeSpan.FromMilliseconds(rdapDelayMs),
-            OutputCachePath = outputCachePath
-        };
-
-        Console.WriteLine($"Execution mode: {(isolated ? "100% Offline / Air-Gapped (--isolated)" : "Active enrichment with DNS & RDAP")}");
-        Console.WriteLine($"Audit log updates: {(inPlace ? "Direct in-place overwrite (--in-place)" : "Generate new '*_enriched' files")}");
-        Console.WriteLine($"Force hostname replacement: {(forceResolve ? "Yes (--force-resolve)" : "No (retain existing names)")}");
+        Console.WriteLine($"Execution mode: {(options.Isolated ? "Cache only, no DNS or RDAP query (--cache-only)" : "Active enrichment with DNS & RDAP")}");
+        Console.WriteLine($"Audit log updates: {(options.InPlace ? "Direct in-place overwrite (--in-place)" : "Generate new '*_enriched' files")}");
+        Console.WriteLine($"Force hostname replacement: {(options.ForceResolve ? "Yes (--force-resolve)" : "No (retain existing names)")}");
         Console.WriteLine();
 
-        var report = await _enricher.EnrichPathsAsync(auditInputs, cacheInputs, options, cancellationToken).ConfigureAwait(false);
+        var report = await _enricher.EnrichPathsAsync(auditFiles, cacheFiles, options, cancellationToken).ConfigureAwait(false);
 
-        // Display cache conflicts
         if (report.CacheReport.Conflicts.Count > 0)
         {
             Console.WriteLine();
@@ -98,7 +68,7 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
         Console.WriteLine($"  * Audit records scanned: {report.TotalRecordsScanned}");
         Console.WriteLine($"  * Audit records updated: {report.TotalRecordsUpdated}");
         Console.WriteLine($"  * Distinct IP addresses enriched: {report.DistinctIpsEnriched}");
-        Console.WriteLine($"  * Master cache saved to: {Path.GetFullPath(outputCachePath)}");
+        Console.WriteLine($"  * Master cache saved to: {Path.GetFullPath(options.OutputCachePath)}");
 
         if (report.GeneratedAuditFiles.Count > 0)
         {
@@ -112,44 +82,5 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
         Console.WriteLine("------------------------------------------------------------------------");
 
         return 0;
-    }
-
-    private static List<string> ExtractArgumentValues(string[] args, string[] argumentNames)
-    {
-        var results = new List<string>();
-        for (var i = 0; i < args.Length - 1; i++)
-        {
-            if (argumentNames.Any(name => string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase)))
-            {
-                var val = args[i + 1];
-                if (!val.StartsWith('-'))
-                {
-                    var items = val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                    results.AddRange(items);
-                }
-            }
-        }
-        return results;
-    }
-
-    private static string? GetArgumentValue(string[] args, string[] argumentNames)
-    {
-        for (var i = 0; i < args.Length - 1; i++)
-        {
-            if (argumentNames.Any(name => string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase)))
-            {
-                var val = args[i + 1];
-                if (!val.StartsWith('-'))
-                {
-                    return val;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static bool HasArgumentFlag(string[] args, string[] argumentNames)
-    {
-        return args.Any(arg => argumentNames.Any(name => string.Equals(arg, name, StringComparison.OrdinalIgnoreCase)));
     }
 }

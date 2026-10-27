@@ -2,6 +2,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using NetFlowAudit.Cli;
 using NetFlowAudit.Cli.Configuration;
+using NetFlowAudit.Core.Export;
 using Xunit;
 
 namespace NetFlowAudit.Tests.CommandLine;
@@ -51,7 +52,7 @@ public sealed class CliCharacterizationTests : IDisposable
         var matrix = Path.Combine(_directory, "rules.csv");
 
         // Act
-        await RunAsync("--export-rules", matrix, "-i", _auditPath, "--min-observations", "5", "--internal-only");
+        await RunAsync("export", "rules", "-o", matrix, "-i", _auditPath, "--min-observations", "5", "--zone", "internal");
 
         // Assert
         var rows = (await File.ReadAllLinesAsync(matrix)).Skip(1).ToList();
@@ -65,7 +66,7 @@ public sealed class CliCharacterizationTests : IDisposable
         var matrix = Path.Combine(_directory, "rules_public.csv");
 
         // Act
-        await RunAsync("--export-rules", matrix, "-i", _auditPath, "--public-only");
+        await RunAsync("export", "rules", "-o", matrix, "-i", _auditPath, "--zone", "public");
 
         // Assert
         var rows = (await File.ReadAllLinesAsync(matrix)).Skip(1).ToList();
@@ -79,7 +80,7 @@ public sealed class CliCharacterizationTests : IDisposable
         var matrix = Path.Combine(_directory, "rules_listeners.csv");
 
         // Act
-        await RunAsync("--export-rules", matrix, "-i", _auditPath, "--listeners-only");
+        await RunAsync("export", "rules", "-o", matrix, "-i", _auditPath, "--listeners-only");
 
         // Assert
         // Current behaviour, reported as a defect: the aggregator keeps only Inbound and Outbound flows,
@@ -94,7 +95,7 @@ public sealed class CliCharacterizationTests : IDisposable
         var ndjson = Path.Combine(_directory, "audit.ndjson");
 
         // Act
-        await RunAsync("--export-ndjson", ndjson, "-i", _auditPath);
+        await RunAsync("export", "ndjson", "-o", ndjson, "-i", _auditPath);
 
         // Assert
         var lines = await File.ReadAllLinesAsync(ndjson);
@@ -103,13 +104,13 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task MapOnly_WhenIncludedPortGiven_RendersOnlyMatchingFlows()
+    public async Task Map_WhenIncludedPortGiven_RendersOnlyMatchingFlows()
     {
         // Arrange
         var html = Path.Combine(_directory, "map.html");
 
         // Act
-        await RunAsync("--map-only", "-i", _auditPath, "--map", html, "--include-ports", "1521");
+        await RunAsync("map", "-i", _auditPath, "--html", html, "--include-ports", "1521");
 
         // Assert
         var content = await File.ReadAllTextAsync(html);
@@ -118,14 +119,14 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task MapOnly_WhenDirectoryAndPatternGiven_ConsolidatesEveryMatchingAudit()
+    public async Task Map_WhenWildcardInputGiven_ConsolidatesEveryMatchingAudit()
     {
         // Arrange
         await File.WriteAllLinesAsync(Path.Combine(_directory, "audit_srv2.csv"), [Header, SecondServerRow]);
         var html = Path.Combine(_directory, "fleet.html");
 
         // Act
-        await RunAsync("--map-only", "--input-dir", _directory, "--input-filter", "audit_*.csv", "--map", html);
+        await RunAsync("map", "-i", Path.Combine(_directory, "audit_*.csv"), "--html", html);
 
         // Assert
         var content = await File.ReadAllTextAsync(html);
@@ -134,13 +135,13 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task ExportDrawio_WhenAuditGiven_WritesDiagramWithoutHtmlMap()
+    public async Task MapDrawio_WhenOnlyDrawioOutputGiven_WritesDiagramWithoutHtmlMap()
     {
         // Arrange
         var drawio = Path.Combine(_directory, "map.drawio");
 
         // Act
-        await RunAsync("--export-drawio", drawio, "-i", _auditPath, "--drawio-theme", "light");
+        await RunAsync("map", "-i", _auditPath, "--drawio", drawio, "--drawio-theme", "light");
 
         // Assert
         File.Exists(drawio).Should().BeTrue();
@@ -149,7 +150,7 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task ResolveOffline_WhenCacheProvidedWithoutNetwork_EnrichesAuditFromCache()
+    public async Task Resolve_WhenCacheOnlyGiven_EnrichesAuditFromCache()
     {
         // Arrange
         var cache = Path.Combine(_directory, "cache.json");
@@ -157,7 +158,7 @@ public sealed class CliCharacterizationTests : IDisposable
         var masterCache = Path.Combine(_directory, "master_cache.json");
 
         // Act
-        await RunAsync("--resolve-offline", "-i", _auditPath, "--cache", cache, "--output-cache", masterCache, "--isolated");
+        await RunAsync("resolve", "-i", _auditPath, "--cache", cache, "--output-cache", masterCache, "--cache-only");
 
         // Assert
         File.Exists(masterCache).Should().BeTrue();
@@ -166,13 +167,13 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task InitConfig_WhenPathGiven_WritesDeserializableConfiguration()
+    public async Task ConfigInit_WhenPathGiven_WritesDeserializableConfiguration()
     {
         // Arrange
         var target = Path.Combine(_directory, "generated.json");
 
         // Act
-        await RunAsync("--init-config", target);
+        await RunAsync("config", "init", target);
 
         // Assert
         var configuration = JsonSerializer.Deserialize<AppConfiguration>(await File.ReadAllTextAsync(target));
@@ -181,13 +182,10 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public void AuditConfiguration_WhenIsolatedGiven_DisablesRdapButKeepsReverseDns()
+    public void AuditConfiguration_WhenNoRdapGiven_DisablesRdapButKeepsReverseDns()
     {
-        // Arrange
-        string[] args = ["--isolated"];
-
         // Act
-        var configuration = Program.ApplyCommandLineOverrides(new AppConfiguration(), args);
+        var configuration = AuditCommandConfiguration.Build(new AppConfiguration(), "audit", "--no-rdap");
 
         // Assert
         configuration.ResolveIpOwners.Should().BeFalse();
@@ -197,17 +195,11 @@ public sealed class CliCharacterizationTests : IDisposable
     [Fact]
     public void AuditConfiguration_WhenScanAndOutputOptionsGiven_OverridesConfigurationValues()
     {
-        // Arrange
-        string[] args =
-        [
-            "--interval", "30", "--columns", "Protocol,RemoteIp", "--resolve-dns", "false",
-            "--exclude-remote-ips", "192.0.2.0/24,198.51.100.7", "--reload-history", "25", "--map", "live.html"
-        ];
-
         // Act
-        var configuration = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(
-            Program.ApplyCommandLineOverrides(new AppConfiguration(), args),
-            args);
+        var configuration = AuditCommandConfiguration.Build(
+            new AppConfiguration(),
+            "audit", "--interval", "30", "--columns", "Protocol,RemoteIp", "--no-dns",
+            "--exclude-remote-ips", "192.0.2.0/24,198.51.100.7", "--reload-history", "25", "--html", "live.html");
 
         // Assert
         configuration.ScanIntervalSeconds.Should().Be(30);
@@ -218,11 +210,81 @@ public sealed class CliCharacterizationTests : IDisposable
         configuration.OutputHtmlMapPath.Should().Be("live.html");
     }
 
-    private Task RunAsync(params string[] commandArguments)
+    [Fact]
+    public async Task ExportRules_WhenConfigurationKeepsEphemeralMapPorts_StillExcludesEphemeralDestinations()
     {
-        string[] args = commandArguments[0] == "--init-config"
-            ? commandArguments
-            : [.. commandArguments, "--config", _missingConfigPath];
-        return Program.Main(args);
+        // Arrange
+        const string ephemeralRow = "2026-10-24T07:00:00Z,2026-10-24T07:05:00Z,3,SRV-APP-01,Linux,10.0.0.1,Tcp,Outbound,Established,10.0.0.1,50003,10.20.1.9,50555,,5555,rpc,/usr/bin/rpc,rpc,,svc";
+        var audit = Path.Combine(_directory, "ephemeral.csv");
+        await File.WriteAllLinesAsync(audit, [Header, OracleRow, ephemeralRow]);
+        var config = await WriteConfigurationAsync(new { MapExcludeEphemeralPorts = false });
+        var matrix = Path.Combine(_directory, "rules_ephemeral.csv");
+
+        // Act
+        await RunWithConfigurationAsync(config, "export", "rules", "-o", matrix, "-i", audit);
+
+        // Assert
+        (await File.ReadAllLinesAsync(matrix)).Skip(1).Should().ContainSingle().Which.Should().Contain(",1521,");
+    }
+
+    [Fact]
+    public async Task Map_WhenConfigurationDefinesDrawioPath_WritesHtmlAndDrawio()
+    {
+        // Arrange
+        var html = Path.Combine(_directory, "configured.html");
+        var drawio = Path.Combine(_directory, "configured.drawio");
+        var config = await WriteConfigurationAsync(new { OutputHtmlMapPath = html, OutputDrawioPath = drawio });
+
+        // Act
+        await RunWithConfigurationAsync(config, "map", "-i", _auditPath);
+
+        // Assert
+        File.Exists(html).Should().BeTrue();
+        File.Exists(drawio).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Map_WhenConfiguredAuditPathContainsTokens_ReadsTheExpandedFile()
+    {
+        // Arrange
+        var tokenizedAudit = Path.Combine(_directory, "audit_{HostName}.csv");
+        File.Copy(_auditPath, OutputFilePathResolver.Resolve(tokenizedAudit));
+        var html = Path.Combine(_directory, "tokens.html");
+        var config = await WriteConfigurationAsync(new { OutputCsvPath = tokenizedAudit });
+
+        // Act
+        await RunWithConfigurationAsync(config, "map", "--html", html);
+
+        // Assert
+        (await File.ReadAllTextAsync(html)).Should().Contain("db-oracle.example.test");
+    }
+
+    [Fact]
+    public async Task Main_WhenConfigurationEnablesRemovedIsolatedMode_ReturnsNonZeroExitCode()
+    {
+        // Arrange
+        var config = await WriteConfigurationAsync(new { IsolatedMode = true });
+
+        // Act
+        var exitCode = await Program.Main(["export", "ndjson", "-i", _auditPath, "-o", Path.Combine(_directory, "x.ndjson"), "--config", config]);
+
+        // Assert
+        exitCode.Should().NotBe(0);
+    }
+
+    private Task RunAsync(params string[] commandArguments) =>
+        RunWithConfigurationAsync(_missingConfigPath, commandArguments);
+
+    private static async Task RunWithConfigurationAsync(string configPath, params string[] commandArguments)
+    {
+        var exitCode = await Program.Main([.. commandArguments, "--config", configPath]);
+        exitCode.Should().Be(0);
+    }
+
+    private async Task<string> WriteConfigurationAsync(object values)
+    {
+        var path = Path.Combine(_directory, "netflowaudit.json");
+        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(values));
+        return path;
     }
 }

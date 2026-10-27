@@ -160,8 +160,8 @@ public sealed class OfflineAuditEnricher(
         ArgumentNullException.ThrowIfNull(cachePathsOrPatterns);
         ArgumentNullException.ThrowIfNull(options);
 
-        var auditFiles = ResolveMatchingFiles(auditPathsOrPatterns, [".csv", ".ndjson", ".jsonl"]);
-        var cacheFiles = ResolveMatchingFiles(cachePathsOrPatterns, [".json"]);
+        var auditFiles = AuditInputPathResolver.Resolve(auditPathsOrPatterns, AuditInputPathResolver.AuditLogExtensions);
+        var cacheFiles = AuditInputPathResolver.Resolve(cachePathsOrPatterns, [".json"]);
 
         var loadedCaches = new List<IReadOnlyDictionary<string, DnsCacheEntry>>();
         foreach (var cachePath in cacheFiles)
@@ -171,54 +171,6 @@ public sealed class OfflineAuditEnricher(
         }
 
         return EnrichFilesAsync(auditFiles, loadedCaches, options, cancellationToken);
-    }
-
-    private static IReadOnlyList<string> ResolveMatchingFiles(IEnumerable<string> pathsOrPatterns, string[] validExtensions)
-    {
-        var resolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in pathsOrPatterns)
-        {
-            if (string.IsNullOrWhiteSpace(item))
-            {
-                continue;
-            }
-
-            if (File.Exists(item))
-            {
-                resolved.Add(Path.GetFullPath(item));
-                continue;
-            }
-
-            if (Directory.Exists(item))
-            {
-                foreach (var ext in validExtensions)
-                {
-                    foreach (var file in Directory.EnumerateFiles(item, $"*{ext}", SearchOption.TopDirectoryOnly))
-                    {
-                        resolved.Add(Path.GetFullPath(file));
-                    }
-                }
-                continue;
-            }
-
-            var dir = Path.GetDirectoryName(item);
-            var pattern = Path.GetFileName(item);
-            if (string.IsNullOrEmpty(dir))
-            {
-                dir = Directory.GetCurrentDirectory();
-            }
-
-            if (Directory.Exists(dir) && !string.IsNullOrWhiteSpace(pattern))
-            {
-                foreach (var file in Directory.EnumerateFiles(dir, pattern, SearchOption.TopDirectoryOnly))
-                {
-                    resolved.Add(Path.GetFullPath(file));
-                }
-            }
-        }
-
-        return resolved.ToList();
     }
 
     private static async Task<IReadOnlyList<string>> ExtractIpsRequiringResolutionAsync(

@@ -1,4 +1,6 @@
 using System.Globalization;
+using TopologyForge.Export.Drawio.Adapters;
+using TopologyForge.Export.Drawio.Styling;
 using TopologyForge.Filtering;
 using TopologyForge.Models;
 using TopologyForge.Rendering;
@@ -127,82 +129,35 @@ public static class TopologyMapConfigurationBuilder
     }
 
     /// <summary>
-    /// Applies CLI command-line overrides for topology map paths and inclusion/exclusion filters.
+    /// Converts the configured Draw.io edge mode (<c>adaptive</c>, <c>direction</c>, <c>none</c>) into the exporter setting.
     /// </summary>
-    /// <param name="config">Initial application configuration.</param>
-    /// <param name="args">Command-line argument array.</param>
-    /// <returns>Updated application configuration.</returns>
-    public static AppConfiguration ApplyCommandLineOverrides(AppConfiguration config, string[] args)
+    /// <param name="config">Application configuration.</param>
+    /// <returns>The edge aggregation mode; <see cref="EdgeAggregationMode.AdaptiveThreshold"/> for any other value.</returns>
+    public static EdgeAggregationMode BuildDrawioEdgeMode(AppConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        ArgumentNullException.ThrowIfNull(args);
 
-        var mapPath = GetArgumentValue(args, ["--map"]) ?? config.OutputHtmlMapPath;
-        var includePorts = ParseCsvArgument(args, ["--include-ports", "--include-port"], config.MapIncludedPorts);
-        var excludePorts = ParseCsvArgument(args, ["--exclude-ports", "--exclude-port"], config.MapExcludedPorts);
-        var includeHosts = ParseCsvArgument(args, ["--include-hosts", "--include-host"], config.MapIncludedHosts);
-        var excludeHosts = ParseCsvArgument(args, ["--exclude-hosts", "--exclude-host"], config.MapExcludedHosts);
-        var includeIps = ParseCsvArgument(args, ["--include-ips", "--include-ip"], config.MapIncludedIps);
-        var excludeIps = ParseCsvArgument(args, ["--exclude-ips", "--exclude-ip"], config.MapExcludedIps);
-        var includeProcesses = ParseCsvArgument(args, ["--include-processes", "--include-process"], config.MapIncludedProcesses);
-        var excludeProcesses = ParseCsvArgument(args, ["--exclude-processes", "--exclude-process"], config.MapExcludedProcesses);
-        var layoutMode = GetArgumentValue(args, ["--map-layout", "--layout", "--algorithm", "--map-algorithm"]) ?? config.MapLayoutMode;
-        var sortMethod = GetArgumentValue(args, ["--map-sort", "--sort"]) ?? config.MapSortMethod;
-        var routingMode = GetArgumentValue(args, ["--map-routing", "--routing"]) ?? config.MapRoutingMode;
-        var spacingProfile = GetArgumentValue(args, ["--map-spacing", "--spacing"]) ?? config.MapSpacingProfile;
-        var directionArg = GetArgumentValue(args, ["--direction"]);
-        var mapDirection = !string.IsNullOrWhiteSpace(directionArg) ? directionArg.ToLowerInvariant() : config.MapDirection;
-
-        var drawioRequested = args.Any(a => a.Equals("--export-drawio", StringComparison.OrdinalIgnoreCase) ||
-                                            a.Equals("--drawio", StringComparison.OrdinalIgnoreCase));
-        var rawDrawioPath = GetArgumentValue(args, ["--export-drawio", "--drawio"]);
-
-        string drawioPath;
-        if (drawioRequested && string.IsNullOrWhiteSpace(rawDrawioPath))
+        return config.DrawioEdgeMode.Trim().ToUpperInvariant() switch
         {
-            drawioPath = !string.IsNullOrWhiteSpace(config.OutputDrawioPath)
-                ? config.OutputDrawioPath
-                : "netflow_topology.drawio";
-        }
-        else
-        {
-            drawioPath = rawDrawioPath ?? config.OutputDrawioPath;
-        }
-
-        var drawioMode = GetArgumentValue(args, ["--drawio-edge-mode", "--drawio-mode"]) ?? config.DrawioEdgeMode;
-        var drawioTheme = GetArgumentValue(args, ["--drawio-theme"]) ?? config.DrawioTheme;
-
-        var listenersOnly = config.MapListenersOnly ||
-                            args.Any(a => a.Equals("--listeners-only", StringComparison.OrdinalIgnoreCase)) ||
-                            string.Equals(mapDirection, "listening", StringComparison.OrdinalIgnoreCase);
-
-        var includeEphemeral = args.Any(a => a.Equals("--include-ephemeral-ports", StringComparison.OrdinalIgnoreCase));
-        var excludeEphemeral = !includeEphemeral && config.MapExcludeEphemeralPorts;
-
-        return config with
-        {
-            OutputHtmlMapPath = mapPath,
-            MapLayoutMode = layoutMode,
-            MapIncludedPorts = includePorts,
-            MapExcludedPorts = excludePorts,
-            MapIncludedHosts = includeHosts,
-            MapExcludedHosts = excludeHosts,
-            MapIncludedIps = includeIps,
-            MapExcludedIps = excludeIps,
-            MapIncludedProcesses = includeProcesses,
-            MapExcludedProcesses = excludeProcesses,
-            MapSortMethod = sortMethod,
-            MapRoutingMode = routingMode,
-            MapSpacingProfile = spacingProfile,
-            OutputDrawioPath = drawioPath,
-            DrawioEdgeMode = drawioMode,
-            DrawioTheme = drawioTheme,
-            MapListenersOnly = listenersOnly,
-            MapExcludeEphemeralPorts = excludeEphemeral,
-            MapDirection = mapDirection
+            "DIRECTION" => EdgeAggregationMode.ByDirection,
+            "NONE" => EdgeAggregationMode.None,
+            _ => EdgeAggregationMode.AdaptiveThreshold
         };
     }
 
+    /// <summary>
+    /// Converts the configured Draw.io theme (<c>dark</c>, <c>light</c>) into the exporter theme.
+    /// </summary>
+    /// <param name="config">Application configuration.</param>
+    /// <returns><see cref="DiagramTheme.EnterpriseLight"/> for <c>light</c>, otherwise <see cref="DiagramTheme.DarkModern"/>.</returns>
+    public static DiagramTheme BuildDrawioTheme(AppConfiguration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        return config.DrawioTheme.Equals("light", StringComparison.OrdinalIgnoreCase)
+            ? DiagramTheme.EnterpriseLight
+            : DiagramTheme.DarkModern;
+    }
     private static List<NetworkPortRange> ParsePortRanges(IEnumerable<string> specifications)
     {
         var result = new List<NetworkPortRange>();
@@ -220,36 +175,5 @@ public static class TopologyMapConfigurationBuilder
         }
 
         return result;
-    }
-
-    private static List<string> ParseCsvArgument(string[] args, string[] argumentNames, List<string> fallback)
-    {
-        var raw = GetArgumentValue(args, argumentNames);
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return fallback;
-        }
-
-        return raw.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-    }
-
-    private static string? GetArgumentValue(string[] args, string[] argumentNames)
-    {
-        for (var i = 0; i < args.Length - 1; i++)
-        {
-            foreach (var argumentName in argumentNames)
-            {
-                if (args[i].Equals(argumentName, StringComparison.OrdinalIgnoreCase))
-                {
-                    var candidate = args[i + 1];
-                    if (!candidate.StartsWith("-", StringComparison.Ordinal))
-                    {
-                        return candidate;
-                    }
-                }
-            }
-        }
-
-        return null;
     }
 }

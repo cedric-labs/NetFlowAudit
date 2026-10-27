@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Export;
+using NetFlowAudit.Core.Export;
 using Xunit;
 
 namespace NetFlowAudit.Tests.Export;
@@ -40,17 +40,10 @@ public sealed class FirewallRuleExportCommandRunnerTests : IDisposable
         await File.WriteAllLinesAsync(auditCsv, [header, row]);
 
         var targetMatrix = Path.Combine(_tempDirectory, "rules.csv");
-        var config = new AppConfiguration();
-        var args = new[]
-        {
-            "--export-rules", targetMatrix,
-            "-i", auditCsv
-        };
-
         var runner = new FirewallRuleExportCommandRunner();
 
         // Act
-        var exitCode = await runner.RunAsync(config, args);
+        var exitCode = await runner.RunAsync([auditCsv], targetMatrix, new FirewallRuleExportOptions());
 
         // Assert
         exitCode.Should().Be(0);

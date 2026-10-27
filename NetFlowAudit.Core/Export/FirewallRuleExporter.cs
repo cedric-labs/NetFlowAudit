@@ -115,55 +115,7 @@ public sealed class FirewallRuleExporter(
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         ArgumentNullException.ThrowIfNull(options);
 
-        var matchingFiles = ResolveMatchingFiles(auditPathsOrPatterns, [".csv", ".ndjson", ".jsonl"]);
+        var matchingFiles = AuditInputPathResolver.Resolve(auditPathsOrPatterns, AuditInputPathResolver.AuditLogExtensions);
         return ExportRulesAsync(matchingFiles, outputPath, options, cancellationToken);
-    }
-
-    private static IReadOnlyList<string> ResolveMatchingFiles(IEnumerable<string> pathsOrPatterns, string[] validExtensions)
-    {
-        var resolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in pathsOrPatterns)
-        {
-            if (string.IsNullOrWhiteSpace(item))
-            {
-                continue;
-            }
-
-            if (File.Exists(item))
-            {
-                resolved.Add(Path.GetFullPath(item));
-                continue;
-            }
-
-            if (Directory.Exists(item))
-            {
-                foreach (var ext in validExtensions)
-                {
-                    foreach (var file in Directory.EnumerateFiles(item, $"*{ext}", SearchOption.TopDirectoryOnly))
-                    {
-                        resolved.Add(Path.GetFullPath(file));
-                    }
-                }
-                continue;
-            }
-
-            var dir = Path.GetDirectoryName(item);
-            var pattern = Path.GetFileName(item);
-            if (string.IsNullOrEmpty(dir))
-            {
-                dir = Directory.GetCurrentDirectory();
-            }
-
-            if (Directory.Exists(dir) && !string.IsNullOrWhiteSpace(pattern))
-            {
-                foreach (var file in Directory.EnumerateFiles(dir, pattern, SearchOption.TopDirectoryOnly))
-                {
-                    resolved.Add(Path.GetFullPath(file));
-                }
-            }
-        }
-
-        return resolved.ToList();
     }
 }

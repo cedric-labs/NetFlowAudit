@@ -45,7 +45,6 @@
   "CsvDelimiter": ",",
   "ResolveRemoteHostNames": true,
   "ResolveIpOwners": true,
-  "IsolatedMode": false,
   "DnsCacheFilePath": "netflow_dns_cache.json",
   "DnsExcludedNetworks": [
     "0.0.0.0",

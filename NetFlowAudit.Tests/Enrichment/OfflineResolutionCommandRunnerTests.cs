@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Enrichment;
+using NetFlowAudit.Core.Enrichment;
 using Xunit;
 
 namespace NetFlowAudit.Tests.Enrichment;
@@ -45,20 +45,11 @@ public sealed class OfflineResolutionCommandRunnerTests : IDisposable
 
         var outputCachePath = Path.Combine(_tempDirectory, "master_cache.json");
 
-        var config = new AppConfiguration();
-        var args = new[]
-        {
-            "--resolve-offline",
-            "-i", auditPath,
-            "--cache", cachePath,
-            "--output-cache", outputCachePath,
-            "--isolated"
-        };
-
+        var options = new OfflineAuditEnrichmentOptions { Isolated = true, OutputCachePath = outputCachePath };
         var runner = new OfflineResolutionCommandRunner();
 
         // Act
-        var exitCode = await runner.RunAsync(config, args);
+        var exitCode = await runner.RunAsync([auditPath], [cachePath], options);
 
         // Assert
         exitCode.Should().Be(0);

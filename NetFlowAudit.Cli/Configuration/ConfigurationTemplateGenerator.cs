@@ -46,7 +46,6 @@ public static class ConfigurationTemplateGenerator
             EnableDashboard = true,
             ResolveRemoteHostNames = true,
             ResolveIpOwners = true,
-            IsolatedMode = false,
             ReloadHistoryLimit = null,
             DnsCacheFilePath = "netflow_dns_cache.json",
             DnsExcludedNetworks =

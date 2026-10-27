@@ -29,7 +29,7 @@ Design rules:
 - `-i/--input` is repeatable and accepts a file, a directory or a wildcard pattern for `map`,
   `export rules`, `export ndjson` and `resolve` (replaces `--inputs`, `--input-dir`, `--input-filter`).
 - Options with a closed set of values reject unknown values and list the accepted ones
-  (hidden synonyms such as `arbre`, `force`, `ring` are removed).
+  (hidden synonyms such as `arbre`, `force`, `ring` are removed). Values are compared without case.
 - `export rules` filters the destination zone with `--zone internal|public|all` (default `all`).
 - `--isolated` is removed. Name resolution is controlled by what each option does:
   `audit --no-rdap` (no Internet RDAP query, internal reverse DNS kept), `audit --no-dns`,
@@ -63,4 +63,6 @@ Design rules:
 - Behaviour regression during the switch: mitigated by characterization tests written before the
   refactor, then the switch as a `refactor:` commit, then each behaviour change as its own `feat!:`/`fix:` commit.
 - `IsolatedMode` and other JSON keys tied to removed options: the configuration file keys are mapped in
-  the same change and listed in the 2.0.0 release notes.
+  the same change and listed in the 2.0.0 release notes. A file with `"IsolatedMode": true` stops the
+  agent with an error asking for `"ResolveIpOwners": false`, because ignoring it would send RDAP queries
+  from servers configured to never reach the Internet; `"IsolatedMode": false` only prints a warning.

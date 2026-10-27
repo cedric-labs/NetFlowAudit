@@ -153,51 +153,6 @@ public sealed class TopologyMapConfigurationBuilderTests
     }
 
     [Fact]
-    public void ApplyCommandLineOverrides_WhenMapArgumentsProvided_UpdatesAppConfiguration()
-    {
-        // Arrange
-        var baseConfig = new AppConfiguration();
-        var args = new[]
-        {
-            "--map", "custom_map.html",
-            "--include-ports", "443,1433",
-            "--exclude-ports", "53,123",
-            "--include-hosts", "SRV-*",
-            "--exclude-hosts", "*TEST*",
-            "--include-ips", "10.0.0.0/8",
-            "--exclude-ips", "10.99.0.0/16",
-            "--include-processes", "sqlservr",
-            "--exclude-processes", "svchost",
-            "--map-layout", "organic",
-            "--map-sort", "alpha",
-            "--map-routing", "orthogonal",
-            "--map-spacing", "compact",
-            "--listeners-only",
-            "--include-ephemeral-ports"
-        };
-
-        // Act
-        var updated = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(baseConfig, args);
-
-        // Assert
-        updated.OutputHtmlMapPath.Should().Be("custom_map.html");
-        updated.MapIncludedPorts.Should().Equal("443", "1433");
-        updated.MapExcludedPorts.Should().Equal("53", "123");
-        updated.MapIncludedHosts.Should().Equal("SRV-*");
-        updated.MapExcludedHosts.Should().Equal("*TEST*");
-        updated.MapIncludedIps.Should().Equal("10.0.0.0/8");
-        updated.MapExcludedIps.Should().Equal("10.99.0.0/16");
-        updated.MapIncludedProcesses.Should().Equal("sqlservr");
-        updated.MapExcludedProcesses.Should().Equal("svchost");
-        updated.MapLayoutMode.Should().Be("organic");
-        updated.MapSortMethod.Should().Be("alpha");
-        updated.MapRoutingMode.Should().Be("orthogonal");
-        updated.MapSpacingProfile.Should().Be("compact");
-        updated.MapListenersOnly.Should().BeTrue();
-        updated.MapExcludeEphemeralPorts.Should().BeFalse();
-    }
-
-    [Fact]
     public void BuildRenderingOptions_WhenSubnetConfigured_MapsToSubnetCluster()
     {
         // Arrange
@@ -233,47 +188,6 @@ public sealed class TopologyMapConfigurationBuilderTests
         renderingOptions.InitialExcludePorts.Should().Be("53");
         renderingOptions.InitialExcludeHosts.Should().Be("*.local, SRV-MON-*");
         renderingOptions.InitialDirection.Should().Be("OUT");
-    }
-
-    [Fact]
-    public void ApplyCommandLineOverrides_WhenArgumentAliasesUsed_UpdatesAppConfiguration()
-    {
-        // Arrange
-        var baseConfig = new AppConfiguration();
-        var args = new[]
-        {
-            "--layout", "organic",
-            "--sort", "degree",
-            "--routing", "straight",
-            "--spacing", "spacious",
-            "--exclude-host", "SRV-MON",
-            "--include-host", "SRV-WEB",
-            "--exclude-port", "53",
-            "--include-port", "443",
-            "--exclude-ip", "10.99.0.0/16",
-            "--include-ip", "10.0.0.0/8",
-            "--exclude-process", "chrome",
-            "--include-process", "dotnet",
-            "--direction", "out"
-        };
-
-        // Act
-        var updated = TopologyMapConfigurationBuilder.ApplyCommandLineOverrides(baseConfig, args);
-
-        // Assert
-        updated.MapLayoutMode.Should().Be("organic");
-        updated.MapSortMethod.Should().Be("degree");
-        updated.MapRoutingMode.Should().Be("straight");
-        updated.MapSpacingProfile.Should().Be("spacious");
-        updated.MapExcludedHosts.Should().Equal("SRV-MON");
-        updated.MapIncludedHosts.Should().Equal("SRV-WEB");
-        updated.MapExcludedPorts.Should().Equal("53");
-        updated.MapIncludedPorts.Should().Equal("443");
-        updated.MapExcludedIps.Should().Equal("10.99.0.0/16");
-        updated.MapIncludedIps.Should().Equal("10.0.0.0/8");
-        updated.MapExcludedProcesses.Should().Equal("chrome");
-        updated.MapIncludedProcesses.Should().Equal("dotnet");
-        updated.MapDirection.Should().Be("out");
     }
 
     [Fact]

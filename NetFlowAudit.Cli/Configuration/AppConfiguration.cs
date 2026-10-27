@@ -137,11 +137,6 @@ public sealed record AppConfiguration
     public bool ResolveIpOwners { get; init; } = true;
 
     /// <summary>
-    /// Air-gapped / offline mode: disables all external network resolution queries.
-    /// </summary>
-    public bool IsolatedMode { get; init; } = false;
-
-    /// <summary>
     /// Reverse DNS persistent cache file path (JSON format).
     /// </summary>
     public string DnsCacheFilePath { get; init; } = "netflow_dns_cache.json";
