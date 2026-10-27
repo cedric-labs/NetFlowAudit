@@ -77,6 +77,26 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
         }
     }
 
+    /// <summary>
+    /// Determines whether the specified IP address is a public, globally routable address eligible for RDAP lookup.
+    /// </summary>
+    /// <param name="address">Target IP address to evaluate.</param>
+    /// <returns>True if the address is a public routable address; otherwise false.</returns>
+    public static bool IsPublicRoutable(IPAddress address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+
+        if (address.Equals(IPAddress.Any) ||
+            address.Equals(IPAddress.IPv6Any) ||
+            address.Equals(IPAddress.None) ||
+            IPAddress.IsLoopback(address))
+        {
+            return false;
+        }
+
+        return !PrivateAndReservedMatcher.IsMatch(address);
+    }
+
     /// <inheritdoc />
     public async Task<string?> ResolveOrganizationAsync(IPAddress address, CancellationToken cancellationToken = default)
     {
@@ -90,7 +110,7 @@ public sealed class RdapIpOrganizationResolver : IIpOrganizationResolver, IDispo
         ArgumentNullException.ThrowIfNull(address);
 
         // 1. Immediate filtering of private, loopback, or reserved IP addresses (0ms, no network traffic)
-        if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) || IPAddress.IsLoopback(address) || PrivateAndReservedMatcher.IsMatch(address))
+        if (!IsPublicRoutable(address))
         {
             return null;
         }

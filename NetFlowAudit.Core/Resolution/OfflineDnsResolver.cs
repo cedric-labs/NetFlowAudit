@@ -33,6 +33,16 @@ public sealed class OfflineDnsResolver(
     {
         ArgumentNullException.ThrowIfNull(address);
 
+        if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) || address.Equals(IPAddress.None))
+        {
+            return new DnsCacheEntry
+            {
+                HostName = string.Empty,
+                Source = "Excluded",
+                ResolvedAtUtc = DateTimeOffset.UtcNow
+            };
+        }
+
         if (IPAddress.IsLoopback(address))
         {
             return new DnsCacheEntry
@@ -58,17 +68,20 @@ public sealed class OfflineDnsResolver(
                 dnsHostName = entry.HostName;
             }
         }
-        catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
+        catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException or ArgumentException)
         {
-            // Expected: Remote address lacks a reverse DNS PTR record or DNS server unreachable
+            // Expected: Remote address lacks a reverse DNS PTR record, DNS server unreachable, or invalid host
         }
 
         IpOwnerMetadata? ownerDetails = null;
 
-        // 2. Fallback to RDAP if no PTR found and organization resolver is configured
-        if (string.IsNullOrWhiteSpace(dnsHostName) && _organizationResolver is not null)
+        // 2. Query RDAP if organization resolver is configured AND (no PTR found OR address is public routable)
+        var organizationResolver = _organizationResolver;
+        // 2. Query RDAP if organization resolver is configured AND (no PTR found OR address is public routable)
+        if (organizationResolver is not null &&
+            (string.IsNullOrWhiteSpace(dnsHostName) || RdapIpOrganizationResolver.IsPublicRoutable(address)))
         {
-            if (_rdapThrottleDelay > TimeSpan.Zero)
+            if (_rdapThrottleDelay > TimeSpan.Zero && RdapIpOrganizationResolver.IsPublicRoutable(address))
             {
                 _logThrottlingNotice?.Invoke(
                     $"Régulation du débit RDAP active (temporisation {_rdapThrottleDelay.TotalMilliseconds:0}ms pour respecter les quotas des registres Internet)...");
@@ -77,7 +90,7 @@ public sealed class OfflineDnsResolver(
 
             try
             {
-                ownerDetails = await _organizationResolver.ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
+                ownerDetails = await organizationResolver.ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
             {

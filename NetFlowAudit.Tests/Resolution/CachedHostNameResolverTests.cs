@@ -221,4 +221,30 @@ public sealed class CachedHostNameResolverTests
         entry.Should().NotBeNull();
         entry!.Source.Should().Be("Custom");
     }
+    [Fact]
+    public async Task ResolveHostNameAsync_WhenPublicIpResolvedViaDns_EnrichesOrganizationAndCountryFromRdap()
+    {
+        // Arrange
+        var ip = IPAddress.Parse("8.8.8.8");
+        var details = new IpOwnerMetadata("Google LLC", "US", "8.8.8.0/24", "GOGL");
+        var fakeOrg = new FakeOrganizationResolver(_ => "Google LLC", _ => details);
+
+        await using var resolver = new CachedHostNameResolver(
+            resolutionTimeout: TimeSpan.FromSeconds(2),
+            exclusionEvaluator: null,
+            cacheStore: null,
+            organizationResolver: fakeOrg);
+
+        // Act
+        var result = await resolver.ResolveHostNameAsync(ip);
+
+        // Assert
+        result.Should().NotBeNullOrWhiteSpace();
+
+        resolver.TryGetCachedEntry(ip, out var entry).Should().BeTrue();
+        entry.Should().NotBeNull();
+        entry!.Organization.Should().Be("Google LLC");
+        entry.Country.Should().Be("US");
+        entry.NetworkRange.Should().Be("8.8.8.0/24");
+    }
 }

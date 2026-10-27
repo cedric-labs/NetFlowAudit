@@ -322,6 +322,12 @@ public sealed class OfflineAuditEnricher(
             return false;
         }
 
+        if (IPAddress.TryParse(ip, out var parsedAddr) &&
+            (parsedAddr.Equals(IPAddress.Any) || parsedAddr.Equals(IPAddress.IPv6Any) || parsedAddr.Equals(IPAddress.None)))
+        {
+            return false;
+        }
+
         if (forceResolve)
         {
             return true;

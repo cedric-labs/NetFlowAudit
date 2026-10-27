@@ -235,19 +235,22 @@ public sealed class CachedHostNameResolver(
                 dnsHostName = entry.HostName;
             }
         }
-        catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
+        catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException or ArgumentException)
         {
             // Tolerated: Remote address lacks a reverse DNS PTR record, or local DNS server is offline/unreachable
         }
 
         IpOwnerMetadata? ownerDetails = null;
 
-        // 2. Fallback: If no PTR hostname was found and an organization resolver is available
-        if (string.IsNullOrWhiteSpace(dnsHostName) && _organizationResolver is not null)
+        // 2. Query RDAP if organization resolver is configured AND (no PTR found OR address is public routable)
+        var organizationResolver = _organizationResolver;
+        // 2. Query RDAP if organization resolver is configured AND (no PTR found OR address is public routable)
+        if (organizationResolver is not null &&
+            (string.IsNullOrWhiteSpace(dnsHostName) || RdapIpOrganizationResolver.IsPublicRoutable(address)))
         {
             try
             {
-                ownerDetails = await _organizationResolver.ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
+                ownerDetails = await organizationResolver.ResolveOwnerDetailsAsync(address, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is HttpRequestException or SocketException or TimeoutException or OperationCanceledException)
             {
