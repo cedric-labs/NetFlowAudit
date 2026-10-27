@@ -5,6 +5,7 @@ using Xunit;
 
 namespace NetFlowAudit.Tests.Diagnostics;
 
+[Collection(ConsoleOutputCollection.Name)]
 public sealed class IpResolutionDiagnosticReporterTests
 {
     [Fact]
