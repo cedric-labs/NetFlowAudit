@@ -74,7 +74,7 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
-    public async Task ExportRules_WhenListenersOnlyGiven_ExportsNoRuleBecauseListeningSocketsAreSkipped()
+    public async Task ExportRules_WhenListenersOnlyGiven_ExportsOneInboundRulePerListeningService()
     {
         // Arrange
         var matrix = Path.Combine(_directory, "rules_listeners.csv");
@@ -83,9 +83,8 @@ public sealed class CliCharacterizationTests : IDisposable
         await RunAsync("export", "rules", "-o", matrix, "-i", _auditPath, "--listeners-only");
 
         // Assert
-        // Current behaviour, reported as a defect: the aggregator keeps only Inbound and Outbound flows,
-        // so the listeners-only filter always yields an empty matrix.
-        (await File.ReadAllLinesAsync(matrix)).Skip(1).Should().BeEmpty();
+        (await File.ReadAllLinesAsync(matrix)).Skip(1).Should().ContainSingle()
+            .Which.Should().StartWith("FLUX-001,Inbound,0.0.0.0,Any,10.0.0.1,SRV-APP-01,Internal,TCP,8080,");
     }
 
     [Fact]

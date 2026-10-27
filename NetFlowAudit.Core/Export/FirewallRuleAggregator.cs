@@ -10,6 +10,8 @@ namespace NetFlowAudit.Core.Export;
 /// </summary>
 public sealed class FirewallRuleAggregator
 {
+    private const string AnySourceHost = "Any";
+
     private static readonly IpAddressRangeMatcher PrivateNetworkMatcher = new(
     [
         "10.0.0.0/8",
@@ -76,8 +78,16 @@ public sealed class FirewallRuleAggregator
                 continue;
             }
 
+            // A listening socket becomes an inbound rule from any source to its local port. It is exported only on
+            // request: in the default matrix the established inbound flows already describe the real clients.
+            var isListener = entry.Socket.Direction == SocketFlowDirection.Listening;
+            if (isListener && !options.ListenersOnly)
+            {
+                continue;
+            }
+
             var isOutbound = entry.Socket.Direction == SocketFlowDirection.Outbound;
-            if (!isOutbound && entry.Socket.Direction != SocketFlowDirection.Inbound)
+            if (!isOutbound && !isListener && entry.Socket.Direction != SocketFlowDirection.Inbound)
             {
                 continue;
             }
@@ -93,7 +103,9 @@ public sealed class FirewallRuleAggregator
             }
 
             var sourceIp = isOutbound ? entry.Socket.LocalEndpoint.Address.ToString() : entry.Socket.RemoteEndpoint.Address.ToString();
-            var sourceHost = isOutbound ? entry.Server.HostName : (!string.IsNullOrWhiteSpace(entry.RemoteHostName) ? entry.RemoteHostName : sourceIp);
+            var sourceHost = isOutbound
+                ? entry.Server.HostName
+                : isListener ? AnySourceHost : (!string.IsNullOrWhiteSpace(entry.RemoteHostName) ? entry.RemoteHostName : sourceIp);
 
             var destIp = isOutbound ? entry.Socket.RemoteEndpoint.Address.ToString() : entry.Socket.LocalEndpoint.Address.ToString();
             var destHost = isOutbound ? (!string.IsNullOrWhiteSpace(entry.RemoteHostName) ? entry.RemoteHostName : destIp) : entry.Server.HostName;
@@ -189,8 +201,10 @@ public sealed class FirewallRuleAggregator
                 }
             }
 
+            // A listener bound to 0.0.0.0 or :: is reached through the server's own addresses, hence internal.
             var isInternal = IPAddress.TryParse(acc.DestinationIp, out var parsedIp) &&
-                             (IPAddress.IsLoopback(parsedIp) || PrivateNetworkMatcher.IsMatch(parsedIp));
+                             (IPAddress.IsLoopback(parsedIp) || PrivateNetworkMatcher.IsMatch(parsedIp) ||
+                              parsedIp.Equals(IPAddress.Any) || parsedIp.Equals(IPAddress.IPv6Any));
             var zone = isInternal ? "Internal" : "Public";
 
             if (string.Equals(options.DestinationZoneFilter, "internal", StringComparison.OrdinalIgnoreCase) && !isInternal)

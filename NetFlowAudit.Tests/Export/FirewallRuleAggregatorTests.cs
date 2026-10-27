@@ -48,6 +48,80 @@ public sealed class FirewallRuleAggregatorTests
     }
 
     [Fact]
+    public void Aggregate_WhenListenersOnlyAndSocketListens_ReturnsInboundRuleFromAnySource()
+    {
+        // Arrange
+        var aggregator = new FirewallRuleAggregator();
+        var entry = CreateSampleEntry(
+            direction: SocketFlowDirection.Listening,
+            localIp: "10.0.0.10",
+            localPort: 8443,
+            remoteIp: "0.0.0.0",
+            remotePort: 0,
+            serverHost: "SRV-WEB-01",
+            processName: "nginx",
+            state: "Listen");
+
+        // Act
+        var rules = aggregator.Aggregate([entry], new FirewallRuleExportOptions { ListenersOnly = true });
+
+        // Assert
+        var rule = rules.Should().ContainSingle().Subject;
+        rule.Direction.Should().Be("Inbound");
+        rule.SourceIp.Should().Be("0.0.0.0");
+        rule.SourceHost.Should().Be("Any");
+        rule.DestinationIp.Should().Be("10.0.0.10");
+        rule.DestinationHost.Should().Be("SRV-WEB-01");
+        rule.DestinationPort.Should().Be(8443);
+        rule.DestinationZone.Should().Be("Internal");
+        rule.ProcessName.Should().Be("nginx");
+    }
+
+    [Fact]
+    public void Aggregate_WhenListenerIsBoundToAllInterfaces_ClassifiesDestinationAsInternal()
+    {
+        // Arrange
+        var aggregator = new FirewallRuleAggregator();
+        var entry = CreateSampleEntry(
+            direction: SocketFlowDirection.Listening,
+            localIp: "::",
+            localPort: 22,
+            remoteIp: "::",
+            remotePort: 0,
+            serverHost: "SRV-SSH-01",
+            processName: "sshd",
+            state: "Listen");
+
+        // Act
+        var rules = aggregator.Aggregate([entry], new FirewallRuleExportOptions { ListenersOnly = true });
+
+        // Assert
+        var rule = rules.Should().ContainSingle().Subject;
+        rule.DestinationZone.Should().Be("Internal");
+        rule.DestinationHost.Should().Be("SRV-SSH-01");
+    }
+
+    [Fact]
+    public void Aggregate_WhenListenersOnlyIsNotSet_IgnoresListeningSockets()
+    {
+        // Arrange
+        var aggregator = new FirewallRuleAggregator();
+        var entry = CreateSampleEntry(
+            direction: SocketFlowDirection.Listening,
+            localIp: "10.0.0.10",
+            localPort: 8443,
+            remoteIp: "0.0.0.0",
+            remotePort: 0,
+            state: "Listen");
+
+        // Act
+        var rules = aggregator.Aggregate([entry], new FirewallRuleExportOptions());
+
+        // Assert
+        rules.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Aggregate_WhenInboundFlow_InvertsSourceAndDestinationToMatchRealTraffic()
     {
         // Arrange
@@ -204,7 +278,8 @@ public sealed class FirewallRuleAggregatorTests
         string processName = "testproc",
         long observationCount = 10,
         DateTimeOffset? firstSeen = null,
-        DateTimeOffset? lastSeen = null)
+        DateTimeOffset? lastSeen = null,
+        string state = "Established")
     {
         var now = DateTimeOffset.UtcNow;
         var socket = new ActiveSocketConnection(
@@ -212,7 +287,7 @@ public sealed class FirewallRuleAggregatorTests
             direction,
             new SocketEndpoint(IPAddress.Parse(localIp), localPort),
             new SocketEndpoint(IPAddress.Parse(remoteIp), remotePort),
-            "Established",
+            state,
             new ProcessMetadata(1234, processName, $"/usr/bin/{processName}", $"{processName} --run", "", "root"));
 
         return new NetworkAuditEntry(
