@@ -1,15 +1,16 @@
-﻿{
+{
   "ScanIntervalSeconds": 5,
   "OutputCsvPath": "netflow_audit.csv",
   "OutputNdjsonPath": "",
-  "OutputHtmlMapPath": "netflow_topology.html",
+  "OutputHtmlMapPath": "",
+  "OutputDrawioPath": "",
+  "DrawioEdgeMode": "adaptive",
+  "DrawioTheme": "dark",
   "MapExcludeEphemeralPorts": true,
   "MapListenersOnly": false,
+  "MapDirection": "all",
   "MapIncludedPorts": [],
-  "MapExcludedPorts": [
-    "53",
-    "123"
-  ],
+  "MapExcludedPorts": [],
   "MapIncludedHosts": [],
   "MapExcludedHosts": [],
   "MapIncludedIps": [],
@@ -62,29 +63,17 @@
     "System",
     "Idle"
   ],
-  "ExcludedPrefixes": [
-    "svchost"
-  ],
+  "ExcludedPrefixes": [],
   "ExcludedSuffixes": [],
   "ExcludedContains": [],
-  "ExcludeSystemAccounts": false,
+  "ExcludeSystemAccounts": true,
   "ExcludeLoopbackFlows": true,
-  "ExcludedLocalPorts": [
-    22,
-    3389
-  ],
-  "ExcludedRemotePorts": [
-    53
-  ],
-  "ExcludedRemoteIps": [
-    "192.168.1.50",
-    "10.0.0.0/8"
-  ],
+  "ExcludedLocalPorts": [],
+  "ExcludedRemotePorts": [],
+  "ExcludedRemoteIps": [],
   "EnableDashboard": true,
   "MaskServerName": "",
   "MaskLocalIp": "",
-  "CustomHostAliases": {
-    "10.0.0.5": "srv-oracle-prod"
-  },
+  "CustomHostAliases": {},
   "ReloadHistoryLimit": null
 }

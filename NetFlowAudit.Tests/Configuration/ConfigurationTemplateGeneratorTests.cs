@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AwesomeAssertions;
 using NetFlowAudit.Cli.Configuration;
+using NetFlowAudit.Core.Export;
 using Xunit;
 
 namespace NetFlowAudit.Tests.Configuration;
@@ -47,8 +48,22 @@ public sealed class ConfigurationTemplateGeneratorTests : IDisposable
         parsed!.ScanIntervalSeconds.Should().Be(5);
         parsed.OutputCsvPath.Should().Be("netflow_audit.csv");
         parsed.ReloadHistoryLimit.Should().BeNull();
-        parsed.CustomHostAliases.Should().ContainKey("10.0.0.5");
         parsed.ExcludedPids.Should().Contain([0, 4]);
+    }
+
+    [Fact]
+    public void GenerateDefaultConfigFile_WhenGenerated_WritesTheBuiltInDefaultsWithEveryColumnListed()
+    {
+        // Arrange
+        var targetFile = Path.Combine(_tempDirectory, "defaults.json");
+        var columnNames = AuditCsvColumnCatalog.GetAllDescriptors().Select(d => d.Name).ToList();
+
+        // Act
+        ConfigurationTemplateGenerator.GenerateDefaultConfigFile(targetFile);
+
+        // Assert
+        var parsed = JsonSerializer.Deserialize<AppConfiguration>(File.ReadAllText(targetFile));
+        parsed.Should().BeEquivalentTo(new AppConfiguration { CsvColumns = columnNames });
     }
 
     [Fact]
