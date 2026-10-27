@@ -1,5 +1,5 @@
 using System.Text.Json;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Core.Enrichment;
 using NetFlowAudit.Core.Export;
 using NetFlowAudit.Core.Resolution;

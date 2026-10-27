@@ -1,5 +1,5 @@
 using System.Net;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Core.Deduplication;
 using NetFlowAudit.Core.Models;
 using ProcessForge.Models;

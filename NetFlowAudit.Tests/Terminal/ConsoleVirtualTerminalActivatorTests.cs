@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Cli.Terminal;
 using Xunit;
 

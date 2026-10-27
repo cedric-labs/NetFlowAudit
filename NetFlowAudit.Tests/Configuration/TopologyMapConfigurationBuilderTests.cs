@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Cli.Configuration;
 using TopologyForge.Models;
 using TopologyForge.Rendering;

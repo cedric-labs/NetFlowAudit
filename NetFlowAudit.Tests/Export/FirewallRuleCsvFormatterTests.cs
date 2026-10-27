@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Core.Export;
 using Xunit;
 

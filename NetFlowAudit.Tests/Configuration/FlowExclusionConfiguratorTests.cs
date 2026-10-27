@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Core.Filtering;
 using ProcessForge.Filtering;

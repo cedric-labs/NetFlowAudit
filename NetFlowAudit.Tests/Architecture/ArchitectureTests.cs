@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NetArchTest.Rules;
 using NetFlowAudit.Core.Models;
 using Xunit;

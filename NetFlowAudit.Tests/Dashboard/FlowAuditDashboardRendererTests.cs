@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Dashboard;
 using NetFlowAudit.Core.Filtering;

@@ -1,7 +1,7 @@
 namespace NetFlowAudit.Tests.Export;
 
 using System.Net;
-using FluentAssertions;
+using AwesomeAssertions;
 using NetFlowAudit.Core.Export;
 using NetFlowAudit.Core.Models;
 using SocketForge.Models;
