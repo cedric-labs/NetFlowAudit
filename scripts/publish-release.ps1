@@ -1,4 +1,4 @@
-﻿# scripts/publish-release.ps1
+# scripts/publish-release.ps1
 [CmdletBinding()]
 param (
     [string]$Tag = "",
