@@ -52,7 +52,7 @@ public sealed class IpResolutionDiagnosticReporterTests
 
             // Assert
             var output = sw.ToString();
-            output.Should().Contain("Format d'adresse IP invalide");
+            output.Should().Contain("Invalid IP address format");
         }
         finally
         {
@@ -78,9 +78,9 @@ public sealed class IpResolutionDiagnosticReporterTests
 
             // Assert
             var output = sw.ToString();
-            output.Should().Contain("[1/6] Analyse Syntaxique et Classification");
-            output.Should().Contain("Loopback / Local       : OUI");
-            output.Should().Contain("Source retenue         : Local");
+            output.Should().Contain("[1/6] Syntax Analysis & Classification");
+            output.Should().Contain("Loopback / Local       : YES");
+            output.Should().Contain("Synthesized Source     : Local");
         }
         finally
         {
@@ -106,9 +106,9 @@ public sealed class IpResolutionDiagnosticReporterTests
 
             // Assert
             var output = sw.ToString();
-            output.Should().Contain("Non spécifiée / Any    : OUI");
-            output.Should().Contain("IGNORÉ (Protection préventive)");
-            output.Should().Contain("Source retenue         : Excluded");
+            output.Should().Contain("Unspecified / Any      : YES");
+            output.Should().Contain("SKIPPED (Defensive guard)");
+            output.Should().Contain("Synthesized Source     : Excluded");
         }
         finally
         {

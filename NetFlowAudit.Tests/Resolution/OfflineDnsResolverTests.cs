@@ -88,7 +88,7 @@ public sealed class OfflineDnsResolverTests
         // Assert
         entry.Organization.Should().Be("Microsoft Corporation");
         entry.Country.Should().Be("US");
-        loggedMessages.Should().Contain(msg => msg.Contains("Régulation"));
+        loggedMessages.Should().Contain(msg => msg.Contains("rate limiting"));
     }
 
     [Fact]

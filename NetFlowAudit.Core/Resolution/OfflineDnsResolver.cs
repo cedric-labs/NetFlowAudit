@@ -84,7 +84,7 @@ public sealed class OfflineDnsResolver(
             if (_rdapThrottleDelay > TimeSpan.Zero && RdapIpOrganizationResolver.IsPublicRoutable(address))
             {
                 _logThrottlingNotice?.Invoke(
-                    $"Régulation du débit RDAP active (temporisation {_rdapThrottleDelay.TotalMilliseconds:0}ms pour respecter les quotas des registres Internet)...");
+                    $"RDAP rate limiting active (throttling delay {_rdapThrottleDelay.TotalMilliseconds:0}ms to respect registry quotas)...");
                 await Task.Delay(_rdapThrottleDelay, cancellationToken).ConfigureAwait(false);
             }
 

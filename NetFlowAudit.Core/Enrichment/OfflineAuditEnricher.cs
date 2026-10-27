@@ -71,7 +71,7 @@ public sealed class OfflineAuditEnricher(
         var onlineCount = 0;
         if (!options.Isolated && distinctUnresolvedIps.Count > 0)
         {
-            _logger?.Invoke($"Résolution en ligne de {distinctUnresolvedIps.Count} adresse(s) IP inconnue(s)...");
+            _logger?.Invoke($"Resolving {distinctUnresolvedIps.Count} unknown IP address(es) online...");
 
             foreach (var ipStr in distinctUnresolvedIps)
             {
@@ -96,7 +96,7 @@ public sealed class OfflineAuditEnricher(
         {
             var store = new PersistentDnsCacheStore(options.OutputCachePath);
             await store.SaveAsync(activeCache, cancellationToken).ConfigureAwait(false);
-            _logger?.Invoke($"Cache consolidé sauvegardé avec succès dans : {options.OutputCachePath}");
+            _logger?.Invoke($"Consolidated cache successfully saved to: {options.OutputCachePath}");
         }
 
         // 4. Enrich audit files

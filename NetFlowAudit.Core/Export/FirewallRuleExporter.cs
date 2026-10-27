@@ -88,7 +88,7 @@ public sealed class FirewallRuleExporter(
             }
         }
 
-        _logger?.Invoke($"Matrice de {rules.Count} règle(s) firewall générée avec succès : {Path.GetFullPath(outputPath)}");
+        _logger?.Invoke($"Firewall rule matrix with {rules.Count} rule(s) successfully generated: {Path.GetFullPath(outputPath)}");
 
         return new FirewallRuleExportReport(
             validFiles,

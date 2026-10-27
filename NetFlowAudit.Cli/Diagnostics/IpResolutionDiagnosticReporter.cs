@@ -42,16 +42,16 @@ public sealed class IpResolutionDiagnosticReporter
         ArgumentNullException.ThrowIfNull(config);
 
         Console.WriteLine("================================================================================");
-        Console.WriteLine("           NetFlowAudit - Diagnostic de Résolution IP & Réseau");
+        Console.WriteLine("           NetFlowAudit - IP & Network Resolution Diagnostic");
         Console.WriteLine("================================================================================");
 
         // [1/6] Syntax analysis & classification
-        Console.WriteLine("\n[1/6] Analyse Syntaxique et Classification");
-        Console.WriteLine($"  * Entrée fournie         : {targetIpString}");
+        Console.WriteLine("\n[1/6] Syntax Analysis & Classification");
+        Console.WriteLine($"  * Input provided         : {targetIpString}");
 
         if (!IPAddress.TryParse(targetIpString.Trim(), out var address))
         {
-            Console.WriteLine("  * Statut                 : ERREUR - Format d'adresse IP invalide.");
+            Console.WriteLine("  * Status                 : ERROR - Invalid IP address format.");
             Console.WriteLine("================================================================================");
             return;
         }
@@ -63,15 +63,15 @@ public sealed class IpResolutionDiagnosticReporter
         var exclusionEvaluator = new DnsAddressExclusionEvaluator(config.ExcludedRemoteIps);
         var isConfigExcluded = exclusionEvaluator.ShouldExclude(address);
 
-        Console.WriteLine($"  * Adresse normalisée     : {address} ({address.AddressFamily})");
-        Console.WriteLine($"  * Loopback / Local       : {(isLoopback ? "OUI (127.0.0.1 / ::1)" : "NON")}");
-        Console.WriteLine($"  * Non spécifiée / Any    : {(isAny ? "OUI (0.0.0.0 / ::)" : "NON")}");
-        Console.WriteLine($"  * Broadcast / None       : {(isNone ? "OUI (255.255.255.255)" : "NON")}");
-        Console.WriteLine($"  * Routable publiquement  : {(isPublic ? "OUI (Plage WAN / Internet)" : "NON (Privée RFC 1918 / CGNAT / Lien-Local / Réservée)")}");
-        Console.WriteLine($"  * Exclue par la config   : {(isConfigExcluded ? "OUI (--exclude-remote-ips)" : "NON")}");
+        Console.WriteLine($"  * Normalized IP          : {address} ({address.AddressFamily})");
+        Console.WriteLine($"  * Loopback / Local       : {(isLoopback ? "YES (127.0.0.1 / ::1)" : "NO")}");
+        Console.WriteLine($"  * Unspecified / Any      : {(isAny ? "YES (0.0.0.0 / ::)" : "NO")}");
+        Console.WriteLine($"  * Broadcast / None       : {(isNone ? "YES (255.255.255.255)" : "NO")}");
+        Console.WriteLine($"  * Publicly routable      : {(isPublic ? "YES (Public WAN / Internet)" : "NO (Private RFC 1918 / CGNAT / Link-Local / Reserved)")}");
+        Console.WriteLine($"  * Excluded by config     : {(isConfigExcluded ? "YES (--exclude-remote-ips)" : "NO")}");
 
         // [2/6] Cache inspection
-        Console.WriteLine($"\n[2/6] Inspection du Cache Local (Fichier: {config.DnsCacheFilePath})");
+        Console.WriteLine($"\n[2/6] Local Cache Inspection (File: {config.DnsCacheFilePath})");
         DnsCacheEntry? cachedEntry = null;
         if (File.Exists(config.DnsCacheFilePath))
         {
@@ -81,34 +81,34 @@ public sealed class IpResolutionDiagnosticReporter
                 var loaded = cacheStore.Load();
                 if (loaded.TryGetValue(address.ToString(), out cachedEntry))
                 {
-                    Console.WriteLine("  * Présence dans le cache : OUI");
+                    Console.WriteLine("  * Found in cache         : YES");
                     Console.WriteLine($"    - HostName             : {cachedEntry.HostName}");
-                    Console.WriteLine($"    - Organisation         : {cachedEntry.Organization ?? "(non renseignée)"}");
-                    Console.WriteLine($"    - Pays                 : {cachedEntry.Country ?? "(non renseigné)"}");
-                    Console.WriteLine($"    - Plage réseau         : {cachedEntry.NetworkRange ?? "(non renseignée)"}");
+                    Console.WriteLine($"    - Organization         : {cachedEntry.Organization ?? "(not populated)"}");
+                    Console.WriteLine($"    - Country              : {cachedEntry.Country ?? "(not populated)"}");
+                    Console.WriteLine($"    - Network Range        : {cachedEntry.NetworkRange ?? "(not populated)"}");
                     Console.WriteLine($"    - Source               : {cachedEntry.Source}");
-                    Console.WriteLine($"    - Résolu le (UTC)      : {cachedEntry.ResolvedAtUtc:yyyy-MM-dd HH:mm:ss}Z");
+                    Console.WriteLine($"    - Resolved at (UTC)    : {cachedEntry.ResolvedAtUtc:yyyy-MM-dd HH:mm:ss}Z");
                 }
                 else
                 {
-                    Console.WriteLine("  * Présence dans le cache : NON (Entrée absente du fichier)");
+                    Console.WriteLine("  * Found in cache         : NO (Entry not present in file)");
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"  * Erreur d'accès cache   : {ex.GetType().Name} - {ex.Message}");
+                Console.WriteLine($"  * Cache access error     : {ex.GetType().Name} - {ex.Message}");
             }
         }
         else
         {
-            Console.WriteLine("  * Présence dans le cache : NON (Fichier de cache inexistant)");
+            Console.WriteLine("  * Found in cache         : NO (Cache file does not exist)");
         }
 
         // [3/6] System Network Configuration
-        Console.WriteLine("\n[3/6] Configuration Réseau & Serveurs DNS de l'OS");
+        Console.WriteLine("\n[3/6] OS Network Configuration & DNS Resolvers");
         try
         {
-            Console.WriteLine($"  * Nom d'hôte de l'OS     : {Dns.GetHostName()}");
+            Console.WriteLine($"  * OS Host Name           : {Dns.GetHostName()}");
             var interfaces = NetworkInterface.GetAllNetworkInterfaces()
                 .Where(nic => nic.OperationalStatus == OperationalStatus.Up &&
                               nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
@@ -116,7 +116,7 @@ public sealed class IpResolutionDiagnosticReporter
 
             if (interfaces.Count == 0)
             {
-                Console.WriteLine("  * Interfaces actives     : Aucune interface réseau physique active détectée.");
+                Console.WriteLine("  * Active Interfaces      : No active physical network interface detected.");
             }
             else
             {
@@ -124,28 +124,28 @@ public sealed class IpResolutionDiagnosticReporter
                 {
                     var ipProps = nic.GetIPProperties();
                     var dnsServers = ipProps.DnsAddresses.Select(d => d.ToString()).ToList();
-                    var suffix = string.IsNullOrWhiteSpace(ipProps.DnsSuffix) ? "(aucun)" : ipProps.DnsSuffix;
+                    var suffix = string.IsNullOrWhiteSpace(ipProps.DnsSuffix) ? "(none)" : ipProps.DnsSuffix;
                     Console.WriteLine($"  * Interface: {nic.Name} ({nic.Description})");
-                    Console.WriteLine($"    - Suffixe DNS local    : {suffix}");
-                    Console.WriteLine($"    - Serveurs DNS         : {(dnsServers.Count > 0 ? string.Join(", ", dnsServers) : "(non configurés)")}");
+                    Console.WriteLine($"    - Local DNS Suffix     : {suffix}");
+                    Console.WriteLine($"    - DNS Servers          : {(dnsServers.Count > 0 ? string.Join(", ", dnsServers) : "(not configured)")}");
                 }
             }
         }
         catch (Exception ex) when (ex is NetworkInformationException or SocketException)
         {
-            Console.WriteLine($"  * Erreur lecture réseau  : {ex.Message}");
+            Console.WriteLine($"  * Network probe error    : {ex.Message}");
         }
 
         // [4/6] Live Reverse DNS (PTR) Probe
-        Console.WriteLine("\n[4/6] Test Reverse DNS .NET (PTR)");
+        Console.WriteLine("\n[4/6] Live .NET Reverse DNS Probe (PTR)");
         string? reverseDnsResult = null;
         var dnsSw = Stopwatch.StartNew();
 
         if (isAny || isNone)
         {
             dnsSw.Stop();
-            Console.WriteLine("  * Requête Dns.GetHostEntryAsync ignorée (adresse non résoluble/non spécifiée).");
-            Console.WriteLine("  * Statut                 : IGNORÉ (Protection préventive)");
+            Console.WriteLine("  * Query Dns.GetHostEntryAsync skipped (unspecified or non-resolvable address).");
+            Console.WriteLine("  * Status                 : SKIPPED (Defensive guard)");
         }
         else
         {
@@ -154,22 +154,22 @@ public sealed class IpResolutionDiagnosticReporter
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
 
-                Console.WriteLine($"  * Requête lancée vers   : {address}");
-                Console.WriteLine("  * Timeout configuré      : 3000 ms");
+                Console.WriteLine($"  * Query target           : {address}");
+                Console.WriteLine("  * Configured timeout     : 3000 ms");
 
                 var hostEntry = await Dns.GetHostEntryAsync(address.ToString(), timeoutCts.Token).ConfigureAwait(false);
                 dnsSw.Stop();
 
-                Console.WriteLine($"  * Durée de l'appel       : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * Statut                 : SUCCÈS");
-                Console.WriteLine($"  * FQDN / HostName retour : {hostEntry.HostName}");
+                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
+                Console.WriteLine("  * Status                 : SUCCESS");
+                Console.WriteLine($"  * Returned HostName      : {hostEntry.HostName}");
                 if (hostEntry.Aliases.Length > 0)
                 {
-                    Console.WriteLine($"  * Alias retournés        : {string.Join(", ", hostEntry.Aliases)}");
+                    Console.WriteLine($"  * Returned Aliases       : {string.Join(", ", hostEntry.Aliases)}");
                 }
                 if (hostEntry.AddressList.Length > 0)
                 {
-                    Console.WriteLine($"  * Adresses associées     : {string.Join(", ", hostEntry.AddressList.Select(a => a.ToString()))}");
+                    Console.WriteLine($"  * Associated Addresses   : {string.Join(", ", hostEntry.AddressList.Select(a => a.ToString()))}");
                 }
 
                 if (!string.IsNullOrWhiteSpace(hostEntry.HostName) &&
@@ -181,41 +181,41 @@ public sealed class IpResolutionDiagnosticReporter
             catch (SocketException ex)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Durée de l'appel       : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * Statut                 : ÉCHEC SocketException (Code: {ex.SocketErrorCode})");
-                Console.WriteLine($"  * Message brut           : {ex.Message}");
-                Console.WriteLine($"  * Explication            : Le serveur DNS interrogé n'a pas trouvé d'enregistrement PTR ou a répondu NXDOMAIN.");
+                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"  * Status                 : FAILED SocketException (Code: {ex.SocketErrorCode})");
+                Console.WriteLine($"  * Raw message            : {ex.Message}");
+                Console.WriteLine("  * Explanation            : The queried DNS server did not find a PTR record or returned NXDOMAIN.");
             }
             catch (OperationCanceledException)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Durée de l'appel       : {dnsSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * Statut                 : TIMEOUT / ANNULÉ");
-                Console.WriteLine("  * Explication            : Le serveur DNS n'a pas répondu dans le délai imparti (3000 ms).");
+                Console.WriteLine($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms");
+                Console.WriteLine("  * Status                 : TIMEOUT / CANCELED");
+                Console.WriteLine("  * Explanation            : The DNS server did not respond within the allocated timeout (3000 ms).");
             }
             catch (ArgumentException ex)
             {
                 dnsSw.Stop();
-                Console.WriteLine($"  * Statut                 : ERREUR ArgumentException - {ex.Message}");
+                Console.WriteLine($"  * Status                 : ERROR ArgumentException - {ex.Message}");
             }
         }
 
         // [5/6] Live RDAP Probe
-        Console.WriteLine("\n[5/6] Test RDAP Direct (RFC 7480/7482/7484)");
+        Console.WriteLine("\n[5/6] Live RDAP Probe (RFC 7480/7482/7484)");
         IpOwnerMetadata? rdapDetails = null;
         var rdapSw = Stopwatch.StartNew();
 
         if (!isPublic)
         {
             rdapSw.Stop();
-            Console.WriteLine("  * Requête RDAP ignorée   : L'adresse n'est pas une adresse publique routable sur Internet.");
-            Console.WriteLine("  * Statut                 : IGNORÉ (Inutile d'interroger les registres RIR pour des IPs locales)");
+            Console.WriteLine("  * RDAP query skipped     : Address is not a publicly routable Internet address.");
+            Console.WriteLine("  * Status                 : SKIPPED (RIR registry queries are reserved for public IP blocks)");
         }
         else
         {
             var rdapUri = $"https://rdap.org/ip/{address}";
-            Console.WriteLine($"  * Requête HTTP lancée    : GET {rdapUri}");
-            Console.WriteLine("  * Timeout configuré      : 4000 ms");
+            Console.WriteLine($"  * HTTP request target    : GET {rdapUri}");
+            Console.WriteLine("  * Configured timeout     : 4000 ms");
 
             try
             {
@@ -225,46 +225,46 @@ public sealed class IpResolutionDiagnosticReporter
                 using var response = await RdapHttpClient.GetAsync(rdapUri, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
                 rdapSw.Stop();
 
-                Console.WriteLine($"  * Durée de l'appel       : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * Code HTTP retourné     : {(int)response.StatusCode} {response.ReasonPhrase}");
+                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"  * Returned HTTP Status   : {(int)response.StatusCode} {response.ReasonPhrase}");
 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
                     rdapDetails = RdapResponseParser.ExtractOwnerDetails(content);
 
-                    Console.WriteLine("  * Statut RDAP            : SUCCÈS");
-                    Console.WriteLine($"    - Organisation         : {rdapDetails?.Organization ?? "(non trouvée dans le payload JSON)"}");
-                    Console.WriteLine($"    - Pays                 : {rdapDetails?.Country ?? "(non renseigné)"}");
-                    Console.WriteLine($"    - Plage réseau         : {rdapDetails?.NetworkRange ?? "(non renseignée)"}");
-                    Console.WriteLine($"    - Handle RIR           : {rdapDetails?.Handle ?? "(non renseigné)"}");
+                    Console.WriteLine("  * RDAP Status            : SUCCESS");
+                    Console.WriteLine($"    - Organization         : {rdapDetails?.Organization ?? "(not found in JSON payload)"}");
+                    Console.WriteLine($"    - Country              : {rdapDetails?.Country ?? "(not populated)"}");
+                    Console.WriteLine($"    - Network Range        : {rdapDetails?.NetworkRange ?? "(not populated)"}");
+                    Console.WriteLine($"    - RIR Handle           : {rdapDetails?.Handle ?? "(not populated)"}");
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    Console.WriteLine("  * Statut RDAP            : 404 NOT FOUND - Aucun enregistrement présent dans les bases RIR (ARIN, RIPE, etc.).");
+                    Console.WriteLine("  * RDAP Status            : 404 NOT FOUND - No record present in RIR databases (ARIN, RIPE, etc.).");
                 }
                 else
                 {
-                    Console.WriteLine($"  * Statut RDAP            : Erreur HTTP {(int)response.StatusCode}");
+                    Console.WriteLine($"  * RDAP Status            : HTTP Error {(int)response.StatusCode}");
                 }
             }
             catch (HttpRequestException ex)
             {
                 rdapSw.Stop();
-                Console.WriteLine($"  * Durée de l'appel       : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"  * Statut RDAP            : ÉCHEC HttpRequestException - {ex.Message}");
-                Console.WriteLine("  * Explication            : Pas d'accès Internet, proxy requis, ou rdap.org indisponible.");
+                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"  * RDAP Status            : FAILED HttpRequestException - {ex.Message}");
+                Console.WriteLine("  * Explanation            : No Internet access, proxy required, or rdap.org unreachable.");
             }
             catch (OperationCanceledException)
             {
                 rdapSw.Stop();
-                Console.WriteLine($"  * Durée de l'appel       : {rdapSw.ElapsedMilliseconds} ms");
-                Console.WriteLine("  * Statut RDAP            : TIMEOUT (Le service rdap.org n'a pas répondu dans les 4000 ms).");
+                Console.WriteLine($"  * Call duration          : {rdapSw.ElapsedMilliseconds} ms");
+                Console.WriteLine("  * RDAP Status            : TIMEOUT (rdap.org did not respond within 4000 ms).");
             }
         }
 
         // [6/6] Synthesis & Pipeline Simulation
-        Console.WriteLine("\n[6/6] Synthèse & Modèle Consolidé NetFlowAudit");
+        Console.WriteLine("\n[6/6] Synthesis & NetFlowAudit Cache Model");
         string synthesizedHostName;
         string synthesizedSource;
 
@@ -294,15 +294,15 @@ public sealed class IpResolutionDiagnosticReporter
             synthesizedSource = "None";
         }
 
-        Console.WriteLine($"  * HostName retenu        : {(string.IsNullOrEmpty(synthesizedHostName) ? "(aucun)" : synthesizedHostName)}");
-        Console.WriteLine($"  * Organisation           : {rdapDetails?.Organization ?? "(aucune)"}");
-        Console.WriteLine($"  * Pays                   : {rdapDetails?.Country ?? "(aucun)"}");
-        Console.WriteLine($"  * Plage réseau           : {rdapDetails?.NetworkRange ?? "(aucune)"}");
-        Console.WriteLine($"  * Source retenue         : {synthesizedSource}");
+        Console.WriteLine($"  * Synthesized HostName   : {(string.IsNullOrEmpty(synthesizedHostName) ? "(none)" : synthesizedHostName)}");
+        Console.WriteLine($"  * Organization           : {rdapDetails?.Organization ?? "(none)"}");
+        Console.WriteLine($"  * Country                : {rdapDetails?.Country ?? "(none)"}");
+        Console.WriteLine($"  * Network Range          : {rdapDetails?.NetworkRange ?? "(none)"}");
+        Console.WriteLine($"  * Synthesized Source     : {synthesizedSource}");
 
         if (cachedEntry is not null && !string.Equals(cachedEntry.HostName, synthesizedHostName, StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine($"  * REMARQUE               : Le cache local diffère de la résolution en direct ({cachedEntry.HostName} vs {synthesizedHostName}).");
+            Console.WriteLine($"  * NOTE                   : Local cache differs from live resolution ({cachedEntry.HostName} vs {synthesizedHostName}).");
         }
 
         Console.WriteLine("================================================================================");

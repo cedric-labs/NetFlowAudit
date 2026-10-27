@@ -30,7 +30,7 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
         ArgumentNullException.ThrowIfNull(args);
 
         Console.WriteLine("========================================================================");
-        Console.WriteLine("  NetFlowAudit - Résolution & Consolidation Hors-Ligne (--resolve-offline)");
+        Console.WriteLine("  NetFlowAudit - Offline DNS Resolution & Cache Consolidation (--resolve-offline)");
         Console.WriteLine("========================================================================");
 
         var auditInputs = ExtractArgumentValues(args, ["-i", "--input", "--inputs", "--input-audits"]);
@@ -66,9 +66,9 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
             OutputCachePath = outputCachePath
         };
 
-        Console.WriteLine($"Mode d'exécution : {(isolated ? "100% Hors-ligne (--isolated)" : "Enrichissement actif avec DNS/RDAP")}");
-        Console.WriteLine($"Mise à jour des audits : {(inPlace ? "Directement sur place (--in-place)" : "Génération de nouveaux fichiers '*_enriched'")}");
-        Console.WriteLine($"Remplacement forcé des noms : {(forceResolve ? "Oui (--force-resolve)" : "Non (conservation des noms existants)")}");
+        Console.WriteLine($"Execution mode: {(isolated ? "100% Offline / Air-Gapped (--isolated)" : "Active enrichment with DNS & RDAP")}");
+        Console.WriteLine($"Audit log updates: {(inPlace ? "Direct in-place overwrite (--in-place)" : "Generate new '*_enriched' files")}");
+        Console.WriteLine($"Force hostname replacement: {(forceResolve ? "Yes (--force-resolve)" : "No (retain existing names)")}");
         Console.WriteLine();
 
         var report = await _enricher.EnrichPathsAsync(auditInputs, cacheInputs, options, cancellationToken).ConfigureAwait(false);
@@ -78,10 +78,10 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
         {
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[AVERTISSEMENT] {report.CacheReport.Conflicts.Count} incohérence(s) détectée(s) lors de la fusion des caches :");
+            Console.WriteLine($"[WARNING] {report.CacheReport.Conflicts.Count} conflict(s) detected during cache merge:");
             foreach (var conflict in report.CacheReport.Conflicts)
             {
-                Console.WriteLine($"  * IP {conflict.IpAddress} : Nom conservé '{conflict.WinningHostName}', écarté '{conflict.ConflictingHostName}' ({conflict.Reason})");
+                Console.WriteLine($"  * IP {conflict.IpAddress}: Retained '{conflict.WinningHostName}', discarded '{conflict.ConflictingHostName}' ({conflict.Reason})");
             }
             Console.ResetColor();
             Console.WriteLine();
@@ -89,21 +89,21 @@ public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enriche
 
         Console.WriteLine();
         Console.WriteLine("------------------------------------------------------------------------");
-        Console.WriteLine("  Bilan de l'enrichissement et de la consolidation");
+        Console.WriteLine("  Offline Consolidation & Enrichment Summary");
         Console.WriteLine("------------------------------------------------------------------------");
-        Console.WriteLine($"  * Caches sources traités : {report.CacheReport.TotalCachesProcessed} ({report.CacheReport.TotalEntriesLoaded} entrées brutes)");
-        Console.WriteLine($"  * Entrées de cache dédoublonnées : {report.CacheReport.MergedEntries.Count}");
-        Console.WriteLine($"  * Résolutions en ligne effectuées : {report.OnlineResolutionsCount}");
-        Console.WriteLine($"  * Fichiers d'audit traités : {report.ProcessedAuditFiles.Count}");
-        Console.WriteLine($"  * Lignes d'audit examinées : {report.TotalRecordsScanned}");
-        Console.WriteLine($"  * Lignes d'audit mises à jour : {report.TotalRecordsUpdated}");
-        Console.WriteLine($"  * Adresses IP distinctes enrichies : {report.DistinctIpsEnriched}");
-        Console.WriteLine($"  * Cache master persisté dans : {Path.GetFullPath(outputCachePath)}");
+        Console.WriteLine($"  * Source caches processed: {report.CacheReport.TotalCachesProcessed} ({report.CacheReport.TotalEntriesLoaded} raw entries)");
+        Console.WriteLine($"  * Deduplicated cache entries: {report.CacheReport.MergedEntries.Count}");
+        Console.WriteLine($"  * Online resolutions completed: {report.OnlineResolutionsCount}");
+        Console.WriteLine($"  * Audit files processed: {report.ProcessedAuditFiles.Count}");
+        Console.WriteLine($"  * Audit records scanned: {report.TotalRecordsScanned}");
+        Console.WriteLine($"  * Audit records updated: {report.TotalRecordsUpdated}");
+        Console.WriteLine($"  * Distinct IP addresses enriched: {report.DistinctIpsEnriched}");
+        Console.WriteLine($"  * Master cache saved to: {Path.GetFullPath(outputCachePath)}");
 
         if (report.GeneratedAuditFiles.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine("  Fichier(s) d'audit enrichi(s) généré(s) :");
+            Console.WriteLine("  Generated enriched audit file(s):");
             foreach (var file in report.GeneratedAuditFiles)
             {
                 Console.WriteLine($"    -> {Path.GetFullPath(file)}");

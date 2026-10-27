@@ -25,7 +25,7 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
         ArgumentNullException.ThrowIfNull(args);
 
         Console.WriteLine("========================================================================");
-        Console.WriteLine("  NetFlowAudit - Export de la Matrice de Flux Réseau (--export-rules)");
+        Console.WriteLine("  NetFlowAudit - Network Flow Matrix Export (--export-rules)");
         Console.WriteLine("========================================================================");
 
         var outputPath = GetArgumentValue(args, ["--export-rules", "--firewall-matrix", "--rules-csv"]);
@@ -109,26 +109,26 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
             Delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ','
         };
 
-        Console.WriteLine($"Exclusion des ports éphémères destination : {(excludeEphemeral ? "Oui (>= 49152 exclus)" : "Non")}");
-        Console.WriteLine($"Seuil d'activité minimum : {minObservations} observation(s)");
+        Console.WriteLine($"Exclude ephemeral destination ports: {(excludeEphemeral ? "Yes (>= 49152 excluded)" : "No")}");
+        Console.WriteLine($"Minimum observation threshold: {minObservations} observation(s)");
         if (activeWithinDays.HasValue)
         {
-            Console.WriteLine($"Filtre de fraîcheur : Observé au cours des {activeWithinDays.Value} derniers jours");
+            Console.WriteLine($"Freshness filter: Observed within the last {activeWithinDays.Value} day(s)");
         }
-        Console.WriteLine($"Filtrage de zone cible : {destinationZone.ToUpperInvariant()}");
-        Console.WriteLine($"Fichier cible : {Path.GetFullPath(outputPath)}");
+        Console.WriteLine($"Destination zone filter: {destinationZone.ToUpperInvariant()}");
+        Console.WriteLine($"Destination file: {Path.GetFullPath(outputPath)}");
         Console.WriteLine();
 
         var report = await _exporter.ExportRulesFromPathsAsync(auditInputs, outputPath, options, cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine();
         Console.WriteLine("------------------------------------------------------------------------");
-        Console.WriteLine("  Bilan de la génération de la matrice de flux");
+        Console.WriteLine("  Network Flow Matrix Generation Summary");
         Console.WriteLine("------------------------------------------------------------------------");
-        Console.WriteLine($"  * Fichiers sources ingérés : {report.SourceFiles.Count}");
-        Console.WriteLine($"  * Flux bruts analysés : {report.TotalRawFlowsScanned}");
-        Console.WriteLine($"  * Règles consolidées générées : {report.TotalRulesExported}");
-        Console.WriteLine($"  * Matrice enregistrée dans : {report.DestinationCsvPath}");
+        Console.WriteLine($"  * Source files ingested: {report.SourceFiles.Count}");
+        Console.WriteLine($"  * Raw flows scanned: {report.TotalRawFlowsScanned}");
+        Console.WriteLine($"  * Consolidated rules generated: {report.TotalRulesExported}");
+        Console.WriteLine($"  * Matrix exported to: {report.DestinationCsvPath}");
         Console.WriteLine("------------------------------------------------------------------------");
 
         return 0;
@@ -173,21 +173,14 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
         return args.Any(arg => argumentNames.Any(name => string.Equals(arg, name, StringComparison.OrdinalIgnoreCase)));
     }
 
-    private static List<string> ParseCsvArgument(string[] args, string[] argumentNames, List<string> defaultValues)
+    private static IReadOnlyList<string> ParseCsvArgument(string[] args, string[] argumentNames, IReadOnlyList<string> defaultValues)
     {
         var raw = GetArgumentValue(args, argumentNames);
-        if (raw is null)
+        if (string.IsNullOrWhiteSpace(raw))
         {
             return defaultValues;
         }
 
-        if (string.IsNullOrWhiteSpace(raw) || string.Equals(raw, "none", StringComparison.OrdinalIgnoreCase) || string.Equals(raw, "clear", StringComparison.OrdinalIgnoreCase))
-        {
-            return [];
-        }
-
-        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
