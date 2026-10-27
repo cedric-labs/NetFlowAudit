@@ -3,6 +3,7 @@ using System.Text.Json;
 using FileForge.IO;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Cli.Dashboard;
+using NetFlowAudit.Cli.Diagnostics;
 using NetFlowAudit.Cli.Enrichment;
 using NetFlowAudit.Cli.Export;
 using NetFlowAudit.Cli.Help;
@@ -85,6 +86,29 @@ public static class Program
 
         var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
         var topologyMapper = new AuditTopologyMapper();
+
+        var testIp = GetCommandLineArgumentValue(args, "--test-ip") ??
+                     GetCommandLineArgumentValue(args, "--lookup");
+
+        if (string.IsNullOrWhiteSpace(testIp))
+        {
+            for (var i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i].Equals("lookup", StringComparison.OrdinalIgnoreCase) ||
+                    args[i].Equals("test-ip", StringComparison.OrdinalIgnoreCase))
+                {
+                    testIp = args[i + 1];
+                    break;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(testIp))
+        {
+            var diagnosticReporter = new IpResolutionDiagnosticReporter();
+            await diagnosticReporter.RunDiagnosticAsync(testIp, config, CancellationToken.None).ConfigureAwait(false);
+            return;
+        }
 
         if (args.Any(a => a.Equals("--resolve-offline", StringComparison.OrdinalIgnoreCase)))
         {

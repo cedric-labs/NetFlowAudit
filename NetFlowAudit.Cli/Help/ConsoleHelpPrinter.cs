@@ -42,6 +42,7 @@ COMMAND-LINE OPTIONS:
   --destination-zone <internal|public>Filter rules by destination zone (RFC 1918 internal vs WAN/Internet public).
   --internal-only, --public-only      Shorthand filters for internal vs public firewall rules.
   --exclude-ephemeral                 Exclude ephemeral destination ports (>= 49152) from firewall rules.
+  --test-ip, --lookup <ip>            Perform verbose DNS and RDAP resolution diagnostics for a single IP address and exit.
   --resolve-offline                   Offline post-processing: consolidate caches and enrich audit hostnames.
   --in-place                          Overwrite original audit files directly during offline resolution.
   --force-resolve                     Force replacement of existing hostnames during offline resolution.
