@@ -37,9 +37,9 @@ These keys decide which sockets are recorded by `audit`. The dashboard adds entr
 | `ExcludedPrefixes` | list of strings | `[]` | Process names starting with one of these values (case ignored) | none |
 | `ExcludedSuffixes` | list of strings | `[]` | Process names ending with one of these values (case ignored) | none |
 | `ExcludedContains` | list of strings | `[]` | Process names containing one of these values | none |
-| `ExcludeSystemAccounts` | boolean | `true` | Skip processes of system accounts (see the note below) | none |
+| `ExcludeSystemAccounts` | boolean | `false` | Skip processes of system accounts (see the note below) | none |
 
-`ExcludeSystemAccounts` skips processes whose account contains `NT AUTHORITY` or equals `SYSTEM` or `root`. ProcessForge 1.0.2, which reads process details, does not return the account of a process yet, so this filter applies only to process identifiers 0 and below, which `ExcludedPids` already covers.
+`ExcludeSystemAccounts` skips processes whose account contains `NT AUTHORITY` or equals `SYSTEM` or `root`. Most services run under these accounts, hence the `false` default. A process whose account cannot be read (protected process, insufficient rights) has an empty account and is not skipped by this filter.
 
 ## Name resolution
 

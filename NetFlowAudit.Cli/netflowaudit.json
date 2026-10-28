@@ -66,7 +66,7 @@
   "ExcludedPrefixes": [],
   "ExcludedSuffixes": [],
   "ExcludedContains": [],
-  "ExcludeSystemAccounts": true,
+  "ExcludeSystemAccounts": false,
   "ExcludeLoopbackFlows": true,
   "ExcludedLocalPorts": [],
   "ExcludedRemotePorts": [],

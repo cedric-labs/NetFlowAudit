@@ -13,7 +13,7 @@ L'agent lit les tables de sockets que le système tient déjà :
 
 Aucun pilote de capture (Npcap, libpcap) n'est installé et aucun paquet n'est lu. L'agent voit les connexions, pas leur contenu, et seulement celles ouvertes au moment d'un balayage : une connexion ouverte et fermée entre deux balayages n'est pas vue. Réduire `--interval` réduit cet écart.
 
-Lire `/proc/<pid>/fd` d'un processus d'un autre utilisateur demande root. Sans root, les sockets de ces processus sont listés mais ne sont rattachés à aucun processus. Sous Windows, le chemin et la ligne de commande des processus d'autres comptes ne sont pas lisibles sans invite élevée ; ces champs restent alors vides.
+Lire `/proc/<pid>/fd` d'un processus d'un autre utilisateur demande root. Sans root, les sockets de ces processus sont listés mais ne sont rattachés à aucun processus. Sous Windows, le chemin, la ligne de commande et le compte des processus d'autres comptes ne sont pas lisibles sans invite élevée ; ces champs restent alors vides.
 
 ## Le cycle de balayage
 
@@ -59,7 +59,7 @@ Le programme est réparti entre l'application et quatre frameworks publiés en p
 | Paquet | Rôle dans NetFlowAudit |
 | :--- | :--- |
 | SocketForge 1.0.2 | Tables de sockets sous Windows et Linux |
-| ProcessForge 1.0.2 | Informations des processus, cibles des lanceurs, exclusion de processus |
+| ProcessForge 1.1.0 | Informations et compte des processus, cibles des lanceurs, exclusion de processus |
 | FileForge.Core 1.0.2 | Écriture CSV et NDJSON qui laisse les fichiers lisibles par d'autres programmes pendant l'audit |
 | TopologyForge 1.5.0 | Graphe topologique, filtres, carte HTML et export Draw.io |
 

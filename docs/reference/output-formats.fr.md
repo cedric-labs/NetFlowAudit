@@ -37,9 +37,9 @@ Les connexions répétées vers un même service mettent donc à jour une seule 
 | `ExecutablePath` | Processus | Chemin complet de l'exécutable ; vide quand le processus ne peut pas être ouvert |
 | `CommandLine` | Processus | Ligne de commande du processus |
 | `TargetExecutable` | Processus | Application lancée par un lanceur (`.jar`, `.py`, `.ps1`, `.sh`, `.dll`…) |
-| `UserName` | Processus | Compte du processus ; vide pour l'instant (voir ci-dessous) |
+| `UserName` | Processus | Compte du processus : `DOMAINE\compte` sous Windows (le SID quand le compte n'a plus de nom), le nom d'utilisateur sous Linux (l'UID numérique quand il n'est pas dans `/etc/passwd`) ; vide quand le processus ne peut pas être ouvert |
 
-`UserName` reste vide parce que ProcessForge 1.0.2, qui lit les informations des processus, ne renvoie pas le compte d'un processus. Les processus d'identifiant 0 ou inférieur affichent `SYSTEM`.
+Les processus d'identifiant 0 ou inférieur affichent `SYSTEM`.
 
 Au démarrage, `audit` relit le journal CSV existant (`--reload-history`, `ReloadHistoryLimit`) pour que les compteurs et les dates de première observation se poursuivent d'un redémarrage à l'autre.
 
@@ -69,7 +69,7 @@ Au démarrage, `audit` relit le journal CSV existant (`--reload-history`, `Reloa
 | `ServiceName` | Nom déduit du port et du processus (par exemple `Oracle-TNS` pour 1521) |
 | `ProcessName` | Processus propriétaire du socket |
 | `ExecutablePath` | Chemin de ce processus |
-| `UserName` | Compte de ce processus (vide pour l'instant, comme dans le journal) |
+| `UserName` | Compte de ce processus, comme dans le journal |
 | `ObservationCount` | Somme des compteurs des flux regroupés |
 | `FirstSeenUtc` | Première observation la plus ancienne |
 | `LastSeenUtc` | Observation la plus récente |

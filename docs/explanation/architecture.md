@@ -13,7 +13,7 @@ The agent reads the socket tables the operating system already keeps:
 
 No capture driver (Npcap, libpcap) is installed and no packet is read. The agent sees connections, not their content, and only those open at the moment of a scan: a connection that opens and closes between two scans is not seen. Lowering `--interval` reduces that gap.
 
-Reading `/proc/<pid>/fd` of another user's process needs root. Without it, the sockets of those processes are still listed but are not attributed to a process. On Windows, the path and command line of processes of other accounts cannot be read without an elevated prompt; those fields then stay empty.
+Reading `/proc/<pid>/fd` of another user's process needs root. Without it, the sockets of those processes are still listed but are not attributed to a process. On Windows, the path, command line and account of processes of other accounts cannot be read without an elevated prompt; those fields then stay empty.
 
 ## The scan cycle
 
@@ -59,7 +59,7 @@ The program is split between the application and four frameworks published as Nu
 | Package | Role in NetFlowAudit |
 | :--- | :--- |
 | SocketForge 1.0.2 | Socket tables on Windows and Linux |
-| ProcessForge 1.0.2 | Process details, launcher targets, process exclusion |
+| ProcessForge 1.1.0 | Process details and account, launcher targets, process exclusion |
 | FileForge.Core 1.0.2 | CSV and NDJSON writers that keep the files readable by other programs while the audit runs |
 | TopologyForge 1.5.0 | Topology graph, filters, HTML map and Draw.io export |
 

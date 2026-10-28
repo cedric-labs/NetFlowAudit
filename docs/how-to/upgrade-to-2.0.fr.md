@@ -50,6 +50,7 @@ Les alias courts des options de filtre (`--exclude-host`, `--include-port`…) d
 | Changement | Action |
 | :--- | :--- |
 | `IsolatedMode` supprimée | Remplacez `"IsolatedMode": true` par `"ResolveIpOwners": false` ; avec `true`, la 2.0 refuse de démarrer |
+| `UserName` renseigné, `ExcludeSystemAccounts` à `false` par défaut | Le compte de chaque processus est désormais enregistré. `ExcludeSystemAccounts`, sans effet en 1.x, fonctionne maintenant : laissez-le à `false` pour enregistrer les services exécutés par `SYSTEM`, `NT AUTHORITY` ou `root` |
 | `config init` écrit les valeurs par défaut | Les fichiers générés par la 1.x contenaient des exclusions d'exemple (`ExcludedRemoteIps: ["192.168.1.50", "10.0.0.0/8"]`, `ExcludedLocalPorts: [22, 3389]`…). Relisez-les : elles empêchent l'enregistrement de ces flux |
 
 ## Cartes HTML

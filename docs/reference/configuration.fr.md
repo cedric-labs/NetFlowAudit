@@ -37,9 +37,9 @@ Ces clés décident quels sockets `audit` enregistre. Le tableau de bord en comp
 | `ExcludedPrefixes` | liste de chaînes | `[]` | Noms de processus commençant par l'une de ces valeurs (sans tenir compte de la casse) | aucune |
 | `ExcludedSuffixes` | liste de chaînes | `[]` | Noms de processus se terminant par l'une de ces valeurs (sans tenir compte de la casse) | aucune |
 | `ExcludedContains` | liste de chaînes | `[]` | Noms de processus contenant l'une de ces valeurs | aucune |
-| `ExcludeSystemAccounts` | booléen | `true` | Ignorer les processus des comptes système (voir la note ci-dessous) | aucune |
+| `ExcludeSystemAccounts` | booléen | `false` | Ignorer les processus des comptes système (voir la note ci-dessous) | aucune |
 
-`ExcludeSystemAccounts` écarte les processus dont le compte contient `NT AUTHORITY` ou vaut `SYSTEM` ou `root`. ProcessForge 1.0.2, qui lit les informations des processus, ne renvoie pas encore le compte d'un processus : ce filtre ne s'applique donc qu'aux identifiants de processus 0 et inférieurs, déjà couverts par `ExcludedPids`.
+`ExcludeSystemAccounts` écarte les processus dont le compte contient `NT AUTHORITY` ou vaut `SYSTEM` ou `root`. La plupart des services tournent sous ces comptes, d'où le défaut `false`. Un processus dont le compte ne peut pas être lu (processus protégé, droits insuffisants) a un compte vide et n'est pas écarté par ce filtre.
 
 ## Résolution de noms
 

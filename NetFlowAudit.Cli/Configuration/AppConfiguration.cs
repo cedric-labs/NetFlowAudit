@@ -180,9 +180,10 @@ public sealed record AppConfiguration
     public List<string> ExcludedContains { get; init; } = [];
 
     /// <summary>
-    /// Exclude system service accounts (NT AUTHORITY, SYSTEM, root).
+    /// Exclude processes run by system accounts (NT AUTHORITY, SYSTEM, root). Off by default: most services run under
+    /// these accounts and are usually what an audit is meant to record.
     /// </summary>
-    public bool ExcludeSystemAccounts { get; init; } = true;
+    public bool ExcludeSystemAccounts { get; init; }
 
     /// <summary>
     /// Exclude intra-host flows (LocalIp == RemoteIp or loopback address range).

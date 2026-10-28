@@ -41,6 +41,16 @@ public sealed class AppConfigurationFileTests : IDisposable
     }
 
     [Fact]
+    public void Load_WhenFileIsMissing_KeepsSystemAccountProcessesRecorded()
+    {
+        // Act
+        var loaded = AppConfigurationFile.Load(Path.Combine(_directory, "absent.json"));
+
+        // Assert
+        loaded.Configuration.ExcludeSystemAccounts.Should().BeFalse();
+    }
+
+    [Fact]
     public void Load_WhenRemovedIsolatedModeKeyIsTrue_ThrowsConfigurationFileException()
     {
         // Arrange

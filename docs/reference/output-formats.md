@@ -37,9 +37,9 @@ Repeated connections to the same service therefore update one line instead of ad
 | `ExecutablePath` | Process | Full path of the executable; empty when the process cannot be opened |
 | `CommandLine` | Process | Command line of the process |
 | `TargetExecutable` | Process | Application started by a launcher (`.jar`, `.py`, `.ps1`, `.sh`, `.dll`…) |
-| `UserName` | Process | Account of the process; currently empty (see below) |
+| `UserName` | Process | Account of the process: `DOMAIN\account` on Windows (the SID when the account has no name any more), the user name on Linux (the numeric UID when it is not in `/etc/passwd`); empty when the process cannot be opened |
 
-`UserName` stays empty because ProcessForge 1.0.2, which reads process details, does not return the account of a process. Processes with identifier 0 or below show `SYSTEM`.
+Processes with identifier 0 or below show `SYSTEM`.
 
 At startup, `audit` reads the existing CSV log (`--reload-history`, `ReloadHistoryLimit`) so that counts and first-seen dates continue across restarts.
 
@@ -69,7 +69,7 @@ Written by `export rules`. One row per direction, source address, destination ad
 | `ServiceName` | Name deduced from the port and process (for example `Oracle-TNS` for 1521) |
 | `ProcessName` | Process owning the socket |
 | `ExecutablePath` | Path of that process |
-| `UserName` | Account of that process (currently empty, as in the audit log) |
+| `UserName` | Account of that process, as in the audit log |
 | `ObservationCount` | Sum of the observation counts of the merged flows |
 | `FirstSeenUtc` | Earliest first observation |
 | `LastSeenUtc` | Latest observation |
