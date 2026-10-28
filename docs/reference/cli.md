@@ -175,7 +175,7 @@ NetFlowAudit.Cli export ndjson [-i <path>]... [-o <path>]
 | :--- | :--- | :--- | :--- |
 | `-o`, `--output` | `<path>` | `netflow_audit.ndjson` | NDJSON file ([fields](output-formats.md#ndjson)) |
 
-Family read: inputs (`.csv`). Every entry of every input is held in memory before writing.
+Family read: inputs (`.csv`). Input files are read sequentially and only the current file is held in memory.
 
 ## resolve
 

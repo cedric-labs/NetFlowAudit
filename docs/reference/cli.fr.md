@@ -175,7 +175,7 @@ NetFlowAudit.Cli export ndjson [-i <path>]... [-o <path>]
 | :--- | :--- | :--- | :--- |
 | `-o`, `--output` | `<path>` | `netflow_audit.ndjson` | Fichier NDJSON ([champs](output-formats.fr.md#ndjson)) |
 
-Famille lue : entrées (`.csv`). Toutes les entrées de tous les fichiers sont gardées en mémoire avant l'écriture.
+Famille lue : entrées (`.csv`). Les fichiers sont lus l'un après l'autre et seul le fichier en cours est gardé en mémoire.
 
 ## resolve
 
