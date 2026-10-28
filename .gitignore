@@ -23,6 +23,7 @@ StrykerOutput/
 .sonar-token
 AGENTS.md
 CLAUDE.md
+handoff/
 
 ## ----------------------------------------------------------------------
 ## OS & Output Files
