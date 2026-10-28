@@ -45,7 +45,7 @@ public static class AuditCsvColumnCatalog
             nameof(AuditCsvColumn.ServerName),
             "Server",
             "Hostname of the local server running the audit agent.",
-            "SRV-PROD-APP01"),
+            "nas-01"),
         new(
             AuditCsvColumn.ServerOsVersion,
             nameof(AuditCsvColumn.ServerOsVersion),

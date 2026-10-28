@@ -56,7 +56,7 @@ Lues par `map`, `export rules`, `export ndjson` et `resolve`.
 
 | Option | Valeur | Défaut | Effet |
 | :--- | :--- | :--- | :--- |
-| `-i`, `--input` | `<path>`, répétable | `OutputCsvPath` de la configuration | Un fichier, un dossier ou un motif sur le nom de fichier (`audits/srv-*.csv`) |
+| `-i`, `--input` | `<path>`, répétable | `OutputCsvPath` de la configuration | Un fichier, un dossier ou un motif sur le nom de fichier (`audits/nas-*.csv`) |
 
 Un dossier apporte ses fichiers portant les extensions lues par la commande (`.csv` pour `map` et `export ndjson` ; `.csv`, `.ndjson`, `.jsonl` pour `export rules` et `resolve`). Les sous-dossiers ne sont pas lus. Quand aucun fichier ne correspond, la commande affiche `No audit log found for: …` et sort avec le code 1.
 
@@ -68,7 +68,7 @@ Lus par `audit` (pour sa carte), `map` et `export rules`. Les valeurs de liste s
 | :--- | :--- | :--- | :--- |
 | `--include-ports` | ports ou plages | `MapIncludedPorts` | Ne garder que ces ports de service (`80,443,8000-8080`) |
 | `--exclude-ports` | ports ou plages | `MapExcludedPorts` | Retirer ces ports de service |
-| `--include-hosts` | motifs | `MapIncludedHosts` | Ne garder que les serveurs dont le nom correspond (`SRV-*,*SQL*`) |
+| `--include-hosts` | motifs | `MapIncludedHosts` | Ne garder que les serveurs dont le nom correspond (`nas*,*.home.arpa`) |
 | `--exclude-hosts` | motifs | `MapExcludedHosts` | Retirer les serveurs dont le nom correspond |
 | `--include-ips` | adresses ou CIDR | `MapIncludedIps` | Ne garder que ces adresses (`10.0.0.0/8`) |
 | `--exclude-ips` | adresses ou CIDR | `MapExcludedIps` | Retirer ces adresses |
@@ -118,7 +118,7 @@ NetFlowAudit.Cli audit [options]
 | `--alias` | `ip=host` ou `ip:host`, répétable | `CustomHostAliases` | aucun | Nom d'hôte utilisé à la place du DNS inverse |
 | `--mask-server` | `<name>` | `MaskServerName` | aucun | Nom de serveur affiché par le tableau de bord |
 | `--mask-ip` | `<address>` | `MaskLocalIp` | aucune | Adresse locale affichée par le tableau de bord |
-| `--obfuscate` | aucune | aucune | inactif | Affiche `SRV-AUDIT-01` et `10.0.0.10`, sauf si `--mask-server` ou `--mask-ip` est donné |
+| `--obfuscate` | aucune | aucune | inactif | Affiche `HOMELAB-01` et `192.168.1.10`, sauf si `--mask-server` ou `--mask-ip` est donné |
 
 Familles lues : filtres de flux et rendu de la carte. Quand `--html` (ou `OutputHtmlMapPath`) est renseigné, la carte HTML est réécrite après chaque balayage ; la touche `M` l'écrit à la demande, avec le diagramme Draw.io quand `--drawio` (ou `OutputDrawioPath`) est renseigné.
 

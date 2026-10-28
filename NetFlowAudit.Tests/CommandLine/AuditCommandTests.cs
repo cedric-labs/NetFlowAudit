@@ -13,8 +13,8 @@ public sealed class AuditCommandTests
         var updated = AuditCommandConfiguration.Build(new AppConfiguration(), "audit", "--obfuscate");
 
         // Assert
-        updated.MaskServerName.Should().Be("SRV-AUDIT-01");
-        updated.MaskLocalIp.Should().Be("10.0.0.10");
+        updated.MaskServerName.Should().Be("HOMELAB-01");
+        updated.MaskLocalIp.Should().Be("192.168.1.10");
     }
 
     [Fact]

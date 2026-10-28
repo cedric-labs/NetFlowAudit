@@ -56,7 +56,7 @@ Read by `map`, `export rules`, `export ndjson` and `resolve`.
 
 | Option | Value | Default | Effect |
 | :--- | :--- | :--- | :--- |
-| `-i`, `--input` | `<path>`, repeatable | `OutputCsvPath` of the configuration | A file, a directory or a wildcard pattern on the file name (`audits/srv-*.csv`) |
+| `-i`, `--input` | `<path>`, repeatable | `OutputCsvPath` of the configuration | A file, a directory or a wildcard pattern on the file name (`audits/nas-*.csv`) |
 
 A directory contributes its files with the extensions read by the command (`.csv` for `map` and `export ndjson`; `.csv`, `.ndjson`, `.jsonl` for `export rules` and `resolve`). Subdirectories are not read. When no file matches, the command prints `No audit log found for: …` and exits with code 1.
 
@@ -68,7 +68,7 @@ Read by `audit` (for its map), `map` and `export rules`. List values are separat
 | :--- | :--- | :--- | :--- |
 | `--include-ports` | ports or ranges | `MapIncludedPorts` | Keep only these service ports (`80,443,8000-8080`) |
 | `--exclude-ports` | ports or ranges | `MapExcludedPorts` | Remove these service ports |
-| `--include-hosts` | wildcard patterns | `MapIncludedHosts` | Keep only servers whose name matches (`SRV-*,*SQL*`) |
+| `--include-hosts` | wildcard patterns | `MapIncludedHosts` | Keep only servers whose name matches (`nas*,*.home.arpa`) |
 | `--exclude-hosts` | wildcard patterns | `MapExcludedHosts` | Remove servers whose name matches |
 | `--include-ips` | addresses or CIDR | `MapIncludedIps` | Keep only these addresses (`10.0.0.0/8`) |
 | `--exclude-ips` | addresses or CIDR | `MapExcludedIps` | Remove these addresses |
@@ -118,7 +118,7 @@ NetFlowAudit.Cli audit [options]
 | `--alias` | `ip=host` or `ip:host`, repeatable | `CustomHostAliases` | none | Host name used instead of reverse DNS |
 | `--mask-server` | `<name>` | `MaskServerName` | none | Server name shown by the dashboard |
 | `--mask-ip` | `<address>` | `MaskLocalIp` | none | Local address shown by the dashboard |
-| `--obfuscate` | none | none | off | Shows `SRV-AUDIT-01` and `10.0.0.10` unless `--mask-server` or `--mask-ip` is given |
+| `--obfuscate` | none | none | off | Shows `HOMELAB-01` and `192.168.1.10` unless `--mask-server` or `--mask-ip` is given |
 
 Families read: flow filters and map rendering. When `--html` (or `OutputHtmlMapPath`) is set, the HTML map is rewritten after every scan; the `M` key writes it on demand, with the Draw.io diagram when `--drawio` (or `OutputDrawioPath`) is set.
 

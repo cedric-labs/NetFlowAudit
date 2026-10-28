@@ -13,10 +13,10 @@ namespace NetFlowAudit.Cli.CommandLine.Commands;
 public sealed class AuditCommand : Command
 {
     private const string AllHistory = "all";
-    private const string ObfuscatedServerName = "SRV-AUDIT-01";
+    private const string ObfuscatedServerName = "HOMELAB-01";
 
     // Display-only placeholder shown instead of the real local address in screenshots; it never reaches the network code.
-    private static readonly string ObfuscatedLocalIp = new IPAddress([10, 0, 0, 10]).ToString();
+    private static readonly string ObfuscatedLocalIp = new IPAddress([192, 168, 1, 10]).ToString();
 
     private readonly Option<string?> _output = OptionFactory.CreatePath("--output", "CSV audit log to write. Tokens {ServerName}, {HostName}, {Date}, {Timestamp} are expanded. Default: netflow_audit.csv.", "-o");
     private readonly Option<string?> _ndjson = OptionFactory.CreatePath("--ndjson", "NDJSON (JSON Lines) stream written alongside the CSV log. Tokens are expanded as for --output.");
@@ -31,7 +31,7 @@ public sealed class AuditCommand : Command
     private readonly Option<string[]> _alias = OptionFactory.CreateList("--alias", "ip=host", "Host name used for an IP address instead of reverse DNS (ip=host or ip:host). Repeatable.");
     private readonly Option<string?> _maskServer = new("--mask-server") { Description = "Server name displayed by the dashboard instead of the real one (screenshots).", HelpName = "name" };
     private readonly Option<string?> _maskIp = new("--mask-ip") { Description = "Local IP address displayed by the dashboard instead of the real one (screenshots).", HelpName = "address" };
-    private readonly Option<bool> _obfuscate = new("--obfuscate") { Description = "Display SRV-AUDIT-01 and 10.0.0.10 unless --mask-server or --mask-ip is given." };
+    private readonly Option<bool> _obfuscate = new("--obfuscate") { Description = "Display HOMELAB-01 and 192.168.1.10 unless --mask-server or --mask-ip is given." };
     private readonly FlowFilterOptionSet _filters = new();
     private readonly MapRenderingOptionSet _rendering = new();
     private readonly Option<string?> _configFile;

@@ -15,7 +15,7 @@ public static class AuditInputPathResolver
     /// </summary>
     /// <param name="pathsOrPatterns">
     /// File paths, directory paths (every file with one of <paramref name="directoryExtensions"/> in the directory, not recursive)
-    /// or wildcard patterns on the file name (<c>audits/srv-*.csv</c>).
+    /// or wildcard patterns on the file name (<c>audits/nas-*.csv</c>).
     /// </param>
     /// <param name="directoryExtensions">Extensions kept when an input is a directory.</param>
     /// <returns>Distinct full paths of the existing files, in input order; inputs matching nothing are skipped.</returns>

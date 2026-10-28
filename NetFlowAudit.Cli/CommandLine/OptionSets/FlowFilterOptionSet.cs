@@ -11,7 +11,7 @@ internal sealed class FlowFilterOptionSet
 {
     private readonly Option<string[]> _includePorts = OptionFactory.CreateList("--include-ports", "ports", "Keep only these service ports or ranges (80,443,8000-8080).");
     private readonly Option<string[]> _excludePorts = OptionFactory.CreateList("--exclude-ports", "ports", "Remove these service ports or ranges (53,123,135-139).");
-    private readonly Option<string[]> _includeHosts = OptionFactory.CreateList("--include-hosts", "patterns", "Keep only servers whose name matches one of these wildcard patterns (SRV-*,*SQL*).");
+    private readonly Option<string[]> _includeHosts = OptionFactory.CreateList("--include-hosts", "patterns", "Keep only servers whose name matches one of these wildcard patterns (nas*,*.home.arpa).");
     private readonly Option<string[]> _excludeHosts = OptionFactory.CreateList("--exclude-hosts", "patterns", "Remove servers whose name matches one of these wildcard patterns.");
     private readonly Option<string[]> _includeIps = OptionFactory.CreateList("--include-ips", "addresses", "Keep only these IP addresses or CIDR subnets (10.0.0.0/8).");
     private readonly Option<string[]> _excludeIps = OptionFactory.CreateList("--exclude-ips", "addresses", "Remove these IP addresses or CIDR subnets.");

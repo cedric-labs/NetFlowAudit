@@ -10,7 +10,7 @@ internal sealed class AuditInputOptionSet
 {
     private readonly Option<string[]> _input = new("--input", "-i")
     {
-        Description = "Audit log to read: a file, a directory (every audit file it contains) or a wildcard pattern such as audits/srv-*.csv. Repeatable. Default: the audit output file of the configuration.",
+        Description = "Audit log to read: a file, a directory (every audit file it contains) or a wildcard pattern such as audits/nas-*.csv. Repeatable. Default: the audit output file of the configuration.",
         HelpName = "path"
     };
 
