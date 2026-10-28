@@ -23,6 +23,7 @@ public sealed class ResolveCommand : Command
     private readonly Option<bool> _inPlace = new("--in-place") { Description = "Overwrite the audit logs instead of writing *_enriched files." };
     private readonly Option<bool> _forceResolve = new("--force-resolve") { Description = "Replace host names already present in the audit logs." };
     private readonly Option<int?> _rdapDelayMs = OptionFactory.CreateInteger("--rdap-delay-ms", "milliseconds", "Delay between two RDAP queries. Default: 200.", minimum: 0);
+    private readonly Option<int?> _dnsTimeout = OptionFactory.CreateDnsTimeout();
     private readonly Option<bool> _cacheOnly = new("--cache-only") { Description = "Use only the merged caches: no DNS or RDAP query is sent." };
     private readonly Option<string?> _configFile;
 
@@ -41,6 +42,7 @@ public sealed class ResolveCommand : Command
         Options.Add(_forceResolve);
         Options.Add(_rdapDelayMs);
         Options.Add(_cacheOnly);
+        Options.Add(_dnsTimeout);
 
         SetAction(async (parseResult, cancellationToken) =>
         {
@@ -62,7 +64,8 @@ public sealed class ResolveCommand : Command
                 OutputCachePath = OutputFilePathResolver.Resolve(parseResult.GetValue(_outputCache) ?? config.DnsCacheFilePath)
             };
 
-            return await new OfflineResolutionCommandRunner().RunAsync(auditFiles, caches, options, cancellationToken).ConfigureAwait(false);
+            var dnsTimeout = TimeSpan.FromMilliseconds(parseResult.GetValue(_dnsTimeout) ?? config.DnsResolutionTimeoutMs);
+            return await new OfflineResolutionCommandRunner(dnsResolutionTimeout: dnsTimeout).RunAsync(auditFiles, caches, options, cancellationToken).ConfigureAwait(false);
         });
     }
 }

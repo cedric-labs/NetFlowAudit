@@ -13,14 +13,30 @@ public sealed class CachedHostNameResolver(
     DnsAddressExclusionEvaluator? exclusionEvaluator = null,
     PersistentDnsCacheStore? cacheStore = null,
     IIpOrganizationResolver? organizationResolver = null,
-    IReadOnlyDictionary<string, string>? customHostAliases = null) : IHostNameResolver, IDisposable, IAsyncDisposable
+    IReadOnlyDictionary<string, string>? customHostAliases = null,
+    IReverseDnsLookup? reverseDnsLookup = null,
+    TimeProvider? timeProvider = null) : IHostNameResolver, IDisposable, IAsyncDisposable
 {
+    /// <summary>
+    /// Time after which an address without reverse DNS record is asked again.
+    /// </summary>
+    public static readonly TimeSpan NegativeResultRetryDelay = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Time during which an address whose DNS query timed out is not queued again, so that a slow DNS server is not
+    /// asked at every scan.
+    /// </summary>
+    public static readonly TimeSpan TransientFailureRetryDelay = TimeSpan.FromMinutes(1);
+
     private readonly TimeSpan _resolutionTimeout = resolutionTimeout;
+    private readonly IReverseDnsLookup _reverseDnsLookup = reverseDnsLookup ?? new SystemReverseDnsLookup();
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly DnsAddressExclusionEvaluator _exclusionEvaluator = exclusionEvaluator ?? new DnsAddressExclusionEvaluator([]);
     private readonly PersistentDnsCacheStore? _cacheStore = cacheStore;
     private readonly IIpOrganizationResolver? _organizationResolver = organizationResolver;
     private readonly ConcurrentDictionary<IPAddress, DnsCacheEntry> _cache = LoadCache(cacheStore, customHostAliases);
     private readonly ConcurrentDictionary<IPAddress, byte> _queuedAddresses = new();
+    private readonly ConcurrentDictionary<IPAddress, DateTimeOffset> _transientFailures = new();
     private readonly Channel<IPAddress> _channel = Channel.CreateUnbounded<IPAddress>();
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _concurrencySemaphore = new(10, 10);
@@ -32,9 +48,9 @@ public sealed class CachedHostNameResolver(
     public event EventHandler<HostNameResolvedEventArgs>? HostNameResolved;
 
     /// <summary>
-    /// Initializes a new instance with the default resolution timeout (500ms).
+    /// Initializes a new instance with a 3-second reverse DNS timeout.
     /// </summary>
-    public CachedHostNameResolver() : this(TimeSpan.FromMilliseconds(500))
+    public CachedHostNameResolver() : this(TimeSpan.FromSeconds(3))
     {
     }
 
@@ -89,7 +105,7 @@ public sealed class CachedHostNameResolver(
             return true;
         }
 
-        if (_cache.TryGetValue(address, out var cached))
+        if (TryGetCurrentEntry(address, out var cached))
         {
             hostName = cached.HostName;
             return true;
@@ -97,6 +113,24 @@ public sealed class CachedHostNameResolver(
 
         hostName = string.Empty;
         return false;
+    }
+
+    internal bool IsQueued(IPAddress address) => _queuedAddresses.ContainsKey(address);
+
+    // A "no name" entry is kept only for NegativeResultRetryDelay, so that a record added later to the DNS zone, or an
+    // entry written by an older version after a timeout, is eventually asked again.
+    private bool TryGetCurrentEntry(IPAddress address, out DnsCacheEntry entry)
+    {
+        if (!_cache.TryGetValue(address, out var cached))
+        {
+            entry = new DnsCacheEntry();
+            return false;
+        }
+
+        entry = cached;
+        var isExpiredFailure = string.Equals(cached.Source, "None", StringComparison.OrdinalIgnoreCase) &&
+                               _timeProvider.GetUtcNow() - cached.ResolvedAtUtc >= NegativeResultRetryDelay;
+        return !isExpiredFailure;
     }
 
     /// <summary>
@@ -136,7 +170,13 @@ public sealed class CachedHostNameResolver(
             return;
         }
 
-        if (_cache.ContainsKey(address))
+        if (TryGetCurrentEntry(address, out _))
+        {
+            return;
+        }
+
+        if (_transientFailures.TryGetValue(address, out var failedAt) &&
+            _timeProvider.GetUtcNow() - failedAt < TransientFailureRetryDelay)
         {
             return;
         }
@@ -162,7 +202,7 @@ public sealed class CachedHostNameResolver(
             return fastHostName;
         }
 
-        if (_cache.TryGetValue(address, out var cachedHostName))
+        if (TryGetCurrentEntry(address, out var cachedHostName))
         {
             return cachedHostName.HostName;
         }
@@ -170,7 +210,7 @@ public sealed class CachedHostNameResolver(
         await _concurrencySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_cache.TryGetValue(address, out var doubleCheck))
+            if (TryGetCurrentEntry(address, out var doubleCheck))
             {
                 return doubleCheck.HostName;
             }
@@ -229,17 +269,32 @@ public sealed class CachedHostNameResolver(
             using var dnsTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             dnsTimeoutCts.CancelAfter(_resolutionTimeout);
 
-            var entry = await Dns.GetHostEntryAsync(address.ToString(), dnsTimeoutCts.Token).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(entry.HostName))
+            var lookedUpName = await _reverseDnsLookup.LookupAsync(address, dnsTimeoutCts.Token).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(lookedUpName))
             {
-                dnsHostName = entry.HostName;
+                dnsHostName = lookedUpName;
             }
         }
-        catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException or ArgumentException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // Tolerated: Remote address lacks a reverse DNS PTR record, or local DNS server is offline/unreachable
+            // The DNS server did not answer within the timeout: a slow server is not a missing record, so nothing is
+            // cached and the address is asked again after TransientFailureRetryDelay.
+            _transientFailures[address] = _timeProvider.GetUtcNow();
+            return string.Empty;
+        }
+        catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TryAgain)
+        {
+            // TryAgain is the resolver's own timeout or a temporary server failure: treated like the timeout above.
+            _transientFailures[address] = _timeProvider.GetUtcNow();
+            return string.Empty;
+        }
+        catch (Exception ex) when (ex is SocketException or TimeoutException or ArgumentException)
+        {
+            // The DNS servers answered that no PTR record exists (or the address cannot be queried): the "no name"
+            // result below is cached and asked again after NegativeResultRetryDelay.
         }
 
+        _transientFailures.TryRemove(address, out _);
         IpOwnerMetadata? ownerDetails = null;
 
         // 2. Query RDAP if organization resolver is configured AND (no PTR found OR address is public routable)
@@ -284,7 +339,7 @@ public sealed class CachedHostNameResolver(
             Country = ownerDetails?.Country,
             NetworkRange = ownerDetails?.NetworkRange,
             Source = source,
-            ResolvedAtUtc = DateTimeOffset.UtcNow
+            ResolvedAtUtc = _timeProvider.GetUtcNow()
         };
 
         _cache[address] = cacheEntry;
@@ -305,8 +360,11 @@ public sealed class CachedHostNameResolver(
                         break;
                     }
 
-                    if (_cache.ContainsKey(address))
+                    if (TryGetCurrentEntry(address, out _))
                     {
+                        // Named meanwhile by a direct call: the queued flag must be cleared, otherwise QueueResolution
+                        // would ignore this address for the rest of the run.
+                        _queuedAddresses.TryRemove(address, out _);
                         continue;
                     }
 

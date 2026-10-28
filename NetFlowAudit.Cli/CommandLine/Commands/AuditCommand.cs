@@ -25,6 +25,7 @@ public sealed class AuditCommand : Command
     private readonly Option<string?> _reloadHistory = new("--reload-history") { Description = "Flows reloaded from the existing CSV log at startup: all, or a number (0 disables the reload). Default: all.", HelpName = "all|count" };
     private readonly Option<bool> _noTui = new("--no-tui") { Description = "Run without the terminal dashboard (Windows service, systemd unit)." };
     private readonly Option<bool> _noDns = new("--no-dns") { Description = "Do not resolve remote addresses with reverse DNS." };
+    private readonly Option<int?> _dnsTimeout = OptionFactory.CreateDnsTimeout();
     private readonly Option<bool> _noRdap = new("--no-rdap") { Description = "Do not query RDAP registries (Internet) for address owners; reverse DNS stays active." };
     private readonly Option<string[]> _excludeRemoteIps = OptionFactory.CreateList("--exclude-remote-ips", "addresses", "Remote IP addresses or CIDR subnets that are not recorded.");
     private readonly Option<string[]> _alias = OptionFactory.CreateList("--alias", "ip=host", "Host name used for an IP address instead of reverse DNS (ip=host or ip:host). Repeatable.");
@@ -60,6 +61,7 @@ public sealed class AuditCommand : Command
         Options.Add(_noTui);
         Options.Add(_noDns);
         Options.Add(_noRdap);
+        Options.Add(_dnsTimeout);
         Options.Add(_excludeRemoteIps);
         Options.Add(_alias);
         Options.Add(_maskServer);
@@ -110,6 +112,7 @@ public sealed class AuditCommand : Command
             EnableDashboard = config.EnableDashboard && !parseResult.GetValue(_noTui),
             ResolveRemoteHostNames = config.ResolveRemoteHostNames && !parseResult.GetValue(_noDns),
             ResolveIpOwners = config.ResolveIpOwners && !parseResult.GetValue(_noRdap),
+            DnsResolutionTimeoutMs = parseResult.GetValue(_dnsTimeout) ?? config.DnsResolutionTimeoutMs,
             ExcludedRemoteIps = OptionFactory.ReadList(parseResult, _excludeRemoteIps, config.ExcludedRemoteIps),
             CustomHostAliases = MergeAliases(config.CustomHostAliases, parseResult.GetValue(_alias) ?? []),
             MaskServerName = maskServer,

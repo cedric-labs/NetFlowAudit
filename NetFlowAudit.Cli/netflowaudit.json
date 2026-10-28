@@ -45,6 +45,7 @@
   ],
   "CsvDelimiter": ",",
   "ResolveRemoteHostNames": true,
+  "DnsResolutionTimeoutMs": 3000,
   "ResolveIpOwners": true,
   "DnsCacheFilePath": "netflow_dns_cache.json",
   "DnsExcludedNetworks": [

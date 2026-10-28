@@ -46,6 +46,7 @@ These keys decide which sockets are recorded by `audit`. The dashboard adds entr
 | Key | Type | Default | Effect | Option |
 | :--- | :--- | :--- | :--- | :--- |
 | `ResolveRemoteHostNames` | boolean | `true` | Name resolution of remote addresses; `false` also disables RDAP and aliases | `--no-dns` |
+| `DnsResolutionTimeoutMs` | integer | `3000` | Milliseconds to wait for a reverse DNS answer; used by `audit`, `resolve` and `lookup` | `--dns-timeout-ms` |
 | `ResolveIpOwners` | boolean | `true` | RDAP query for the owner of public addresses, used as name when there is no DNS name | `--no-rdap` |
 | `DnsCacheFilePath` | path | `netflow_dns_cache.json` | Persistent DNS cache; default cache of `resolve` and `lookup` | `--cache`, `--output-cache` (`resolve`) |
 | `DnsExcludedNetworks` | list of addresses or CIDR | `["0.0.0.0", "255.255.255.255", "169.254.0.0/16", "224.0.0.0/4", "fe80::/10", "ff00::/8"]` | Addresses never resolved | none |

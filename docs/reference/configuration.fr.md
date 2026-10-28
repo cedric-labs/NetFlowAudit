@@ -46,6 +46,7 @@ Ces clés décident quels sockets `audit` enregistre. Le tableau de bord en comp
 | Clé | Type | Défaut | Effet | Option |
 | :--- | :--- | :--- | :--- | :--- |
 | `ResolveRemoteHostNames` | booléen | `true` | Résolution de nom des adresses distantes ; `false` désactive aussi RDAP et les alias | `--no-dns` |
+| `DnsResolutionTimeoutMs` | entier | `3000` | Millisecondes d'attente d'une réponse DNS inverse ; utilisé par `audit`, `resolve` et `lookup` | `--dns-timeout-ms` |
 | `ResolveIpOwners` | booléen | `true` | Requête RDAP sur le propriétaire des adresses publiques, utilisé comme nom faute de nom DNS | `--no-rdap` |
 | `DnsCacheFilePath` | chemin | `netflow_dns_cache.json` | Cache DNS persistant ; cache par défaut de `resolve` et `lookup` | `--cache`, `--output-cache` (`resolve`) |
 | `DnsExcludedNetworks` | liste d'adresses ou CIDR | `["0.0.0.0", "255.255.255.255", "169.254.0.0/16", "224.0.0.0/4", "fe80::/10", "ff00::/8"]` | Adresses jamais résolues | aucune |

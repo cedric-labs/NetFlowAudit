@@ -155,10 +155,11 @@ public sealed class IpResolutionDiagnosticReporter(TextWriter? output = null)
             try
             {
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
+                // Same timeout as the audit, so that a SUCCESS here means the audit names the address too.
+                timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(config.DnsResolutionTimeoutMs));
 
                 await _output.WriteLineAsync($"  * Query target           : {address}").ConfigureAwait(false);
-                await _output.WriteLineAsync("  * Configured timeout     : 3000 ms").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Configured timeout     : {config.DnsResolutionTimeoutMs} ms (DnsResolutionTimeoutMs)").ConfigureAwait(false);
 
                 var hostEntry = await Dns.GetHostEntryAsync(address.ToString(), timeoutCts.Token).ConfigureAwait(false);
                 dnsSw.Stop();
@@ -194,7 +195,7 @@ public sealed class IpResolutionDiagnosticReporter(TextWriter? output = null)
                 dnsSw.Stop();
                 await _output.WriteLineAsync($"  * Call duration          : {dnsSw.ElapsedMilliseconds} ms").ConfigureAwait(false);
                 await _output.WriteLineAsync("  * Status                 : TIMEOUT / CANCELED").ConfigureAwait(false);
-                await _output.WriteLineAsync("  * Explanation            : The DNS server did not respond within the allocated timeout (3000 ms).").ConfigureAwait(false);
+                await _output.WriteLineAsync($"  * Explanation            : The DNS server did not respond within {config.DnsResolutionTimeoutMs} ms. Raise DnsResolutionTimeoutMs or --dns-timeout-ms.").ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {

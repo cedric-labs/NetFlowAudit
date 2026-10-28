@@ -132,6 +132,13 @@ public sealed record AppConfiguration
     public bool ResolveRemoteHostNames { get; init; } = true;
 
     /// <summary>
+    /// Milliseconds to wait for a reverse DNS answer before giving up on an address for this attempt. Corporate DNS
+    /// servers can take several seconds to answer PTR queries; resolution runs in the background, so a long wait does
+    /// not delay the scans.
+    /// </summary>
+    public int DnsResolutionTimeoutMs { get; init; } = 3000;
+
+    /// <summary>
     /// Enables or disables RDAP IP organization resolution when PTR records are absent.
     /// </summary>
     public bool ResolveIpOwners { get; init; } = true;

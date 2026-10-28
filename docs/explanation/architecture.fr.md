@@ -45,7 +45,8 @@ Les adresses distantes sont nommées en arrière-plan, pour qu'un serveur DNS le
 
 - répond depuis les alias statiques (`CustomHostAliases`, `--alias`), puis depuis son cache mémoire et le fichier de cache (`DnsCacheFilePath`) ;
 - ignore les adresses de `DnsExcludedNetworks` (diffusion, multidiffusion, lien local) ;
-- sinon met l'adresse en file ; dix résolutions au plus tournent en même temps, chaque requête DNS inverse étant limitée à 500 ms ;
+- sinon met l'adresse en file ; dix résolutions au plus tournent en même temps, chaque requête DNS inverse attendant au plus `DnsResolutionTimeoutMs` (3 secondes par défaut) ;
+- distingue les deux façons dont une requête peut échouer. Un serveur qui ne répond pas à temps n'est pas un enregistrement absent : rien n'est mis en cache et l'adresse est reposée une minute plus tard. Une réponse indiquant qu'aucun enregistrement n'existe est mise en cache comme nom vide et reposée 24 heures plus tard, pour qu'un enregistrement ajouté ensuite à la zone DNS finisse par être trouvé ;
 - pour une adresse publique, demande aussi au service RDAP `rdap.org` l'organisation propriétaire du bloc d'adresses, sauf si `ResolveIpOwners` vaut `false` ou si `--no-rdap` est donné ; le nom DNS est gardé quand il existe, l'organisation sert sinon. Après deux échecs RDAP consécutifs, les requêtes RDAP sont suspendues 60 secondes.
 
 `--no-dns` (`ResolveRemoteHostNames: false`) coupe tout le résolveur : aucune requête DNS ni RDAP n'est envoyée et les alias ne s'appliquent pas.

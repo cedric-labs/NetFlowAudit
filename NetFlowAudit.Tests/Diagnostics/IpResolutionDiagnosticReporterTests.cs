@@ -66,6 +66,20 @@ public sealed class IpResolutionDiagnosticReporterTests
     }
 
     [Fact]
+    public async Task RunDiagnosticAsync_WhenDnsTimeoutConfigured_ProbesWithTheAuditTimeout()
+    {
+        // Arrange
+        using var output = new StringWriter();
+        var reporter = new IpResolutionDiagnosticReporter(output);
+
+        // Act
+        await reporter.RunDiagnosticAsync("127.0.0.1", new AppConfiguration { DnsResolutionTimeoutMs = 4500 });
+
+        // Assert
+        output.ToString().Should().Contain("Configured timeout     : 4500 ms");
+    }
+
+    [Fact]
     public async Task RunDiagnosticAsync_WhenUnspecifiedIp_SkipsDnsCallWithDefensiveExclusion()
     {
         // Arrange

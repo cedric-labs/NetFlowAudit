@@ -7,11 +7,13 @@ namespace NetFlowAudit.Cli.Enrichment;
 /// Runs the <c>resolve</c> command: consolidates DNS caches, enriches audit logs and reports the outcome on the console.
 /// </summary>
 /// <param name="enricher">Enricher orchestrating offline analysis and file updates.</param>
-public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enricher = null)
+/// <param name="dnsResolutionTimeout">Reverse DNS timeout of the default enricher (<c>DnsResolutionTimeoutMs</c>); ignored when <paramref name="enricher"/> is given.</param>
+public sealed class OfflineResolutionCommandRunner(OfflineAuditEnricher? enricher = null, TimeSpan? dnsResolutionTimeout = null)
 {
     private readonly OfflineAuditEnricher _enricher = enricher ?? new OfflineAuditEnricher(
         offlineResolver: new OfflineDnsResolver(
             organizationResolver: new RdapIpOrganizationResolver(),
+            resolutionTimeout: dnsResolutionTimeout,
             logThrottlingNotice: Console.WriteLine),
         logger: Console.WriteLine);
 

@@ -51,6 +51,16 @@ public sealed class AppConfigurationFileTests : IDisposable
     }
 
     [Fact]
+    public void Load_WhenFileIsMissing_WaitsThreeSecondsForReverseDns()
+    {
+        // Act
+        var loaded = AppConfigurationFile.Load(Path.Combine(_directory, "absent.json"));
+
+        // Assert
+        loaded.Configuration.DnsResolutionTimeoutMs.Should().Be(3000);
+    }
+
+    [Fact]
     public void Load_WhenRemovedIsolatedModeKeyIsTrue_ThrowsConfigurationFileException()
     {
         // Arrange

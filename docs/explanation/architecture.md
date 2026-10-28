@@ -45,7 +45,8 @@ Remote addresses are named in the background so that a slow DNS server never del
 
 - answers from the static aliases (`CustomHostAliases`, `--alias`), then from its memory cache and the cache file (`DnsCacheFilePath`);
 - skips the addresses of `DnsExcludedNetworks` (broadcast, multicast, link-local);
-- otherwise queues the address; ten resolutions run at most at the same time, each reverse DNS query limited to 500 ms;
+- otherwise queues the address; ten resolutions run at most at the same time, each reverse DNS query waiting at most `DnsResolutionTimeoutMs` (3 seconds by default);
+- keeps apart the two ways a query can fail. A server that does not answer in time is not a missing record: nothing is cached and the address is asked again one minute later. An answer that no record exists is cached as an empty name and asked again 24 hours later, so that a record added later to the DNS zone is eventually found;
 - for a public address, also asks the RDAP service `rdap.org` for the organisation that owns the address block, unless `ResolveIpOwners` is `false` or `--no-rdap` is given; the DNS name is kept when there is one, the organisation is used otherwise. After two consecutive RDAP failures, RDAP queries pause for 60 seconds.
 
 `--no-dns` (`ResolveRemoteHostNames: false`) turns the whole resolver off: neither DNS nor RDAP queries are sent, and aliases are not applied.

@@ -113,6 +113,7 @@ NetFlowAudit.Cli audit [options]
 | `--no-tui` | aucune | `EnableDashboard` | tableau de bord actif | Tourner sans le tableau de bord |
 | `--no-dns` | aucune | `ResolveRemoteHostNames` | DNS actif | Aucune résolution de nom : ni DNS inverse, ni RDAP, ni alias |
 | `--no-rdap` | aucune | `ResolveIpOwners` | RDAP actif | Aucune requête RDAP vers les registres Internet ; le DNS inverse reste actif |
+| `--dns-timeout-ms` | millisecondes, au moins 1 | `DnsResolutionTimeoutMs` | `3000` | Délai d'attente d'une réponse DNS inverse |
 | `--exclude-remote-ips` | adresses ou CIDR | `ExcludedRemoteIps` | aucune | Adresses distantes non enregistrées |
 | `--alias` | `ip=host` ou `ip:host`, répétable | `CustomHostAliases` | aucun | Nom d'hôte utilisé à la place du DNS inverse |
 | `--mask-server` | `<name>` | `MaskServerName` | aucun | Nom de serveur affiché par le tableau de bord |
@@ -192,6 +193,7 @@ NetFlowAudit.Cli resolve [-i <path>]... [--cache <path>]... [options]
 | `--force-resolve` | aucune | inactif | Remplacer les noms d'hôtes déjà présents dans les journaux |
 | `--rdap-delay-ms` | millisecondes, au moins 0 | `200` | Délai entre deux requêtes RDAP |
 | `--cache-only` | aucune | inactif | N'envoyer aucune requête DNS ni RDAP ; n'utiliser que les caches fusionnés |
+| `--dns-timeout-ms` | millisecondes, au moins 1 | `DnsResolutionTimeoutMs` | Délai d'attente d'une réponse DNS inverse |
 
 Famille lue : entrées (`.csv`, `.ndjson`, `.jsonl`). Quand deux caches donnent des noms différents pour une même adresse, l'entrée la plus récente est gardée et le conflit est affiché.
 
@@ -200,10 +202,10 @@ Famille lue : entrées (`.csv`, `.ndjson`, `.jsonl`). Quand deux caches donnent 
 Affiche un diagnostic en six étapes de la résolution d'une adresse : classification, cache local, réglages DNS du système, requête DNS inverse, requête RDAP, entrée de cache résultante.
 
 ```text
-NetFlowAudit.Cli lookup <ip>
+NetFlowAudit.Cli lookup <ip> [--dns-timeout-ms <milliseconds>]
 ```
 
-`<ip>` doit être une adresse IPv4 ou IPv6. La commande lit `ExcludedRemoteIps` et `DnsCacheFilePath` dans la configuration. Elle envoie la requête DNS inverse, et la requête RDAP pour les adresses publiques uniquement ; `ResolveIpOwners` et `--no-rdap` ne s'y appliquent pas.
+`<ip>` doit être une adresse IPv4 ou IPv6. La commande lit `ExcludedRemoteIps`, `DnsCacheFilePath` et `DnsResolutionTimeoutMs` dans la configuration. Elle envoie la requête DNS inverse avec le même délai que `audit`, si bien qu'un `SUCCESS` ici signifie que l'audit nomme aussi l'adresse, et la requête RDAP pour les adresses publiques uniquement ; `ResolveIpOwners` et `--no-rdap` ne s'y appliquent pas.
 
 ## config init
 
@@ -226,6 +228,7 @@ NetFlowAudit.Cli config init [<path>]
 | Rendu de la carte, `--html`, `--drawio` | ✔ | ✔ | | | | | |
 | `--ndjson`, `--interval`, `--columns`, `--reload-history` | ✔ | | | | | | |
 | `--no-tui`, `--no-dns`, `--no-rdap` | ✔ | | | | | | |
+| `--dns-timeout-ms` | ✔ | | | | ✔ | ✔ | |
 | `--exclude-remote-ips`, `--alias` | ✔ | | | | | | |
 | `--mask-server`, `--mask-ip`, `--obfuscate` | ✔ | | | | | | |
 | `--min-observations`, `--active-within-days`, `--zone` | | | ✔ | | | | |

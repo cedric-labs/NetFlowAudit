@@ -101,6 +101,7 @@ public sealed class NetFlowAuditCommandLineTests
     [InlineData("export", "rules", "--min-observations", "0")]
     [InlineData("export", "rules", "--active-within-days", "0")]
     [InlineData("resolve", "--rdap-delay-ms", "-5")]
+    [InlineData("audit", "--dns-timeout-ms", "0")]
     [InlineData("lookup", "not-an-ip-address")]
     public void Parse_WhenNumericOrAddressValueIsInvalid_ReportsError(params string[] args)
     {
@@ -118,6 +119,9 @@ public sealed class NetFlowAuditCommandLineTests
     [InlineData("export", "ndjson", "-i", "audit.csv", "-o", "audit.ndjson")]
     [InlineData("resolve", "-i", "audit.csv", "--cache", "a.json", "--cache", "b.json", "--in-place", "--force-resolve", "--rdap-delay-ms", "0")]
     [InlineData("lookup", "2001:db8::1")]
+    [InlineData("lookup", "192.0.2.1", "--dns-timeout-ms", "4000")]
+    [InlineData("resolve", "-i", "audit.csv", "--dns-timeout-ms", "4000")]
+    [InlineData("audit", "--dns-timeout-ms", "4000")]
     [InlineData("config", "init", "netflowaudit.json")]
     [InlineData("audit", "--config", "custom.json")]
     public void Parse_WhenCommandLineIsValid_ReportsNoError(params string[] args)

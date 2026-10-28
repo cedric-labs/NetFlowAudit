@@ -128,7 +128,7 @@ public static class ContinuousAuditRunner
             : (IIpOrganizationResolver)new NoOpIpOrganizationResolver();
 
         IHostNameResolver hostNameResolver = config.ResolveRemoteHostNames
-            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(500), exclusionEvaluator, dnsCacheStore, orgResolver, config.CustomHostAliases)
+            ? new CachedHostNameResolver(TimeSpan.FromMilliseconds(config.DnsResolutionTimeoutMs), exclusionEvaluator, dnsCacheStore, orgResolver, config.CustomHostAliases)
             : new NoOpHostNameResolver();
 
         PersistentDelimitedFileWriter? ndjsonWriter = null;

@@ -11,6 +11,7 @@ namespace NetFlowAudit.Cli.CommandLine.Commands;
 public sealed class LookupCommand : Command
 {
     private readonly Argument<string> _address = new("ip") { Description = "IPv4 or IPv6 address to diagnose." };
+    private readonly Option<int?> _dnsTimeout = OptionFactory.CreateDnsTimeout();
     private readonly Option<string?> _configFile;
 
     /// <summary>
@@ -29,10 +30,15 @@ public sealed class LookupCommand : Command
             }
         });
         Arguments.Add(_address);
+        Options.Add(_dnsTimeout);
 
         SetAction(async (parseResult, cancellationToken) =>
         {
-            var config = AppConfigurationFile.Load(parseResult.GetValue(_configFile)).Configuration;
+            var fileConfiguration = AppConfigurationFile.Load(parseResult.GetValue(_configFile)).Configuration;
+            var config = fileConfiguration with
+            {
+                DnsResolutionTimeoutMs = parseResult.GetValue(_dnsTimeout) ?? fileConfiguration.DnsResolutionTimeoutMs
+            };
             var address = parseResult.GetValue(_address) ?? string.Empty;
             await new IpResolutionDiagnosticReporter().RunDiagnosticAsync(address, config, cancellationToken).ConfigureAwait(false);
             return 0;

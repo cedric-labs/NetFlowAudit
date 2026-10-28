@@ -61,6 +61,12 @@ internal static class OptionFactory
     }
 
     /// <summary>
+    /// <c>--dns-timeout-ms</c>, shared by the commands that send reverse DNS queries (configuration key <c>DnsResolutionTimeoutMs</c>).
+    /// </summary>
+    public static Option<int?> CreateDnsTimeout() =>
+        CreateInteger("--dns-timeout-ms", "milliseconds", "Time to wait for a reverse DNS answer. Default: 3000.", minimum: 1);
+
+    /// <summary>
     /// Option holding a single file path.
     /// </summary>
     public static Option<string?> CreatePath(string name, string description, params string[] aliases) =>

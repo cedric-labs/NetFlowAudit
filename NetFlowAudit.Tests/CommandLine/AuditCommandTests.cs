@@ -122,6 +122,16 @@ public sealed class AuditCommandTests
     }
 
     [Fact]
+    public void BuildConfiguration_WhenDnsTimeoutGiven_SetsResolutionTimeout()
+    {
+        // Act
+        var updated = AuditCommandConfiguration.Build(new AppConfiguration(), "audit", "--dns-timeout-ms", "4500");
+
+        // Assert
+        updated.DnsResolutionTimeoutMs.Should().Be(4500);
+    }
+
+    [Fact]
     public void BuildConfiguration_WhenNoTuiGiven_DisablesDashboard()
     {
         // Act
