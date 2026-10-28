@@ -49,6 +49,18 @@ if (-not $SkipFormat) {
     Write-Host "`n[2/6] Vérification du formatage ignorée." -ForegroundColor DarkGray
 }
 
+# Contrôle de la documentation : chaque option citée doit exister dans le code, les versions anglaise et française
+# doivent avoir la même structure, les liens relatifs doivent aboutir et la Règle 6 est appliquée. Les guides de
+# migration et les ADR citent volontairement des options supprimées, d'où -HistoricalFile.
+Write-Host "`n[2/6] Contrôle de la documentation (scripts/Test-Documentation.ps1)..." -ForegroundColor Yellow
+& "$ScriptRoot/scripts/Test-Documentation.ps1" -Path $ScriptRoot -SourcePath $ScriptRoot -CommandName "NetFlowAudit.Cli" `
+    -HistoricalFile "upgrade-to-*.md", "[0-9][0-9][0-9][0-9]-*.md" -IgnoreOption "--help", "--version"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "La documentation ne correspond pas au code. Corrigez les erreurs listées ci-dessus."
+    exit $LASTEXITCODE
+}
+Write-Host "  Documentation conforme." -ForegroundColor Green
+
 # Nettoyage des résultats de tests et d'analyses précédents
 Remove-Item -Path "$ScriptRoot/TestResults" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "$ScriptRoot/.sonarqube" -Recurse -Force -ErrorAction SilentlyContinue
