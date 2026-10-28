@@ -51,10 +51,10 @@ if (-not $SkipFormat) {
 
 # Contrôle de la documentation : chaque option citée doit exister dans le code, les versions anglaise et française
 # doivent avoir la même structure, les liens relatifs doivent aboutir et la Règle 6 est appliquée. Les guides de
-# migration et les ADR citent volontairement des options supprimées, d'où -HistoricalFile.
+# migration, les ADR et les notes de version citent volontairement des options supprimées, d'où -HistoricalFile.
 Write-Host "`n[2/6] Contrôle de la documentation (scripts/Test-Documentation.ps1)..." -ForegroundColor Yellow
 & "$ScriptRoot/scripts/Test-Documentation.ps1" -Path $ScriptRoot -SourcePath $ScriptRoot -CommandName "NetFlowAudit.Cli" `
-    -HistoricalFile "upgrade-to-*.md", "[0-9][0-9][0-9][0-9]-*.md" -IgnoreOption "--help", "--version"
+    -HistoricalFile "upgrade-to-*.md", "[0-9][0-9][0-9][0-9]-*.md", "v[0-9]*.md" -IgnoreOption "--help", "--version"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "La documentation ne correspond pas au code. Corrigez les erreurs listées ci-dessus."
     exit $LASTEXITCODE

@@ -4,7 +4,8 @@ param (
     [string]$Tag = "",
     [string]$DistDir = "./dist",
     [string]$Repo = "curvecoder/NetFlowAudit",
-    [switch]$Prerelease
+    [switch]$Prerelease,
+    [string]$NotesFile = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +22,12 @@ if ($Tag -match "-(preview|beta|alpha|rc)") {
 }
 
 $version = $Tag.TrimStart('v')
+
+# Release notes are written by hand for each version, so that a release never ships the notes of a previous one.
+$notesPath = if ([string]::IsNullOrWhiteSpace($NotesFile)) { "./release-notes/$Tag.md" } else { $NotesFile }
+if (-not (Test-Path $notesPath)) {
+    throw "Release notes not found: $notesPath"
+}
 
 Write-Host "=== Preparing NetFlowAudit Release $Tag (Version: $version) ===" -ForegroundColor Cyan
 
@@ -52,6 +59,7 @@ if ($LASTEXITCODE -ne 0) { throw "Windows publish failed." }
 
 Get-ChildItem -Path $winPublishDir -Filter "*.pdb" -Recurse | Remove-Item -Force
 Copy-Item "README.md" (Join-Path $winPublishDir "README.md") -Force
+Copy-Item "README.fr.md" (Join-Path $winPublishDir "README.fr.md") -Force
 Copy-Item "LICENSE" (Join-Path $winPublishDir "LICENSE") -Force
 
 $winZip = Join-Path $DistDir "NetFlowAudit-$version-win-x64.zip"
@@ -80,6 +88,7 @@ if ($LASTEXITCODE -ne 0) { throw "Linux publish failed." }
 
 Get-ChildItem -Path $linuxPublishDir -Filter "*.pdb" -Recurse | Remove-Item -Force
 Copy-Item "README.md" (Join-Path $linuxPublishDir "README.md") -Force
+Copy-Item "README.fr.md" (Join-Path $linuxPublishDir "README.fr.md") -Force
 Copy-Item "LICENSE" (Join-Path $linuxPublishDir "LICENSE") -Force
 
 $linuxTar = Join-Path $DistDir "NetFlowAudit-$version-linux-x64.tar.gz"
@@ -153,20 +162,8 @@ $bodyList.Add('# NetFlowAudit ' + $Tag)
 $bodyList.Add('')
 $bodyList.Add('NetFlowAudit is a cross-platform (Windows & Linux) network flow auditing agent designed to run interactively in the terminal or continuously as a background daemon/service.')
 $bodyList.Add('')
-$bodyList.Add('## What Changed in ' + $Tag)
-$bodyList.Add('- **Standalone Verbose IP Resolution Diagnostics (--test-ip / --lookup)** (#3):')
-$bodyList.Add('  - Granular 6-stage technical diagnosis: IP syntax classification, local cache status, OS network adapters & DNS search suffixes, live .NET reverse DNS PTR timing, direct RDAP HTTP querying, and synthesized cache entry model.')
-$bodyList.Add('  - Enables rapid troubleshooting of discrepancies between Windows corporate tools (ping -a with LLMNR/NetBIOS/suffixes) and strict .NET reverse DNS PTR queries.')
-$bodyList.Add('- **Unspecified & Broadcast IP Address Defense** (#1):')
-$bodyList.Add('  - Added defensive guards in OfflineDnsResolver and OfflineAuditEnricher to intercept unspecified and broadcast addresses (0.0.0.0, ::, 255.255.255.255) before attempting DNS queries.')
-$bodyList.Add('  - Prevents unhandled ArgumentException in .NET runtime and tags them immediately with Source = "Excluded" without latency or network traffic.')
-$bodyList.Add('- **Public IP RDAP Metadata Enrichment** (#2):')
-$bodyList.Add('  - Automatic RDAP query supplementation for public routable IPs: enriches Organization, Country, and NetworkRange metadata even when reverse DNS PTR resolution succeeds.')
-$bodyList.Add('  - Private/internal addresses (RFC 1918, loopback, link-local) skip RDAP queries to prevent unnecessary throttling and delays.')
-$bodyList.Add('- **Expanded Technical User Guide (docs/user-guide.md)** (#4):')
-$bodyList.Add('  - Complete CLI options catalog with default values, short flags, and option descriptions.')
-$bodyList.Add('  - Options compatibility and mutual exclusivity matrix across all 7 execution modes.')
-$bodyList.Add('  - Comprehensive troubleshooting guide explaining DNS resolution behavior (in-addr.arpa vs NetBIOS/WINS/LLMNR).')
+$bodyList.Add([System.IO.File]::ReadAllText($notesPath).Trim())
+$bodyList.Add('')
 $bodyList.Add('## Downloads')
 $bodyList.Add('| OS / Architecture | Package | Checksum (SHA256) |')
 $bodyList.Add('|---|---|---|')
