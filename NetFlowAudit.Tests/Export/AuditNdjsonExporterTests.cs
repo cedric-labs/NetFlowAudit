@@ -104,6 +104,162 @@ FirstSeenUtc,LastSeenUtc,ObservationCount,ServerName,ServerOsVersion,ServerPrima
         }
     }
 
+    private const string CsvHeader = "FirstSeenUtc,LastSeenUtc,ObservationCount,ServerName,ServerOsVersion,ServerPrimaryIp,Protocol,Direction,TcpState,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessId,ProcessName,ExecutablePath,CommandLine,TargetExecutable,UserName";
+
+    [Fact]
+    public async Task ExportCsvFilesToNdjsonAsync_WhenTwoCsvFilesSupplied_WritesEveryEntryInInputOrder()
+    {
+        // Arrange
+        var tempCsv1 = Path.Combine(Path.GetTempPath(), $"stream_src1_{Guid.NewGuid():N}.csv");
+        var tempCsv2 = Path.Combine(Path.GetTempPath(), $"stream_src2_{Guid.NewGuid():N}.csv");
+        var tempNdjson = Path.Combine(Path.GetTempPath(), $"stream_target_{Guid.NewGuid():N}.ndjson");
+
+        try
+        {
+            var content1 = string.Join(
+                Environment.NewLine,
+                CsvHeader,
+                "2026-10-25T10:00:00.0000000Z,2026-10-25T10:00:00.0000000Z,1,SRV-APP-01,Linux,192.0.2.10,Tcp,Outbound,ESTABLISHED,192.0.2.10,50000,192.0.2.20,8080,srv-api.internal,1024,node.exe,C:\\node.exe,node server.js,server.js,DOMAIN\\user",
+                "2026-10-25T10:00:00.0000000Z,2026-10-25T10:00:00.0000000Z,2,SRV-APP-01,Linux,192.0.2.10,Tcp,Outbound,ESTABLISHED,192.0.2.10,50001,192.0.2.21,443,srv-web.internal,1025,node.exe,C:\\node.exe,node server.js,server.js,DOMAIN\\user");
+
+            var content2 = string.Join(
+                Environment.NewLine,
+                CsvHeader,
+                "2026-10-25T10:00:00.0000000Z,2026-10-25T10:00:00.0000000Z,3,SRV-APP-02,Linux,192.0.2.11,Tcp,Outbound,ESTABLISHED,192.0.2.11,50002,192.0.2.22,1521,srv-db.internal,1026,oracle.exe,C:\\oracle.exe,oracle,oracle,DOMAIN\\user");
+
+            await File.WriteAllTextAsync(tempCsv1, content1);
+            await File.WriteAllTextAsync(tempCsv2, content2);
+
+            // Act
+            var exportedCount = await _exporter.ExportCsvFilesToNdjsonAsync([tempCsv1, tempCsv2], tempNdjson);
+
+            // Assert
+            exportedCount.Should().Be(3);
+            File.Exists(tempNdjson).Should().BeTrue();
+
+            var lines = await File.ReadAllLinesAsync(tempNdjson);
+            lines.Should().HaveCount(3);
+
+            var parser = new AuditNdjsonParser();
+            var entry1 = parser.ParseLine(lines[0]);
+            var entry2 = parser.ParseLine(lines[1]);
+            var entry3 = parser.ParseLine(lines[2]);
+
+            entry1.Should().NotBeNull();
+            entry1!.Server.HostName.Should().Be("SRV-APP-01");
+            entry1.Socket.RemoteEndpoint.Port.Should().Be(8080);
+
+            entry2.Should().NotBeNull();
+            entry2!.Server.HostName.Should().Be("SRV-APP-01");
+            entry2.Socket.RemoteEndpoint.Port.Should().Be(443);
+
+            entry3.Should().NotBeNull();
+            entry3!.Server.HostName.Should().Be("SRV-APP-02");
+            entry3.Socket.RemoteEndpoint.Port.Should().Be(1521);
+        }
+        finally
+        {
+            if (File.Exists(tempCsv1))
+            {
+                File.Delete(tempCsv1);
+            }
+
+            if (File.Exists(tempCsv2))
+            {
+                File.Delete(tempCsv2);
+            }
+
+            if (File.Exists(tempNdjson))
+            {
+                File.Delete(tempNdjson);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExportCsvFilesToNdjsonAsync_WhenOutputAlreadyExists_ReplacesItsContent()
+    {
+        // Arrange
+        var tempCsv = Path.Combine(Path.GetTempPath(), $"stream_src_replace_{Guid.NewGuid():N}.csv");
+        var tempNdjson = Path.Combine(Path.GetTempPath(), $"stream_target_replace_{Guid.NewGuid():N}.ndjson");
+
+        try
+        {
+            var content = string.Join(
+                Environment.NewLine,
+                CsvHeader,
+                "2026-10-25T10:00:00.0000000Z,2026-10-25T10:00:00.0000000Z,1,SRV-APP-01,Linux,192.0.2.10,Tcp,Outbound,ESTABLISHED,192.0.2.10,50000,192.0.2.20,8080,srv-api.internal,1024,node.exe,C:\\node.exe,node server.js,server.js,DOMAIN\\user");
+
+            await File.WriteAllTextAsync(tempCsv, content);
+            await File.WriteAllTextAsync(tempNdjson, "{\"preexisting\":\"data\"}\n{\"preexisting\":\"second_line\"}");
+
+            // Act
+            var exportedCount = await _exporter.ExportCsvFilesToNdjsonAsync([tempCsv], tempNdjson);
+
+            // Assert
+            exportedCount.Should().Be(1);
+            var lines = await File.ReadAllLinesAsync(tempNdjson);
+            lines.Should().HaveCount(1);
+            lines[0].Should().NotContain("preexisting");
+
+            var parser = new AuditNdjsonParser();
+            var entry = parser.ParseLine(lines[0]);
+            entry.Should().NotBeNull();
+            entry!.Server.HostName.Should().Be("SRV-APP-01");
+        }
+        finally
+        {
+            if (File.Exists(tempCsv))
+            {
+                File.Delete(tempCsv);
+            }
+
+            if (File.Exists(tempNdjson))
+            {
+                File.Delete(tempNdjson);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExportCsvFilesToNdjsonAsync_WhenInputListIsEmpty_WritesEmptyFileAndReturnsZero()
+    {
+        // Arrange
+        var tempNdjson = Path.Combine(Path.GetTempPath(), $"stream_empty_{Guid.NewGuid():N}.ndjson");
+
+        try
+        {
+            // Act
+            var exportedCount = await _exporter.ExportCsvFilesToNdjsonAsync(Array.Empty<string>(), tempNdjson);
+
+            // Assert
+            exportedCount.Should().Be(0);
+            File.Exists(tempNdjson).Should().BeTrue();
+            var lines = await File.ReadAllLinesAsync(tempNdjson);
+            lines.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(tempNdjson))
+            {
+                File.Delete(tempNdjson);
+            }
+        }
+    }
+
+    [Fact]
+    public Task ExportCsvFilesToNdjsonAsync_WhenInputListIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var tempNdjson = Path.Combine(Path.GetTempPath(), $"stream_null_{Guid.NewGuid():N}.ndjson");
+
+        // Act
+        var act = () => _exporter.ExportCsvFilesToNdjsonAsync(null!, tempNdjson);
+
+        // Assert
+        return act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
     private static NetworkAuditEntry CreateSampleEntry(string hostName, int remotePort)
     {
         var now = DateTimeOffset.UtcNow;

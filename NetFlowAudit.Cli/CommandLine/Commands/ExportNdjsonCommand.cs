@@ -2,7 +2,6 @@ using System.CommandLine;
 using NetFlowAudit.Cli.CommandLine.OptionSets;
 using NetFlowAudit.Cli.Configuration;
 using NetFlowAudit.Core.Export;
-using NetFlowAudit.Core.Models;
 
 namespace NetFlowAudit.Cli.CommandLine.Commands;
 
@@ -39,15 +38,8 @@ public sealed class ExportNdjsonCommand : Command
             }
 
             var delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',';
-            var parser = new AuditCsvHistoryParser();
-            var entries = new List<NetworkAuditEntry>();
-            foreach (var file in files)
-            {
-                entries.AddRange(await parser.ParseHistoryAsync(file, maxRows: null, delimiter, cancellationToken).ConfigureAwait(false));
-            }
-
             var outputPath = OutputFilePathResolver.Resolve(parseResult.GetValue(_output) ?? "netflow_audit.ndjson");
-            var count = await new AuditNdjsonExporter().ExportEntriesAsync(entries, outputPath, cancellationToken).ConfigureAwait(false);
+            var count = await new AuditNdjsonExporter().ExportCsvFilesToNdjsonAsync(files, outputPath, delimiter, cancellationToken).ConfigureAwait(false);
             Console.WriteLine($"Exported {count} audit flow entries from {files.Count} file(s) to NDJSON: {Path.GetFullPath(outputPath)}");
             return 0;
         });
