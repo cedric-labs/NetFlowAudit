@@ -62,7 +62,7 @@ The program is split between the application and four frameworks published as Nu
 | SocketForge 1.1.0 | Socket tables on Windows and Linux |
 | ProcessForge 1.1.1 | Process details and account, launcher targets, process exclusion |
 | FileForge.Core 1.1.0 | CSV and NDJSON writers that keep the files readable by other programs while the audit runs |
-| TopologyForge 1.5.3 | Topology graph, filters, HTML map and Draw.io export |
+| TopologyForge 1.5.4 | Topology graph, filters, HTML map and Draw.io export |
 
 The application (`NetFlowAudit.Core`, `NetFlowAudit.Cli`) holds what is specific to the audit: the scan cycle, deduplication, name resolution, the command line, the dashboard and the exports.
 
