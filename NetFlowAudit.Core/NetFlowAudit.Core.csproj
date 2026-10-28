@@ -4,7 +4,7 @@
     <PackageReference Include="FileForge.Core" Version="1.1.0" />
     <PackageReference Include="ProcessForge" Version="1.1.1" />
     <PackageReference Include="SocketForge" Version="1.1.0" />
-    <PackageReference Include="TopologyForge" Version="1.5.2" />
+    <PackageReference Include="TopologyForge" Version="1.5.3" />
   </ItemGroup>
 
   <ItemGroup>
