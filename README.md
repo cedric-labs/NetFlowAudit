@@ -1,446 +1,79 @@
-# NetFlowAudit - Continuous Network Flow Auditing Agent
+> **Language / Langue**: **English** · [Français](README.fr.md)
+
+# NetFlowAudit
 
 <p align="center">
-  <img src="assets/netflowaudit-icon.png" alt="NetFlowAudit Logo" width="200" />
+  <img src="assets/netflowaudit-icon.png" alt="NetFlowAudit logo" width="200" />
   <br/>
   <a href="https://ko-fi.com/curvecoder"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support curvecoder on Ko-fi" /></a>
 </p>
 
-**NetFlowAudit** is a cross-platform (Windows and Linux) network flow auditing agent designed to run either interactively in the terminal or continuously as a background service/daemon. It inspects all inbound, outbound, and listening TCP/UDP sockets, identifies the local processes and application targets responsible for network activity, logs deduplicated flows to an RFC 4180 CSV file, and generates self-contained offline HTML5 topology maps.
+NetFlowAudit records which services a Windows or Linux machine talks to, over days or weeks, and which program is responsible. It reads the socket tables of the operating system at a fixed interval, attributes each socket to its process, and keeps one line per flow in a CSV log. From those logs it draws offline HTML topology maps, Draw.io diagrams and firewall rule matrices.
 
----
+> [!NOTE]
+> NetFlowAudit started as a way to see what really ran and talked on a personal setup (Proxmox servers, a Windows PC, a Linux desktop). It is shared in the hope that it helps someone else.
+
+## Why
+
+Preparing a migration, writing firewall rules or reviewing a server raises the same question: what does this machine connect to, and what listens on it? Packet capture needs a driver and produces large files without the process behind each connection; `netstat` shows one instant and misses scheduled jobs; logging every connection floods the disk. NetFlowAudit runs in the background, without driver, and keeps a deduplicated history with the program, its command line and the application it launched (`java -jar`, `python`, `powershell`…).
+
+<p align="center">
+  <img src="assets/tui-dashboard-preview.png" alt="NetFlowAudit terminal dashboard" width="100%" />
+</p>
+
+<p align="center">
+  <img src="assets/topology-map-preview.png" alt="NetFlowAudit HTML topology map" width="100%" />
+</p>
+
+## Install
+
+Download the archive for your system from the [releases page](https://github.com/curvecoder/NetFlowAudit/releases) (`NetFlowAudit-<version>-win-x64.zip` or `NetFlowAudit-<version>-linux-x64.tar.gz`) and extract it. The executable includes the .NET runtime.
+
+To build from source (.NET 8 SDK):
+
+```bash
+dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o publish/linux-x64
+```
+
+Use `-r win-x64` for Windows.
+
+## Use
+
+Audit the machine with the terminal dashboard (as administrator on Windows, with `sudo` on Linux):
+
+```bash
+NetFlowAudit.Cli audit
+```
+
+Draw a map from the audit logs of several servers:
+
+```bash
+NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
+```
+
+Export the internal flows seen at least five times as a firewall rule matrix:
+
+```bash
+NetFlowAudit.Cli export rules -i collected -o rules.csv --zone internal --min-observations 5
+```
 
 ## Documentation
 
-- **User Guide & Production Operations**:
-  - 🇫🇷 **[Guide Utilisateur (docs/user-guide.fr.md)](docs/user-guide.fr.md)** — Guide exhaustif : installation, raccourcis TUI, services Windows / daemons Linux `systemd`, consolidation multi-serveurs, environnements isolés air-gap, recettes et options.
-  - 🇬🇧 **[User Guide (docs/user-guide.md)](docs/user-guide.md)** — Comprehensive operations guide: installation, interactive TUI, Windows Service / Linux `systemd`, fleet consolidation, air-gap mode, and CLI reference.
-- **Architecture & Technical Specifications**:
-  - 🇫🇷 **[Spécification d'Architecture (docs/architecture.fr.md)](docs/architecture.fr.md)** — Pipeline interne, architecture en frameworks partagés (`SocketForge`, `ProcessForge`, `FileForge.Core`, `TopologyForge`), déduplication et sécurité.
-  - 🇬🇧 **[Architecture Specification (docs/architecture.md)](docs/architecture.md)** — Internal pipeline, decoupled shared frameworks architecture, deduplication state machine, concurrency, and security model.
+| | |
+| :--- | :--- |
+| Tutorial | [Getting started](docs/getting-started.md) |
+| How-to guides | [Run as a service](docs/how-to/run-as-a-service.md) · [Map a server fleet](docs/how-to/map-a-server-fleet.md) · [Export firewall rules](docs/how-to/export-firewall-rules.md) · [Audit isolated servers](docs/how-to/audit-isolated-servers.md) · [Diagnose a missing host name](docs/how-to/diagnose-name-resolution.md) · [Upgrade from 1.x](docs/how-to/upgrade-to-2.0.md) |
+| Reference | [Command line](docs/reference/cli.md) · [Configuration file](docs/reference/configuration.md) · [Output formats](docs/reference/output-formats.md) · [Terminal dashboard](docs/reference/dashboard.md) |
+| Explanation | [How NetFlowAudit works](docs/explanation/architecture.md) · [Architecture decisions](docs/adr/README.md) |
 
+## Development
 
----
+`./verify.ps1` runs formatting, the Release build with warnings as errors, the tests with coverage and the SonarQube analysis.
 
-## Preview
+## Support
 
-### Interactive Terminal Dashboard (TUI)
-<p align="center">
-  <img src="assets/tui-dashboard-preview.png" alt="NetFlowAudit Interactive Terminal Dashboard" width="100%" />
-</p>
+If NetFlowAudit helps you, you can support its maintenance on [Ko-fi](https://ko-fi.com/curvecoder).
 
-### Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)
-<p align="center">
-  <img src="assets/topology-map-preview.png" alt="NetFlowAudit HTML5 Network Topology Map" width="100%" />
-</p>
+## License
 
----
-
-## Why NetFlowAudit ?
-
-> [!NOTE]
-> **Genesis & Spirit**: NetFlowAudit was born out of a simple desire to see what was really running and talking on my personal setup (Proxmox home servers, a Windows PC, and a Linux desktop). There is zero pretense here — just a practical tool built for everyday needs, shared openly in the hope that it might help someone else.
-
-When preparing infrastructure migrations, establishing strict firewall whitelists, or conducting security audits, system administrators and security engineers face a recurring question: **"Which services does this machine actually communicate with over time, and which local application is responsible?"**
-
-Existing tools often fall into extremes:
-- **Packet sniffers (Wireshark, tcpdump)** require third-party kernel drivers (`Npcap`, `libpcap`), generate massive PCAP files, and do not inherently associate local process command-lines with network sockets.
-- **Point-in-time snapshots (`netstat`, `ss`, `TCPView`)** only capture active connections at that exact instant, completely missing short-lived, transient, or scheduled night jobs.
-- **Security event loggers (Sysmon Event ID 3)** log every individual connection without aggregating ephemeral ports, quickly flooding disks and SIEMs with millions of lines.
-- **Active network scanners (Nmap, port scanners)** probe machines from the outside, generating aggressive network traffic that triggers IDS/EDR alerts.
-
-**NetFlowAudit fills this gap:**
-1. **Zero Capture Drivers**: Uses only native OS APIs (`iphlpapi.dll` on Windows, `/proc` on Linux) with zero driver installation.
-2. **Continuous & Deduplicated**: Sits quietly in the background, collapsing ephemeral client ports into a clean, consolidated RFC 4180 CSV audit trail tracking `FirstSeen`, `LastSeen`, and cumulative hit counts.
-3. **Deep Target Unwrapping**: Identifies the true underlying application payload behind generic launchers (`java -jar service.jar`, `python script.py`, `powershell task.ps1`, `dotnet app.dll`).
-4. **Instant Self-Contained Topology Maps**: Generates interactive HTML5/SVG network graphs that can be opened in any browser offline, with no backend or cloud dependencies.
-
----
-
-## 1. Key Features
-
-- **Zero Third-Party Packet Capture Drivers**: Requires neither Npcap, WinPcap, nor libpcap.
-  - **Windows**: Queries native Win32 IP Helper APIs (`iphlpapi.dll`).
-  - **Linux / WSL**: Reads `/proc/net/{tcp,tcp6,udp,udp6}` and correlates socket inodes across `/proc/<pid>/fd`.
-- **Underlying Application Target Detection (Wrapper Unwrapping)**: Goes beyond identifying generic launcher binaries (`java.exe`, `python`, `cmd.exe`, `powershell.exe`, `bash`, `dotnet`) by parsing the full command line and extracting the real payload (`.jar`, `.py`, `.bat`, `.cmd`, `.ps1`, `.sh`, `.dll`).
-- **Non-Blocking Asynchronous Reverse DNS & RDAP Fallback**:
-  - Automatically resolves remote IP addresses to hostnames (FQDN) in the background.
-  - Persistent disk cache (`netflow_dns_cache.json`) with negative-caching policy and RDAP organization fallback when PTR records are absent.
-  - Supports `--isolated` / `--offline` mode for air-gapped environments.
-- **Smart Flow Deduplication**:
-  - Neutralizes ephemeral client ports on outbound connections so repeated connections to the same remote service port do not flood the audit log.
-  - Tracks `FirstSeenUtc`, `LastSeenUtc`, and cumulative `ObservationCount`.
-  - Automatically reloads existing CSV history on startup to preserve continuity across restarts.
-- **Process & Network Filtering**:
-  - Exclude processes by PID, exact name, prefix, suffix, substring, or system accounts (`SYSTEM`, `root`).
-  - Automatic exclusion of loopback/intra-host traffic (`LocalIp == RemoteIp`, `127.0.0.0/8`, `::1`).
-  - Interactive live exclusion of Local Ports, Remote IPs/CIDRs, Processes, and Targets directly from the terminal dashboard.
-- **Responsive Terminal Dashboard (TUI) with Pagination**:
-  - Full-screen ANSI interface adapting dynamically to terminal width and height.
-  - Paginated live flow discovery table with clamped row navigation (`[N/P]` or `[PgDn/PgUp]` for Next/Previous page, `[L]` to load +100 rows, `[A]` to load all).
-- **Dynamic File Name Placeholders & Multi-Server Deployment**:
-  - Automatically expands `{ServerName}`, `{HostName}`, `{Date}`, and `{Timestamp}` in output file paths (`OutputCsvPath`, `OutputHtmlMapPath`, `DnsCacheFilePath`).
-  - Perfect for deploying the exact same configuration across hundreds of servers without filename conflicts when collecting audit logs centrally.
-- **Multi-Server Consolidation into Unified Topology Maps**:
-  - Consolidates logs from a directory (`--input-dir <dir> --input-filter *.csv`) or file list (`--inputs f1.csv,f2.csv`) into a single unified topology map.
-  - Automatically links cross-server flows, merges service ports, and deduplicates communication pairs while filtering before HTML generation to keep file size minimal.
-- **Static Host Aliases**:
-  - Map static IP addresses to explicit hostnames (`--alias 10.0.0.5=srv-oracle-prod`) bypassing or supplementing reverse DNS.
-- **Self-Contained Offline HTML5 Network Topology Map (`TopologyForge`)**:
-  - Generates a 100% standalone single-file HTML5/SVG interactive map (`--map` or press `[M]` in the dashboard).
-  - Priority-ranked server pagination (`100` most active/audited servers per page by default, with `◀ Prev`, `Next ▶`, `+100 Servers`, and `Show All` buttons).
-  - Multi-layout modes: Hierarchical Layered (Sugiyama), Force-Directed Organic (live physics simulation), Concentric Ring, and Multi-Column Grid.
-  - Multi-sorting methods: Sugiyama anti-crossing with 2-Opt and Spatial Hash Grid acceleration, Functional Tiers (Clients ➔ Gateways ➔ Apps ➔ Infra / DB), Subnet & Security Zones with high-contrast enclosure envelopes and interactive toggle checkbox, Connection Degree, and Hostname.
-  - Directional `IN` / `OUT` arrowheads with curved Bezier, orthogonal corridor, or direct border-to-border routing.
-
----
-
-## 2. Quick Start
-
-### 2.1. Command-Line Options
-
-```text
-NetFlowAudit.Cli [OPTIONS]
-
-General Options:
-  -h, --help                          Display full help (including the 20 CSV columns catalog) and exit.
-  --no-tui, --daemon                  Disable the interactive terminal dashboard (recommended for background services).
-  --config <path>                     Path to JSON configuration file (default: netflowaudit.json).
-  --init-config, --generate-config [p]Generate a baseline JSON configuration template (default: netflowaudit.json) and exit.
-  --reload-history <all|0|n>          Number of historical CSV entries to reload at startup (default: all, 0 to disable).
-  -o, --output <path>                 Path to output CSV file (default: netflow_audit.csv).
-                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
-  --ndjson <path>                     Path to continuous output NDJSON stream file (JSON Lines).
-                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
-  --export-ndjson [path.ndjson]       Convert an existing CSV audit log to NDJSON format and exit.
-  --export-rules [path.csv]           Export consolidated network flow matrix CSV and exit.
-  --min-observations <n>              Minimum observation count required for firewall rule export (default: 1).
-  --active-within-days <days>         Freshness filter: only include rules observed within the last N days.
-  --destination-zone <internal|public>Filter rules by destination zone (RFC 1918 internal vs WAN/Internet public).
-  --internal-only, --public-only      Shorthand filters for internal vs public firewall rules.
-  --exclude-ephemeral                 Exclude ephemeral destination ports (>= 49152) from firewall rules.
-  --test-ip, --lookup <ip>            Perform verbose DNS and RDAP resolution diagnostics for a single IP address and exit.
-  --resolve-offline                   Offline post-processing: consolidate caches and enrich audit hostnames.
-  --in-place                          Overwrite original audit files directly during offline resolution.
-  --force-resolve                     Force replacement of existing hostnames during offline resolution.
-  --cache, --caches <path1,...>       Input cache files or directories to consolidate into master cache.
-  --output-cache <path.json>          Output path for consolidated master DNS cache (default: netflow_dns_cache.json).
-  --interval <seconds>                Scan interval in seconds (default: 5).
-  --columns <col1,col2,...>           Custom ordered list of CSV columns to export.
-  --resolve-dns <true|false>          Enable or disable reverse DNS resolution for remote IP addresses.
-  --resolve-ip-owners <true|false>    Enable or disable RDAP IP organization fallback.
-  --isolated, --offline               Air-gapped mode: disable external resolution queries.
-  --exclude-remote-ips <ip1,cidr2,..> Comma-separated remote IP addresses or CIDR subnets to exclude.
-  --alias <ip>=<host>                 Static IP-to-hostname alias taking precedence over reverse DNS PTR.
-  --mask-server <name>                Fictitious server name for dashboard display/screenshots.
-  --mask-ip <ip>                      Fictitious local IP for dashboard display/screenshots.
-  --obfuscate, --anonymize            Mask both server name (SRV-AUDIT-01) and local IP (10.0.0.10).
-
-Topology Map Options (TopologyForge):
-  --map <path.html>                   Generate a self-contained offline HTML5 topology map.
-                                      Supports dynamic tokens: {ServerName}, {HostName}, {Date}, {Timestamp}.
-  --map-only                          Generate the HTML map from audit logs and exit.
-  -i, --input <path.csv>              Single input audit CSV file (default: OutputCsvPath).
-  --dir, --input-dir <dir>            Consolidate all audit CSV files from a directory into a unified map.
-  --pattern, --input-filter <glob>    File search filter when using --input-dir (default: *.csv).
-  --inputs, --input-files <f1,f2,...> Comma-separated list of audit CSV files to consolidate.
-  --include-ports <p1,p2-p3,...>      Include only these service ports or port ranges (e.g. 80,443,1433,8000-8080).
-  --exclude-ports <p1,p2-p3,...>      Exclude these ports or port ranges from the map (e.g. 53,123,135-139).
-  --include-hosts <m1,m2,...>         Include only servers matching wildcard patterns (e.g. SRV-*,*SQL*).
-  --exclude-hosts <m1,m2,...>         Exclude servers matching wildcard patterns (e.g. *.local,SRV-MON-*).
-  --include-ips <ip1,cidr2,...>       Include only these IP addresses or CIDR subnets (e.g. 10.0.0.0/8).
-  --exclude-ips <ip1,cidr2,...>       Exclude these IP addresses or CIDR subnets (e.g. 169.254.0.0/16).
-  --include-processes <proc1,...>     Include only these processes or application targets.
-  --exclude-processes <proc1,...>     Exclude these processes or application targets.
-  --map-layout, --layout, --algorithm <layered|tree|horizontal-tree|organic|circular|grid>
-                                      Topology layout mode (Hierarchical Layered by default).
-  --map-sort, --sort <barycentric|tiers|subnet|degree|alpha|ip>
-                                      Server sorting method (Sugiyama anti-crossing by default).
-  --map-routing, --routing <bezier|orthogonal|straight>
-                                      Arrow routing mode with server box obstacle avoidance.
-  --map-spacing, --spacing <compact|balanced|spacious>
-                                      Initial spacing profile between servers and arrows.
-  --direction <all|out|in>            Directional flow filtering (all flows by default).
-  --listeners-only                    Map passive listening ports only.
-  --export-drawio, --drawio <path.drawio> Export editable diagrams to Draw.io / Diagrams.net XML format.
-  --drawio-edge-mode <adaptive|direction|none> Draw.io edge grouping (AdaptiveThreshold, ByDirection, None).
-  --drawio-theme <dark|light>         Draw.io diagram visual theme (DarkModern or EnterpriseLight).
-  --include-ephemeral-ports           Disable default ephemeral port exclusion (49152-65535).
-```
-
-### 2.2. Running on Windows
-
-#### Option A: From .NET Source
-```powershell
-dotnet run --project NetFlowAudit.Cli/NetFlowAudit.Cli.csproj
-```
-
-#### Option B: Publish as a Self-Contained Single-File Executable
-```powershell
-dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/win-x64
-.\bin\publish\win-x64\NetFlowAudit.Cli.exe
-```
-
----
-
-### 2.3. Running on Linux / WSL
-
-```powershell
-dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o bin/publish/linux-x64
-```
-
-On Linux, inspecting `/proc/<pid>/fd` socket descriptors across all system users requires root privileges or `CAP_NET_ADMIN`:
-```bash
-chmod +x ./NetFlowAudit.Cli
-sudo ./NetFlowAudit.Cli
-```
-
----
-
-### 2.4. Multi-Server Consolidation Workflow
-
-When auditing an entire data center or cluster, configure `netflowaudit.json` with dynamic tokens so each machine generates unique audit files:
-
-```json
-{
-  "OutputCsvPath": "audit_{ServerName}_{Date}.csv",
-  "OutputHtmlMapPath": "map_{ServerName}_{Date}.html"
-}
-```
-
-Once you collect all audit CSVs into a shared directory (e.g. `./collected-audits/`), generate a single consolidated topology map showing all inter-server communications:
-
-```powershell
-# Consolidate all servers and filter down to database flows
-.\NetFlowAudit.Cli.exe --map-only `
-  --input-dir ./collected-audits `
-  --input-filter "audit_*.csv" `
-  --include-ports 1433,3306,5432,1521,6379,27017 `
-  --map consolidated_database_map.html
-```
-
-### 2.5. Exporting to Draw.io & Managing Large Diagrams
-
-NetFlowAudit exports uncompressed `.drawio` files compatible with Draw.io Desktop and Web, complete with nested subnet swimlanes, orthogonal arrow routing, and rich card formatting.
-
-When auditing endpoints communicating across dozens of public subnets (Internet, CDNs, cloud APIs), use these recipes to optimize diagram readability:
-
-- **Filter to Internal Networks (Recommended)**:
-  ```powershell
-  .\NetFlowAudit.Cli.exe --export-drawio internal.drawio -i audit.csv --include-ips 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-  ```
-- **Consolidate Parallel Arrows (`--drawio-edge-mode direction`)**:
-  Merges multiple port connections between two servers into a single bidirectional link.
-- **Isolate Core Application Tiers**:
-  ```powershell
-  .\NetFlowAudit.Cli.exe --export-drawio app_tiers.drawio -i audit.csv --include-ports 80,443,1433,5432,6379 --exclude-ports 53,123,135-139,445
-  ```
-- **Listeners Only (Service Inventory)**:
-  ```powershell
-  .\NetFlowAudit.Cli.exe --export-drawio services.drawio -i audit.csv --listeners-only
-  ```
-
-> [!NOTE]
-> **Readability Roadmap**: Subnet swimlanes currently layout sequentially along the horizontal axis. Multi-line 2D grid wrapping for subnets will be added in an upcoming release. In the meantime, large diagrams can be instantly recompacted inside Draw.io by pressing `Ctrl + A` and selecting **Arrange > Layout > Hierarchical**.
-
-### 2.6. Interactive HTML5 Topology Map Controls
-
-The generated HTML5 map is 100% self-contained and offers advanced interactive controls:
-- **Apply Filters Button & [Enter]**: Text filters only recalculate on clicking `[Apply Filters]` or pressing `[Enter]`, guaranteeing fast responsiveness even with thousands of flows.
-- **Collapsible Sidebar & Accordion**: Toggle the filter panel with the `[◀ Sidebar]` button or key `[B]`. Sections (Layout, Filters, CLI Command, Inspector) can be expanded or collapsed independently.
-- **CLI Command Reproducer**: The sidebar generates the exact CLI command matching the filters, sorting, and routing selected in the web UI with a one-click `[Copy CLI Command]` button.
-
-### 2.7. Offline Cache Consolidation & Audit Enrichment (`--resolve-offline`)
-
-When auditing isolated or air-gapped environments without Internet access (using `--isolated`), audit files contain unresolved IP addresses. Export the audit logs and cache files to a connected workstation to consolidate caches, resolve missing hostnames (DNS PTR + RDAP/ASN), and enrich the audit logs:
-
-```powershell
-# Consolidate multiple cache files, resolve missing IPs online, and enrich audit logs
-.\NetFlowAudit.Cli.exe --resolve-offline `
-  -i ".\audits\*.csv" `
-  --caches ".\caches\*.json" `
-  --output-cache ".\master_dns_cache.json"
-
-# In-place enrichment strictly offline (without querying the Internet)
-.\NetFlowAudit.Cli.exe --resolve-offline -i ".\audits\audit.csv" --cache master_cache.json --in-place --isolated
-```
-
-* **Cache Conflict Detection**: Conflicting hostnames across cache sources are automatically arbitrated by timestamp and logged as informational warnings.
-* **API Rate Limiting**: RDAP queries are throttled with a configurable delay (`--rdap-delay-ms 200`) and clear console notifications to avoid registry rate limits.
-
-### 2.8. Network Flow Matrix Export (`--export-rules`)
-
-Generate clean, normalized, and consolidated network flow matrices from raw audit logs for firewall engineering and security governance:
-
-```powershell
-# Export production firewall rules matrix with noise filtering
-.\NetFlowAudit.Cli.exe --export-rules "firewall_rules.csv" `
-  -i ".\netflow_audit.csv" `
-  --exclude-ephemeral `
-  --min-observations 5 `
-  --active-within-days 14 `
-  --internal-only `
-  --exclude-ports 53,123
-
-# Export incoming service listener rules
-.\NetFlowAudit.Cli.exe --export-rules "listeners_matrix.csv" -i ".\netflow_audit.csv" --listeners-only
-```
-
-* **Normalized 5-Tuple**: Automatically normalizes source vs destination regardless of whether the flow was inbound or outbound (`SourceIp`, `SourceHost`, `DestinationIp`, `DestinationHost`, `DestinationPort`, `Protocol`).
-* **Noise Elimination**: Ephemeral destination ports (>= 49152) and transient one-shot connections are filtered out.
-* **Justification Metadata**: Includes `ProcessName`, `ExecutablePath`, `UserName`, `ObservationCount`, and activity timestamps to pass CAB security review without friction.
-
-### 2.9. Topology Rendering Performance & Scalability
-
-Automated Playwright and .NET benchmarks executed across synthetic and real-world enterprise network topologies:
-
-| Scale | Servers ($N$) | Links ($Y$) | Payload Size | .NET Generation Time | Browser Load & Render (Playwright) | Evaluation |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Small** | 10 | 25 | 74 KB | 4 ms | 125 ms | Instantaneous |
-| **Medium** | 50 | 200 | 127 KB | < 1 ms | 147 ms | Instantaneous |
-| **Enterprise** | 200 | 1,000 | 359 KB | 6 ms | 172 ms | Ultra-responsive |
-| **Datacenter** | 1,000 | 5,000 | 1,533 KB | 11 ms | ~280 ms | High-density fleet scale |
-| **Production Audit** | 2,079 | 2,081 | 1,180 KB | 8 ms | 218 ms | Instantaneous (100 servers/page) |
-
-* Environment: .NET 8.0 (Release), Playwright Chromium (Headless), Windows 11.
-* All layout calculations, Barycenter sweeps, and SVG layer injections complete within milliseconds on the client side.
-
----
-
-## 3. Configuration (`netflowaudit.json`)
-
-On startup, `NetFlowAudit` looks for an optional `netflowaudit.json` file in the working directory (or specified via `--config`).
-
-```json
-{
-  "ScanIntervalSeconds": 5,
-  "OutputCsvPath": "netflow_audit.csv",
-  "OutputHtmlMapPath": "netflow_topology.html",
-  "MapExcludeEphemeralPorts": true,
-  "MapListenersOnly": false,
-  "MapIncludedPorts": [],
-  "MapExcludedPorts": [ "53", "123" ],
-  "MapIncludedHosts": [],
-  "MapExcludedHosts": [],
-  "MapIncludedIps": [],
-  "MapExcludedIps": [],
-  "MapIncludedProcesses": [],
-  "MapExcludedProcesses": [],
-  "MapSortMethod": "barycentric",
-  "MapRoutingMode": "bezier",
-  "MapSpacingProfile": "balanced",
-  "EnableDashboard": true,
-  "ReloadHistoryLimit": null,
-  "ResolveRemoteHostNames": true,
-  "ResolveIpOwners": true,
-  "IsolatedMode": false,
-  "DnsCacheFilePath": "netflow_dns_cache.json",
-  "DnsExcludedNetworks": [
-    "0.0.0.0",
-    "255.255.255.255",
-    "169.254.0.0/16",
-    "224.0.0.0/4",
-    "fe80::/10",
-    "ff00::/8"
-  ],
-  "ExcludeLoopbackFlows": true,
-  "ExcludedLocalPorts": [ 22, 3389 ],
-  "ExcludedRemotePorts": [ 53 ],
-  "ExcludedRemoteIps": [ "192.168.1.50", "10.0.0.0/8" ],
-  "ExcludedPids": [ 0, 4 ],
-  "ExcludedExactNames": [ "System", "Idle" ],
-  "ExcludedPrefixes": [ "svchost" ],
-  "ExcludedSuffixes": [],
-  "ExcludedContains": [],
-  "ExcludeSystemAccounts": false,
-  "MaskServerName": "",
-  "MaskLocalIp": "",
-  "CustomHostAliases": {
-    "10.0.0.5": "srv-oracle-prod"
-  },
-  "CsvDelimiter": ",",
-  "CsvColumns": [
-    "FirstSeenUtc",
-    "LastSeenUtc",
-    "ObservationCount",
-    "ServerName",
-    "ServerOsVersion",
-    "ServerPrimaryIp",
-    "Protocol",
-    "Direction",
-    "TcpState",
-    "LocalIp",
-    "LocalPort",
-    "RemoteIp",
-    "RemotePort",
-    "RemoteHostName",
-    "ProcessId",
-    "ProcessName",
-    "ExecutablePath",
-    "CommandLine",
-    "TargetExecutable",
-    "UserName"
-  ]
-}
-```
-
----
-
-## 4. CSV Audit Log Schema (20 Columns)
-
-| # | Column Name | Category | Description | Example |
-| :---: | :--- | :--- | :--- | :--- |
-| 1 | `FirstSeenUtc` | Timestamp | UTC timestamp when the network flow was first detected (ISO 8601). | `2026-10-23T07:15:00.0000000Z` |
-| 2 | `LastSeenUtc` | Timestamp | UTC timestamp of the most recent scan cycle observing this flow. | `2026-10-23T07:20:00.0000000Z` |
-| 3 | `ObservationCount` | Metrics | Cumulative number of scan cycles where this flow was seen active. | `42` |
-| 4 | `ServerName` | Server | Hostname of the audited local machine. | `SRV-PROD-APP01` |
-| 5 | `ServerOsVersion` | Server | Detailed OS version and description of the local host. | `Microsoft Windows 10.0.26100` |
-| 6 | `ServerPrimaryIp` | Server | Primary routable IP address of the local host. | `192.168.1.50` |
-| 7 | `Protocol` | Network | Transport protocol (`Tcp` or `Udp`). | `Tcp` |
-| 8 | `Direction` | Network | Inferred flow direction (`Listening`, `Inbound`, `Outbound`). | `Outbound` |
-| 9 | `TcpState` | Network | TCP state (`Listen`, `Established`, `TimeWait`, `CloseWait`, `SynSent`). | `Established` |
-| 10 | `LocalIp` | Network | Local IP address bound to the socket. | `192.168.1.50` |
-| 11 | `LocalPort` | Network | Local port number bound to the socket. | `52431` |
-| 12 | `RemoteIp` | Network | Remote peer IP address (`0.0.0.0` or `::` when listening). | `140.82.121.4` |
-| 13 | `RemotePort` | Network | Remote peer port number (`0` when listening). | `443` |
-| 14 | `RemoteHostName` | Network | Remote hostname resolved via reverse DNS or RDAP fallback. | `lb-140-82-121-4-iad.github.com` |
-| 15 | `ProcessId` | Process | Owning process numeric identifier (PID). | `4812` |
-| 16 | `ProcessName` | Process | Short executable name (`java`, `python3`, `node`, `nginx`, `git`). | `git` |
-| 17 | `ExecutablePath` | Process | Full absolute path to the executable binary on disk. | `C:\Program Files\Git\cmd\git.exe` |
-| 18 | `CommandLine` | Process | Complete command line with arguments used to launch the process. | `git fetch --all` |
-| 19 | `TargetExecutable` | Process | Underlying application target extracted from command line (`.jar`, script). | `app.jar` |
-| 20 | `UserName` | Process | User or service account owning the process. | `NT AUTHORITY\SYSTEM` |
-
----
-
-## 5. Architecture & Shared Frameworks
-
-`NetFlowAudit` builds upon 4 modular shared libraries compliant with Clean Architecture and SonarQube Quality Gate standards:
-
-- **FileForge.Core**: Thread-safe streaming I/O engine and RFC 4180 delimited file writer with non-blocking shared read/write access.
-- **ProcessForge**: Cross-platform process inspector, command-line wrapper analyzer, and exclusion rule evaluator.
-- **SocketForge**: Cross-platform active socket scanner (Win32 IP Helper & Linux `/proc/net`).
-- **TopologyForge**: Self-contained offline HTML5/SVG network topology engine with inclusion/exclusion filters, priority-ranked pagination, 5-pass crossing minimization, obstacle-avoiding arrow routing, and `IN`/`OUT` directional markers.
-
-To run the full quality verification pipeline (formatting, Release build, unit/architecture tests with OpenCover coverage, and SonarQube Quality Gate):
-```powershell
-.\verify.ps1
-```
-
----
-
-## 6. Support & Sponsoring
-
-If **NetFlowAudit** helps you map, migrate, or secure your infrastructure, consider supporting its continuous maintenance:
-
-<p align="left">
-  <a href="https://ko-fi.com/curvecoder">
-    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Buy Me a Coffee on Ko-fi" />
-  </a>
-</p>
-
----
-
-## 7. License
-
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)
