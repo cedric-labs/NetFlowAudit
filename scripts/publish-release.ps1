@@ -57,6 +57,8 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj `
 
 if ($LASTEXITCODE -ne 0) { throw "Windows publish failed." }
 
+& (Join-Path $PSScriptRoot "test-published-executable.ps1") -ExecutablePath (Join-Path $winPublishDir "NetFlowAudit.Cli.exe")
+
 Get-ChildItem -Path $winPublishDir -Filter "*.pdb" -Recurse | Remove-Item -Force
 Copy-Item "README.md" (Join-Path $winPublishDir "README.md") -Force
 Copy-Item "README.fr.md" (Join-Path $winPublishDir "README.fr.md") -Force
