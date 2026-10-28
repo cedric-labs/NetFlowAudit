@@ -2,7 +2,7 @@
 
 # Audit servers without Internet access
 
-Goal: audit servers that cannot reach the Internet, then name their remote addresses from a connected workstation.
+Goal: audit servers that cannot reach the Internet, then name their remote addresses from a machine with Internet access.
 
 ## On each isolated server
 
@@ -12,11 +12,11 @@ Run the audit without RDAP queries, which would only time out:
 NetFlowAudit.Cli audit --no-tui --no-rdap
 ```
 
-Or set `"ResolveIpOwners": false` in the configuration file. Reverse DNS stays active and names the addresses known to the internal DNS servers. To send no name query at all, use `--no-dns` instead.
+Or set `"ResolveIpOwners": false` in the configuration file. Reverse DNS stays active and names the addresses known to the local DNS server. To send no name query at all, use `--no-dns` instead.
 
 Collect the audit logs and the DNS cache files (`netflow_dns_cache.json`, or `DnsCacheFilePath`) of each server.
 
-## On a connected workstation
+## On a machine with Internet access
 
 Merge the caches, resolve the addresses that are still unnamed and write enriched copies of the logs:
 

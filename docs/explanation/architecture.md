@@ -51,7 +51,7 @@ Remote addresses are named in the background so that a slow DNS server never del
 
 `--no-dns` (`ResolveRemoteHostNames: false`) turns the whole resolver off: neither DNS nor RDAP queries are sent, and aliases are not applied.
 
-`--no-rdap` exists for servers without Internet access: RDAP would only time out there, while reverse DNS still reaches the internal DNS servers. `resolve` completes the names later on a connected machine, and `resolve --cache-only` works from collected caches without sending any query.
+`--no-rdap` exists for servers without Internet access: RDAP would only time out there, while reverse DNS still reaches the local DNS server. `resolve` completes the names later on a connected machine, and `resolve --cache-only` works from collected caches without sending any query.
 
 ## Shared frameworks
 

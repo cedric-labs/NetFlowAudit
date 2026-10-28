@@ -53,5 +53,5 @@ La commande affiche `Topology map generated: …` avec le nombre de serveurs et 
 ## Et ensuite
 
 - Faire tourner l'audit en permanence : [Exécuter NetFlowAudit en service](how-to/run-as-a-service.fr.md).
-- Construire une carte pour plusieurs serveurs : [Cartographier un parc de serveurs](how-to/map-a-server-fleet.fr.md).
+- Construire une carte pour plusieurs serveurs : [Cartographier plusieurs machines](how-to/map-several-machines.fr.md).
 - Toutes les commandes et options : [référence de la ligne de commande](reference/cli.fr.md).

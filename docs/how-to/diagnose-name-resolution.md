@@ -28,15 +28,15 @@ On Windows, `ping -a` asks the hosts file, the DNS cache, NetBIOS, LLMNR and the
 
 ## Fix it
 
-- Ask for the missing `PTR` record in the reverse DNS zone.
+- Add the missing `PTR` record to the reverse DNS zone (router, Pi-hole…).
 - Or declare the name in the configuration file:
 
   ```json
   {
-    "CustomHostAliases": { "192.0.2.25": "srv-db-01" }
+    "CustomHostAliases": { "192.0.2.25": "nas" }
   }
   ```
 
-  or on the command line: `NetFlowAudit.Cli audit --alias 192.0.2.25=srv-db-01`.
+  or on the command line: `NetFlowAudit.Cli audit --alias 192.0.2.25=nas`.
 
 Aliases take precedence over DNS. Addresses that are never resolved (broadcast, multicast, link-local) are listed in `DnsExcludedNetworks`.

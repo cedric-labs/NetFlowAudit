@@ -2,7 +2,7 @@
 
 # Exporter une matrice de règles de pare-feu
 
-Objectif : une liste CSV des flux à autoriser, une ligne par source, destination, port et processus, pour préparer des règles de pare-feu ou une migration.
+Objectif : une liste CSV des flux à autoriser, une ligne par source, destination, port et processus, pour préparer des règles de pare-feu.
 
 ## Exporter les flux observés
 

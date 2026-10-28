@@ -15,7 +15,7 @@ NetFlowAudit enregistre avec quels services une machine Windows ou Linux communi
 
 ## Pourquoi
 
-Préparer une migration, écrire des règles de pare-feu ou examiner un serveur pose la même question : à quoi cette machine se connecte-t-elle, et qu'est-ce qui écoute dessus ? La capture de paquets demande un pilote et produit de gros fichiers sans le processus derrière chaque connexion ; `netstat` montre un instant et manque les tâches planifiées ; journaliser chaque connexion sature le disque. NetFlowAudit tourne en arrière-plan, sans pilote, et garde un historique dédupliqué avec le programme, sa ligne de commande et l'application qu'il lance (`java -jar`, `python`, `powershell`…).
+Déplacer un service auto-hébergé vers une autre machine, écrire des règles de pare-feu pour un réseau domestique ou vérifier ce qu'un ordinateur fait en arrière-plan pose la même question : à quoi cette machine se connecte-t-elle, et qu'est-ce qui écoute dessus ? La capture de paquets demande un pilote et produit de gros fichiers sans le processus derrière chaque connexion ; `netstat` montre un instant et manque les tâches planifiées ; journaliser chaque connexion sature le disque. NetFlowAudit tourne en arrière-plan, sans pilote, et garde un historique dédupliqué avec le programme, sa ligne de commande et l'application qu'il lance (`java -jar`, `python`, `powershell`…).
 
 <p align="center">
   <img src="assets/tui-dashboard-preview.png" alt="Tableau de bord terminal de NetFlowAudit" width="100%" />
@@ -48,7 +48,7 @@ NetFlowAudit.Cli audit
 Dessiner une carte à partir des journaux de plusieurs serveurs :
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
+NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 Exporter en matrice de règles de pare-feu les flux internes vus au moins cinq fois :
@@ -62,7 +62,7 @@ NetFlowAudit.Cli export rules -i collected -o rules.csv --zone internal --min-ob
 | | |
 | :--- | :--- |
 | Tutoriel | [Premiers pas](docs/getting-started.fr.md) |
-| Guides pratiques | [Exécuter en service](docs/how-to/run-as-a-service.fr.md) · [Cartographier un parc de serveurs](docs/how-to/map-a-server-fleet.fr.md) · [Exporter des règles de pare-feu](docs/how-to/export-firewall-rules.fr.md) · [Auditer des serveurs isolés](docs/how-to/audit-isolated-servers.fr.md) · [Diagnostiquer un nom d'hôte manquant](docs/how-to/diagnose-name-resolution.fr.md) · [Passer de la 1.x à la 2.0](docs/how-to/upgrade-to-2.0.fr.md) |
+| Guides pratiques | [Exécuter en service](docs/how-to/run-as-a-service.fr.md) · [Cartographier plusieurs machines](docs/how-to/map-several-machines.fr.md) · [Exporter des règles de pare-feu](docs/how-to/export-firewall-rules.fr.md) · [Auditer des serveurs isolés](docs/how-to/audit-isolated-servers.fr.md) · [Diagnostiquer un nom d'hôte manquant](docs/how-to/diagnose-name-resolution.fr.md) · [Passer de la 1.x à la 2.0](docs/how-to/upgrade-to-2.0.fr.md) |
 | Référence | [Ligne de commande](docs/reference/cli.fr.md) · [Fichier de configuration](docs/reference/configuration.fr.md) · [Formats de sortie](docs/reference/output-formats.fr.md) · [Tableau de bord](docs/reference/dashboard.fr.md) |
 | Explication | [Fonctionnement de NetFlowAudit](docs/explanation/architecture.fr.md) · [Décisions d'architecture](docs/adr/README.md) |
 

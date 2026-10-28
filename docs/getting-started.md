@@ -53,5 +53,5 @@ The command prints `Topology map generated: …` with the number of servers and 
 ## Next steps
 
 - Run the audit permanently: [Run NetFlowAudit as a service](how-to/run-as-a-service.md).
-- Build one map for several servers: [Map a server fleet](how-to/map-a-server-fleet.md).
+- Build one map for several servers: [Map several machines](how-to/map-several-machines.md).
 - Every command and option: [command-line reference](reference/cli.md).

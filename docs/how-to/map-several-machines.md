@@ -1,6 +1,6 @@
-> **Language / Langue**: **English** · [Français](map-a-server-fleet.fr.md)
+> **Language / Langue**: **English** · [Français](map-several-machines.fr.md)
 
-# Map a server fleet
+# Map several machines
 
 Goal: one topology map showing how several servers talk to each other.
 
@@ -18,12 +18,12 @@ Deploy the same configuration file on every server, with the machine name in the
 
 ## Collect the files
 
-Copy the CSV logs of all servers into one folder, for example `collected/`, with any tool you already use (file share, `scp`, configuration management).
+Copy the CSV logs of all servers into one folder, for example `collected/`, with any tool you already use (network share, `scp`, Syncthing).
 
 ## Render the map
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
+NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 `-i` accepts a wildcard pattern, a folder or a file, and can be repeated.
@@ -31,10 +31,10 @@ NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
 To focus on database traffic:
 
 ```bash
-NetFlowAudit.Cli map -i collected --include-ports 1433,1521,3306,5432,6379,27017 --html databases.html
+NetFlowAudit.Cli map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
 ```
 
-For an editable diagram, add `--drawio fleet.drawio`. To rearrange a large diagram, select all and apply `Arrange > Layout > Hierarchical` in Draw.io.
+For an editable diagram, add `--drawio homelab.drawio`. To rearrange a large diagram, select all and apply `Arrange > Layout > Hierarchical` in Draw.io.
 
 ## Reproduce a view
 

@@ -2,7 +2,7 @@
 
 # Export a firewall rule matrix
 
-Goal: a CSV list of the flows to allow, one row per source, destination, port and process, to prepare firewall rules or a migration.
+Goal: a CSV list of the flows to allow, one row per source, destination, port and process, to prepare firewall rules.
 
 ## Export the observed flows
 

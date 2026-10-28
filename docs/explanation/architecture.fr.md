@@ -51,7 +51,7 @@ Les adresses distantes sont nommées en arrière-plan, pour qu'un serveur DNS le
 
 `--no-dns` (`ResolveRemoteHostNames: false`) coupe tout le résolveur : aucune requête DNS ni RDAP n'est envoyée et les alias ne s'appliquent pas.
 
-`--no-rdap` existe pour les serveurs sans accès Internet : RDAP n'y ferait qu'expirer, alors que le DNS inverse atteint toujours les serveurs DNS internes. `resolve` complète les noms plus tard sur une machine connectée, et `resolve --cache-only` travaille à partir des caches collectés sans envoyer de requête.
+`--no-rdap` existe pour les serveurs sans accès Internet : RDAP n'y ferait qu'expirer, alors que le DNS inverse atteint toujours le serveur DNS local. `resolve` complète les noms plus tard sur une machine connectée, et `resolve --cache-only` travaille à partir des caches collectés sans envoyer de requête.
 
 ## Frameworks partagés
 

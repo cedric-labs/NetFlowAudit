@@ -1,6 +1,6 @@
-> **Language / Langue**: [English](map-a-server-fleet.md) · **Français**
+> **Language / Langue**: [English](map-several-machines.md) · **Français**
 
-# Cartographier un parc de serveurs
+# Cartographier plusieurs machines
 
 Objectif : une seule carte topologique montrant comment plusieurs serveurs communiquent entre eux.
 
@@ -18,12 +18,12 @@ Déployez le même fichier de configuration sur chaque serveur, avec le nom de l
 
 ## Collecter les fichiers
 
-Copiez les journaux CSV de tous les serveurs dans un même dossier, par exemple `collected/`, avec l'outil que vous utilisez déjà (partage réseau, `scp`, gestion de configuration).
+Copiez les journaux CSV de tous les serveurs dans un même dossier, par exemple `collected/`, avec l'outil que vous utilisez déjà (partage réseau, `scp`, Syncthing).
 
 ## Dessiner la carte
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
+NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 `-i` accepte un motif, un dossier ou un fichier, et peut être répété.
@@ -31,10 +31,10 @@ NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
 Pour se concentrer sur les bases de données :
 
 ```bash
-NetFlowAudit.Cli map -i collected --include-ports 1433,1521,3306,5432,6379,27017 --html databases.html
+NetFlowAudit.Cli map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
 ```
 
-Pour un diagramme modifiable, ajoutez `--drawio fleet.drawio`. Pour réorganiser un grand diagramme, sélectionnez tout et appliquez `Arrange > Layout > Hierarchical` dans Draw.io.
+Pour un diagramme modifiable, ajoutez `--drawio homelab.drawio`. Pour réorganiser un grand diagramme, sélectionnez tout et appliquez `Arrange > Layout > Hierarchical` dans Draw.io.
 
 ## Reproduire une vue
 

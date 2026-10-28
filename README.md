@@ -15,7 +15,7 @@ NetFlowAudit records which services a Windows or Linux machine talks to, over da
 
 ## Why
 
-Preparing a migration, writing firewall rules or reviewing a server raises the same question: what does this machine connect to, and what listens on it? Packet capture needs a driver and produces large files without the process behind each connection; `netstat` shows one instant and misses scheduled jobs; logging every connection floods the disk. NetFlowAudit runs in the background, without driver, and keeps a deduplicated history with the program, its command line and the application it launched (`java -jar`, `python`, `powershell`…).
+Moving a self-hosted service to another machine, writing firewall rules for a home network or checking what a computer does in the background raises the same question: what does this machine connect to, and what listens on it? Packet capture needs a driver and produces large files without the process behind each connection; `netstat` shows one instant and misses scheduled jobs; logging every connection floods the disk. NetFlowAudit runs in the background, without driver, and keeps a deduplicated history with the program, its command line and the application it launched (`java -jar`, `python`, `powershell`…).
 
 <p align="center">
   <img src="assets/tui-dashboard-preview.png" alt="NetFlowAudit terminal dashboard" width="100%" />
@@ -48,7 +48,7 @@ NetFlowAudit.Cli audit
 Draw a map from the audit logs of several servers:
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html fleet.html
+NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 Export the internal flows seen at least five times as a firewall rule matrix:
@@ -62,7 +62,7 @@ NetFlowAudit.Cli export rules -i collected -o rules.csv --zone internal --min-ob
 | | |
 | :--- | :--- |
 | Tutorial | [Getting started](docs/getting-started.md) |
-| How-to guides | [Run as a service](docs/how-to/run-as-a-service.md) · [Map a server fleet](docs/how-to/map-a-server-fleet.md) · [Export firewall rules](docs/how-to/export-firewall-rules.md) · [Audit isolated servers](docs/how-to/audit-isolated-servers.md) · [Diagnose a missing host name](docs/how-to/diagnose-name-resolution.md) · [Upgrade from 1.x](docs/how-to/upgrade-to-2.0.md) |
+| How-to guides | [Run as a service](docs/how-to/run-as-a-service.md) · [Map several machines](docs/how-to/map-several-machines.md) · [Export firewall rules](docs/how-to/export-firewall-rules.md) · [Audit isolated servers](docs/how-to/audit-isolated-servers.md) · [Diagnose a missing host name](docs/how-to/diagnose-name-resolution.md) · [Upgrade from 1.x](docs/how-to/upgrade-to-2.0.md) |
 | Reference | [Command line](docs/reference/cli.md) · [Configuration file](docs/reference/configuration.md) · [Output formats](docs/reference/output-formats.md) · [Terminal dashboard](docs/reference/dashboard.md) |
 | Explanation | [How NetFlowAudit works](docs/explanation/architecture.md) · [Architecture decisions](docs/adr/README.md) |
 

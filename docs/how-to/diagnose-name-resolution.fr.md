@@ -28,15 +28,15 @@ Sous Windows, `ping -a` interroge le fichier hosts, le cache DNS, NetBIOS, LLMNR
 
 ## Y remédier
 
-- Demandez l'enregistrement `PTR` manquant dans la zone DNS inverse.
+- Ajoutez l'enregistrement `PTR` manquant dans la zone DNS inverse (box, routeur, Pi-hole…).
 - Ou déclarez le nom dans le fichier de configuration :
 
   ```json
   {
-    "CustomHostAliases": { "192.0.2.25": "srv-db-01" }
+    "CustomHostAliases": { "192.0.2.25": "nas" }
   }
   ```
 
-  ou en ligne de commande : `NetFlowAudit.Cli audit --alias 192.0.2.25=srv-db-01`.
+  ou en ligne de commande : `NetFlowAudit.Cli audit --alias 192.0.2.25=nas`.
 
 Les alias passent avant le DNS. Les adresses jamais résolues (diffusion, multidiffusion, lien local) sont listées dans `DnsExcludedNetworks`.
