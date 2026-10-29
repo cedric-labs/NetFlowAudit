@@ -74,6 +74,21 @@ Written by `export rules`. One row per direction, source address, destination ad
 | `FirstSeenUtc` | Earliest first observation |
 | `LastSeenUtc` | Latest observation |
 
+## Pair matrix
+
+Written by `export rules --pairs-output`, from the rows of the firewall rule matrix after filtering. One row per source address and destination address: the two directions between two servers stay on two rows, as firewall rules do. Sorted by source then destination address.
+
+| Column | Content |
+| :--- | :--- |
+| `PairId` | `PAIR-001`, `PAIR-002`… in sort order |
+| `SourceIp`, `SourceHost` | Client address and name, as in the rule matrix |
+| `DestinationIp`, `DestinationHost` | Server address and name, as in the rule matrix |
+| `FlowCount` | Number of rule matrix rows merged into the pair |
+| `Ports` | Distinct destination ports, `port/protocol`, sorted by port (`443/TCP, 873/TCP`) |
+| `ObservationCount` | Sum of the observation counts of the merged rows |
+| `FirstSeenUtc` | Earliest first observation |
+| `LastSeenUtc` | Latest observation |
+
 ## Topology map
 
 `map --html` and `audit --html` write a single HTML file that opens without network access. The page offers layout, sorting, routing and spacing choices, text filters applied with the `Apply Filters` button or `Enter`, pagination of servers, an SVG export, and a `CLI Command` section showing the `PortAtlas map` command that reproduces the current filters and layout choices. The copied command contains no `-i` option: add the audit logs to read.

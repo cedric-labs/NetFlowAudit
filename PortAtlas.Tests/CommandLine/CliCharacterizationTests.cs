@@ -60,6 +60,22 @@ public sealed class CliCharacterizationTests : IDisposable
     }
 
     [Fact]
+    public async Task ExportRules_WhenPairsOutputGiven_WritesThePairMatrixWithTheSameFilters()
+    {
+        // Arrange
+        var matrix = Path.Combine(_directory, "rules_detailed.csv");
+        var pairs = Path.Combine(_directory, "rules_pairs.csv");
+
+        // Act
+        await RunAsync("export", "rules", "-o", matrix, "-i", _auditPath, "--zone", "internal", "--pairs-output", pairs);
+
+        // Assert
+        File.Exists(matrix).Should().BeTrue();
+        var rows = (await File.ReadAllLinesAsync(pairs)).Skip(1).ToList();
+        rows.Should().ContainSingle().Which.Should().StartWith("PAIR-001,10.0.0.1,SRV-APP-01,10.20.1.5,db-oracle.example.test,");
+    }
+
+    [Fact]
     public async Task ExportRules_WhenPublicZoneGiven_ExportsOnlyPublicDestinations()
     {
         // Arrange

@@ -16,6 +16,7 @@ public sealed class ExportRulesCommand : Command
     private readonly Option<string?> _output = OptionFactory.CreatePath("--output", "Matrix CSV to write. Tokens {ServerName}, {HostName}, {Date}, {Timestamp} are expanded. Default: firewall_rules.csv.", "-o");
     private readonly Option<int?> _minObservations = OptionFactory.CreateInteger("--min-observations", "count", "Keep only flows observed at least this number of times. Default: 1.", minimum: 1);
     private readonly Option<int?> _activeWithinDays = OptionFactory.CreateInteger("--active-within-days", "days", "Keep only flows seen during the last N days. Default: no limit.", minimum: 1);
+    private readonly Option<string?> _pairsOutput = OptionFactory.CreatePath("--pairs-output", "Also write a pair matrix CSV (one row per source and destination: flow count, ports, observations), with the same filters. Same tokens as --output. Default: not written.");
     private readonly Option<string?> _zone = OptionFactory.CreateChoice("--zone", "Destination zone to keep: internal (private address ranges), public, or all. Default: all.", "all", "internal", "public");
     private readonly Option<string?> _configFile;
 
@@ -29,6 +30,7 @@ public sealed class ExportRulesCommand : Command
         _configFile = configFile;
         _inputs.AddTo(this);
         Options.Add(_output);
+        Options.Add(_pairsOutput);
         Options.Add(_minObservations);
         Options.Add(_activeWithinDays);
         Options.Add(_zone);
@@ -62,7 +64,8 @@ public sealed class ExportRulesCommand : Command
                 ExcludedIps = config.MapExcludedIps,
                 IncludedProcesses = config.MapIncludedProcesses,
                 ExcludedProcesses = config.MapExcludedProcesses,
-                Delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ','
+                Delimiter = !string.IsNullOrEmpty(config.CsvDelimiter) ? config.CsvDelimiter[0] : ',',
+                PairsOutputPath = parseResult.GetValue(_pairsOutput) is { } pairsOutput ? OutputFilePathResolver.Resolve(pairsOutput) : null
             };
 
             var outputPath = OutputFilePathResolver.Resolve(parseResult.GetValue(_output) ?? "firewall_rules.csv");

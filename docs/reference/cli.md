@@ -152,6 +152,7 @@ PortAtlas export rules [-i <path>]... [-o <path>] [options]
 | Option | Value | Default | Effect |
 | :--- | :--- | :--- | :--- |
 | `-o`, `--output` | `<path>` | `firewall_rules.csv` | Matrix file ([columns](output-formats.md#firewall-rule-matrix)) |
+| `--pairs-output` | `<path>` | not written | Also writes the pair matrix, one row per source and destination ([columns](output-formats.md#pair-matrix)); same tokens as `--output` |
 | `--min-observations` | number, at least 1 | `1` | Keep flows observed at least this number of times |
 | `--active-within-days` | number, at least 1 | no limit | Keep flows last seen during the last N days |
 | `--zone` | `all`, `internal`, `public` | `all` | Destination zone to keep |
@@ -231,7 +232,7 @@ PortAtlas config init [<path>]
 | `--dns-timeout-ms` | ✔ | | | | ✔ | ✔ | |
 | `--exclude-remote-ips`, `--alias` | ✔ | | | | | | |
 | `--mask-server`, `--mask-ip`, `--obfuscate` | ✔ | | | | | | |
-| `--min-observations`, `--active-within-days`, `--zone` | | | ✔ | | | | |
+| `--min-observations`, `--active-within-days`, `--zone`, `--pairs-output` | | | ✔ | | | | |
 | `--cache`, `--output-cache`, `--in-place`, `--force-resolve`, `--rdap-delay-ms`, `--cache-only` | | | | | ✔ | | |
 
 `config init` accepts `--config` because the option is global, but does not read it.

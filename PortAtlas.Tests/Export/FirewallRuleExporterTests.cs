@@ -57,5 +57,33 @@ public sealed class FirewallRuleExporterTests : IDisposable
         lines[0].Should().StartWith("RuleId,Direction,SourceIp,");
         lines[1].Should().StartWith("FLUX-001,Outbound,10.0.0.1,SRV-APP-01,10.20.1.5,db-oracle.prod,Internal,TCP,1521,Oracle-TNS,tnslsnr,");
         lines[1].Should().Contain(",35,"); // Sum of observation count (10 + 25)
+        report.PairsCsvPath.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExportRulesAsync_WhenPairsOutputPathIsSet_WritesThePairMatrixBesideTheDetailedOne()
+    {
+        // Arrange
+        var auditCsv = Path.Combine(_tempDirectory, "audit.csv");
+        var header = "FirstSeenUtc,LastSeenUtc,ObservationCount,ServerName,ServerOsVersion,ServerPrimaryIp,Protocol,Direction,TcpState,LocalIp,LocalPort,RemoteIp,RemotePort,RemoteHostName,ProcessId,ProcessName,ExecutablePath,CommandLine,TargetExecutable,UserName";
+        var https = "2026-10-24T07:00:00Z,2026-10-24T07:05:00Z,10,desktop,Windows,192.168.1.10,Tcp,Outbound,Established,192.168.1.10,50000,192.168.1.50,443,nas.home.arpa,1234,curl,C:\\curl.exe,curl,,user";
+        var rsync = "2026-10-24T07:01:00Z,2026-10-24T07:06:00Z,25,desktop,Windows,192.168.1.10,Tcp,Outbound,Established,192.168.1.10,50002,192.168.1.50,873,nas.home.arpa,1235,rsync,C:\\rsync.exe,rsync,,user";
+        await File.WriteAllLinesAsync(auditCsv, [header, https, rsync]);
+
+        var targetMatrixCsv = Path.Combine(_tempDirectory, "firewall_matrix.csv");
+        var pairsCsv = Path.Combine(_tempDirectory, "pairs", "firewall_pairs.csv");
+        var options = new FirewallRuleExportOptions { PairsOutputPath = pairsCsv };
+
+        // Act
+        var report = await new FirewallRuleExporter().ExportRulesAsync([auditCsv], targetMatrixCsv, options);
+
+        // Assert
+        report.TotalRulesExported.Should().Be(2);
+        report.TotalPairsExported.Should().Be(1);
+        report.PairsCsvPath.Should().Be(pairsCsv);
+        var lines = await File.ReadAllLinesAsync(pairsCsv);
+        lines.Should().HaveCount(2);
+        lines[0].Should().StartWith("PairId,SourceIp,SourceHost,");
+        lines[1].Should().StartWith("PAIR-001,192.168.1.10,desktop,192.168.1.50,nas.home.arpa,2,\"443/TCP, 873/TCP\",35,");
     }
 }

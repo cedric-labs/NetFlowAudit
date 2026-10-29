@@ -40,6 +40,10 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
         }
         Console.WriteLine($"Destination zone filter: {options.DestinationZoneFilter.ToUpperInvariant()}");
         Console.WriteLine($"Destination file: {Path.GetFullPath(outputPath)}");
+        if (options.PairsOutputPath is not null)
+        {
+            Console.WriteLine($"Pair matrix file: {Path.GetFullPath(options.PairsOutputPath)}");
+        }
         Console.WriteLine();
 
         var report = await _exporter.ExportRulesAsync(auditFiles, outputPath, options, cancellationToken).ConfigureAwait(false);
@@ -52,6 +56,10 @@ public sealed class FirewallRuleExportCommandRunner(FirewallRuleExporter? export
         Console.WriteLine($"  * Raw flows scanned: {report.TotalRawFlowsScanned}");
         Console.WriteLine($"  * Consolidated rules generated: {report.TotalRulesExported}");
         Console.WriteLine($"  * Matrix exported to: {report.DestinationCsvPath}");
+        if (report.PairsCsvPath is not null)
+        {
+            Console.WriteLine($"  * Source/destination pairs: {report.TotalPairsExported}, exported to: {report.PairsCsvPath}");
+        }
         Console.WriteLine("------------------------------------------------------------------------");
 
         return 0;

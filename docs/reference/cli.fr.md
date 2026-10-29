@@ -155,6 +155,7 @@ PortAtlas export rules [-i <path>]... [-o <path>] [options]
 | `--min-observations` | nombre, au moins 1 | `1` | Garder les flux observés au moins ce nombre de fois |
 | `--active-within-days` | nombre, au moins 1 | sans limite | Garder les flux vus pendant les N derniers jours |
 | `--zone` | `all`, `internal`, `public` | `all` | Zone de destination à garder |
+| `--pairs-output` | `<chemin>` | non écrite | Écrit aussi la matrice par paire, une ligne par source et destination ([colonnes](output-formats.fr.md#matrice-par-paire)) ; mêmes jetons que `--output` |
 
 Familles lues : entrées (`.csv`, `.ndjson`, `.jsonl`) et filtres de flux, avec deux différences :
 
@@ -231,7 +232,7 @@ PortAtlas config init [<path>]
 | `--dns-timeout-ms` | ✔ | | | | ✔ | ✔ | |
 | `--exclude-remote-ips`, `--alias` | ✔ | | | | | | |
 | `--mask-server`, `--mask-ip`, `--obfuscate` | ✔ | | | | | | |
-| `--min-observations`, `--active-within-days`, `--zone` | | | ✔ | | | | |
+| `--min-observations`, `--active-within-days`, `--zone`, `--pairs-output` | | | ✔ | | | | |
 | `--cache`, `--output-cache`, `--in-place`, `--force-resolve`, `--rdap-delay-ms`, `--cache-only` | | | | | ✔ | | |
 
 `config init` accepte `--config` parce que l'option est globale, mais ne la lit pas.

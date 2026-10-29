@@ -10,18 +10,24 @@ namespace PortAtlas.Core.Export;
 /// <param name="aggregator">Aggregator consolidating flows into firewall rules.</param>
 /// <param name="formatter">Formatter writing RFC 4180 firewall rule rows.</param>
 /// <param name="logger">Optional diagnostic reporting callback.</param>
+/// <param name="pairAggregator">Aggregator merging the rules into source and destination pairs.</param>
+/// <param name="pairFormatter">Formatter writing RFC 4180 pair rows.</param>
 public sealed class FirewallRuleExporter(
     IAuditCsvHistoryParser? csvParser = null,
     AuditNdjsonParser? ndjsonParser = null,
     FirewallRuleAggregator? aggregator = null,
     FirewallRuleCsvFormatter? formatter = null,
-    Action<string>? logger = null)
+    Action<string>? logger = null,
+    FirewallRulePairAggregator? pairAggregator = null,
+    FirewallRulePairCsvFormatter? pairFormatter = null)
 {
     private readonly IAuditCsvHistoryParser _csvParser = csvParser ?? new AuditCsvHistoryParser();
     private readonly AuditNdjsonParser _ndjsonParser = ndjsonParser ?? new AuditNdjsonParser();
     private readonly FirewallRuleAggregator _aggregator = aggregator ?? new FirewallRuleAggregator();
     private readonly FirewallRuleCsvFormatter _formatter = formatter ?? new FirewallRuleCsvFormatter();
     private readonly Action<string>? _logger = logger;
+    private readonly FirewallRulePairAggregator _pairAggregator = pairAggregator ?? new FirewallRulePairAggregator();
+    private readonly FirewallRulePairCsvFormatter _pairFormatter = pairFormatter ?? new FirewallRulePairCsvFormatter();
 
     /// <summary>
     /// Ingests audit files, aggregates firewall rules, and exports a formatted CSV matrix.
@@ -73,28 +79,49 @@ public sealed class FirewallRuleExporter(
 
         var rules = _aggregator.Aggregate(allEntries, options);
 
-        var outputDir = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrWhiteSpace(outputDir) && !Directory.Exists(outputDir))
-        {
-            Directory.CreateDirectory(outputDir);
-        }
-
-        await using (var writer = new StreamWriter(outputPath, append: false))
-        {
-            await writer.WriteLineAsync(_formatter.BuildHeader(options.Delimiter).AsMemory(), cancellationToken).ConfigureAwait(false);
-            foreach (var rule in rules)
-            {
-                await writer.WriteLineAsync(_formatter.FormatRow(rule, options.Delimiter).AsMemory(), cancellationToken).ConfigureAwait(false);
-            }
-        }
-
+        await WriteCsvAsync(
+            outputPath,
+            _formatter.BuildHeader(options.Delimiter),
+            rules.Select(rule => _formatter.FormatRow(rule, options.Delimiter)),
+            cancellationToken).ConfigureAwait(false);
         _logger?.Invoke($"Firewall rule matrix with {rules.Count} rule(s) successfully generated: {Path.GetFullPath(outputPath)}");
+
+        if (string.IsNullOrWhiteSpace(options.PairsOutputPath))
+        {
+            return new FirewallRuleExportReport(validFiles, Path.GetFullPath(outputPath), rules.Count, allEntries.Count);
+        }
+
+        var pairs = _pairAggregator.Aggregate(rules);
+        await WriteCsvAsync(
+            options.PairsOutputPath,
+            _pairFormatter.BuildHeader(options.Delimiter),
+            pairs.Select(pair => _pairFormatter.FormatRow(pair, options.Delimiter)),
+            cancellationToken).ConfigureAwait(false);
+        _logger?.Invoke($"Pair matrix with {pairs.Count} source/destination pair(s) successfully generated: {Path.GetFullPath(options.PairsOutputPath)}");
 
         return new FirewallRuleExportReport(
             validFiles,
             Path.GetFullPath(outputPath),
             rules.Count,
-            allEntries.Count);
+            allEntries.Count,
+            Path.GetFullPath(options.PairsOutputPath),
+            pairs.Count);
+    }
+
+    private static async Task WriteCsvAsync(string path, string header, IEnumerable<string> rows, CancellationToken cancellationToken)
+    {
+        var outputDir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(outputDir) && !Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
+
+        await using var writer = new StreamWriter(path, append: false);
+        await writer.WriteLineAsync(header.AsMemory(), cancellationToken).ConfigureAwait(false);
+        foreach (var row in rows)
+        {
+            await writer.WriteLineAsync(row.AsMemory(), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

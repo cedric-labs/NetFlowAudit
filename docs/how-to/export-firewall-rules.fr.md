@@ -22,6 +22,14 @@ PortAtlas export rules -i collected -o internal_rules.csv --min-observations 5 -
 
 `--zone public` ne garde que les destinations hors des plages privées, par exemple pour lister les services Internet dont un serveur a besoin.
 
+## Résumer par paire de serveurs
+
+```bash
+PortAtlas export rules -i collected -o firewall_rules.csv --pairs-output firewall_pairs.csv
+```
+
+`--pairs-output` écrit un second fichier à côté de la matrice détaillée, avec les mêmes filtres : une ligne par source et destination, avec le nombre de règles regroupées et leurs ports ([liste des colonnes](../reference/output-formats.fr.md#matrice-par-paire)). Elle donne une vue d'ensemble de qui parle à qui avant de lire les règles une à une.
+
 ## Lister les services proposés
 
 ```bash

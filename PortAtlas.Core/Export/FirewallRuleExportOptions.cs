@@ -79,4 +79,10 @@ public sealed record FirewallRuleExportOptions
     /// Field delimiter character for the CSV output (comma ',' by default).
     /// </summary>
     public char Delimiter { get; init; } = ',';
+
+    /// <summary>
+    /// Destination of the pair matrix (one row per source and destination address), written beside the detailed
+    /// matrix; <see langword="null"/> skips it.
+    /// </summary>
+    public string? PairsOutputPath { get; init; }
 }
