@@ -2,10 +2,10 @@
 
 # Command-line reference
 
-NetFlowAudit is a set of commands. Each command reads only its own options: an option given to a command that does not read it, an unknown option or a value outside the accepted list stops the program with an error and exit code 1.
+PortAtlas is a set of commands. Each command reads only its own options: an option given to a command that does not read it, an unknown option or a value outside the accepted list stops the program with an error and exit code 1.
 
 ```text
-NetFlowAudit.Cli <command> [options]
+PortAtlas <command> [options]
 ```
 
 | Command | Purpose |
@@ -18,14 +18,14 @@ NetFlowAudit.Cli <command> [options]
 | [`lookup`](#lookup) | Diagnose the name resolution of one IP address |
 | [`config init`](#config-init) | Write a configuration file with the default values |
 
-Without a command, NetFlowAudit prints the help and exits with code 0. `-h` or `--help` after any command prints the help of that command.
+Without a command, PortAtlas prints the help and exits with code 0. `-h` or `--help` after any command prints the help of that command.
 
 ## Sources of values
 
 A value comes from, in order of precedence:
 
 1. the command line;
-2. the configuration file given by `--config`, or `netflowaudit.json` in the working directory, or `netflowaudit.json` next to the executable;
+2. the configuration file given by `--config`, or `portatlas.json` in the working directory, or `portatlas.json` next to the executable;
 3. the default built into the program.
 
 The key of the configuration file matching each option is listed in the tables below and described in the [configuration reference](configuration.md).
@@ -34,7 +34,7 @@ The key of the configuration file matching each option is listed in the tables b
 
 | Option | Value | Default | Effect |
 | :--- | :--- | :--- | :--- |
-| `--config` | `<path>` | `netflowaudit.json` | Configuration file read by every command |
+| `--config` | `<path>` | `portatlas.json` | Configuration file read by every command |
 | `--version` | none | | Prints the version and exits (root command only) |
 
 ## File name tokens
@@ -100,7 +100,7 @@ Read by `audit` and `map`. Accepted values are compared without case.
 Scans the TCP and UDP sockets of the machine at a fixed interval, attributes each socket to its process and writes one line per deduplicated flow in the CSV audit log. Runs until `Q`, `Ctrl+C` or `SIGTERM`.
 
 ```text
-NetFlowAudit.Cli audit [options]
+PortAtlas audit [options]
 ```
 
 | Option | Value | Configuration key | Default | Effect |
@@ -131,7 +131,7 @@ An invalid column name in `--columns` or `CsvColumns` stops the command with `Co
 Builds the topology graph from CSV audit logs and writes the requested outputs.
 
 ```text
-NetFlowAudit.Cli map [-i <path>]... [--html <path>] [--drawio <path>] [options]
+PortAtlas map [-i <path>]... [--html <path>] [--drawio <path>] [options]
 ```
 
 Outputs:
@@ -146,7 +146,7 @@ Families read: inputs (`.csv`), flow filters, map rendering.
 Consolidates audit logs into a matrix with one row per source, destination, port, protocol and process.
 
 ```text
-NetFlowAudit.Cli export rules [-i <path>]... [-o <path>] [options]
+PortAtlas export rules [-i <path>]... [-o <path>] [options]
 ```
 
 | Option | Value | Default | Effect |
@@ -168,7 +168,7 @@ A destination is `Internal` when it is a loopback address, an address of a priva
 Converts CSV audit logs into a single NDJSON file, one JSON object per flow.
 
 ```text
-NetFlowAudit.Cli export ndjson [-i <path>]... [-o <path>]
+PortAtlas export ndjson [-i <path>]... [-o <path>]
 ```
 
 | Option | Value | Default | Effect |
@@ -182,7 +182,7 @@ Family read: inputs (`.csv`). Input files are read sequentially and only the cur
 Merges DNS caches, resolves the addresses that still have no host name and writes enriched copies of the audit logs.
 
 ```text
-NetFlowAudit.Cli resolve [-i <path>]... [--cache <path>]... [options]
+PortAtlas resolve [-i <path>]... [--cache <path>]... [options]
 ```
 
 | Option | Value | Default | Effect |
@@ -202,7 +202,7 @@ Family read: inputs (`.csv`, `.ndjson`, `.jsonl`). When two caches give differen
 Prints a six-step diagnostic of the resolution of one address: classification, local cache, operating system DNS settings, reverse DNS query, RDAP query, resulting cache entry.
 
 ```text
-NetFlowAudit.Cli lookup <ip> [--dns-timeout-ms <milliseconds>]
+PortAtlas lookup <ip> [--dns-timeout-ms <milliseconds>]
 ```
 
 `<ip>` must be an IPv4 or IPv6 address. The command reads `ExcludedRemoteIps`, `DnsCacheFilePath` and `DnsResolutionTimeoutMs` from the configuration. It sends the reverse DNS query with the same timeout as `audit`, so that a `SUCCESS` here means the audit names the address too, and the RDAP query for public addresses only; `ResolveIpOwners` and `--no-rdap` do not apply to it.
@@ -212,10 +212,10 @@ NetFlowAudit.Cli lookup <ip> [--dns-timeout-ms <milliseconds>]
 Writes a configuration file holding the default value of every key, with the 20 CSV columns listed.
 
 ```text
-NetFlowAudit.Cli config init [<path>]
+PortAtlas config init [<path>]
 ```
 
-`<path>` is a file or a directory; the default is `netflowaudit.json` in the working directory. An existing file is overwritten.
+`<path>` is a file or a directory; the default is `portatlas.json` in the working directory. An existing file is overwritten.
 
 ## Option matrix
 

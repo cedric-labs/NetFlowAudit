@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="PortAtlas.Cli/PortAtlas.Cli.csproj" />
+  <Project Path="PortAtlas.Core/PortAtlas.Core.csproj" />
+  <Project Path="PortAtlas.Tests/PortAtlas.Tests.csproj" />
+</Solution>

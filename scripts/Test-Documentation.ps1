@@ -23,7 +23,7 @@
     comparison with the code, because such pages cite removed options on purpose.
 
 .EXAMPLE
-    ./Test-Documentation.ps1 -Path . -SourcePath . -CommandName 'NetFlowAudit.Cli' -HistoricalFile 'upgrade-to-*.md'
+    ./Test-Documentation.ps1 -Path . -SourcePath . -CommandName 'PortAtlas' -HistoricalFile 'upgrade-to-*.md'
 #>
 [CmdletBinding()]
 param(

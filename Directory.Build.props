@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Authors>curvecoder</Authors>
     <Company>curvecoder</Company>
-    <Product>NetFlowAudit</Product>
+    <Product>PortAtlas</Product>
     <Copyright>Copyright (c) 2026 curvecoder</Copyright>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

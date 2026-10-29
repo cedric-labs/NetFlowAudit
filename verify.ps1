@@ -1,6 +1,6 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
-    [string]$ProjectKey = "NetFlowAudit",
+    [string]$ProjectKey = "PortAtlas",
     [string]$SonarHost = $(if ($env:SONAR_HOST_URL) { $env:SONAR_HOST_URL } else { "http://localhost:9000" }),
     [string]$SonarToken,
     [switch]$SkipFormat,
@@ -12,10 +12,10 @@ $ScriptRoot = $PSScriptRoot
 Set-Location $ScriptRoot
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  Pipeline Qualité & SonarQube - NetFlowAudit" -ForegroundColor Cyan
+Write-Host "  Pipeline Qualité & SonarQube - PortAtlas" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
-$SolutionPath = Join-Path $ScriptRoot "NetFlowAudit.slnx"
+$SolutionPath = Join-Path $ScriptRoot "PortAtlas.slnx"
 
 # Nettoyage des résultats de tests et d'analyses précédents, avant toute étape, pour que les journaux de cette
 # exécution survivent jusqu'à la fin.
@@ -100,7 +100,7 @@ if (-not $SkipFormat) {
 # doivent avoir la même structure, les liens relatifs doivent aboutir et la Règle 6 est appliquée. Les guides de
 # migration, les ADR et les notes de version citent volontairement des options supprimées, d'où -HistoricalFile.
 Write-Host "`n[2/6] Contrôle de la documentation (scripts/Test-Documentation.ps1)..." -ForegroundColor Yellow
-& "$ScriptRoot/scripts/Test-Documentation.ps1" -Path $ScriptRoot -SourcePath $ScriptRoot -CommandName "NetFlowAudit.Cli" `
+& "$ScriptRoot/scripts/Test-Documentation.ps1" -Path $ScriptRoot -SourcePath $ScriptRoot -CommandName "PortAtlas" `
     -HistoricalFile "upgrade-to-*.md", "[0-9][0-9][0-9][0-9]-*.md", "v[0-9]*.md" -IgnoreOption "--help", "--version"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "La documentation ne correspond pas au code. Corrigez les erreurs listées ci-dessus."
@@ -121,7 +121,7 @@ if ($useSonar) {
         "/d:sonar.qualitygate.wait=true",
         "/d:sonar.cs.opencover.reportsPaths=**/TestResults/**/coverage.opencover.xml",
         "/d:sonar.cs.vstest.reportsPaths=**/TestResults/**/*.trx",
-        "/d:sonar.exclusions=**/bin/**,**/obj/**,verify.ps1,**/NetFlowAudit.Cli/**",
+        "/d:sonar.exclusions=**/bin/**,**/obj/**,verify.ps1,**/PortAtlas.Cli/**",
         "/d:sonar.coverage.exclusions=verify.ps1",
         "/d:sonar.cpd.exclusions=verify.ps1",
         "/d:sonar.cs.roslyn.ignoreIssues=true"

@@ -23,7 +23,7 @@ Copy the CSV logs of all servers into one folder, for example `collected/`, with
 ## Render the map
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
+PortAtlas map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 `-i` accepts a wildcard pattern, a folder or a file, and can be repeated.
@@ -31,7 +31,7 @@ NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 To focus on database traffic:
 
 ```bash
-NetFlowAudit.Cli map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
+PortAtlas map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
 ```
 
 For an editable diagram, add `--drawio homelab.drawio`. To rearrange a large diagram, select all and apply `Arrange > Layout > Hierarchical` in Draw.io.

@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host "Smoke-testing $ExecutablePath ..." -ForegroundColor Yellow
 $executable = (Resolve-Path $ExecutablePath).Path
-$smokeDir = Join-Path ([System.IO.Path]::GetTempPath()) ("netflowaudit-smoke-" + [guid]::NewGuid().ToString("N"))
+$smokeDir = Join-Path ([System.IO.Path]::GetTempPath()) ("portatlas-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $smokeDir -Force | Out-Null
 try {
     $smokeArgs = @('audit', '--no-tui', '--no-dns', '--no-rdap', '--interval', '1', '--output', (Join-Path $smokeDir 'smoke.csv'))

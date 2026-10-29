@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortAtlas.Core\PortAtlas.Core.csproj" />
+    <InternalsVisibleTo Include="PortAtlas.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="portatlas.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.14" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PortAtlas</AssemblyName>
+    <RootNamespace>PortAtlas.Cli</RootNamespace>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ApplicationIcon>..\assets\portatlas.ico</ApplicationIcon>
+  </PropertyGroup>
+
+</Project>

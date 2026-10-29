@@ -7,7 +7,7 @@ Goal: a CSV list of the flows to allow, one row per source, destination, port an
 ## Export the observed flows
 
 ```bash
-NetFlowAudit.Cli export rules -i collected -o firewall_rules.csv
+PortAtlas export rules -i collected -o firewall_rules.csv
 ```
 
 `-i` reads CSV and NDJSON logs (a folder, a pattern or files). Ephemeral destination ports (49152 and above) are left out.
@@ -17,7 +17,7 @@ NetFlowAudit.Cli export rules -i collected -o firewall_rules.csv
 Keep flows seen at least five times during the last 14 days, towards internal addresses, without DNS and NTP:
 
 ```bash
-NetFlowAudit.Cli export rules -i collected -o internal_rules.csv --min-observations 5 --active-within-days 14 --zone internal --exclude-ports 53,123
+PortAtlas export rules -i collected -o internal_rules.csv --min-observations 5 --active-within-days 14 --zone internal --exclude-ports 53,123
 ```
 
 `--zone public` keeps only destinations outside the private ranges, for example to list the Internet services a server needs.
@@ -25,7 +25,7 @@ NetFlowAudit.Cli export rules -i collected -o internal_rules.csv --min-observati
 ## List the services offered
 
 ```bash
-NetFlowAudit.Cli export rules -i collected -o services.csv --listeners-only
+PortAtlas export rules -i collected -o services.csv --listeners-only
 ```
 
 Each listening socket becomes an inbound rule from any source (`0.0.0.0`, host `Any`) to its address and port: the starting point of an inbound rule set.

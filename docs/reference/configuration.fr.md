@@ -2,9 +2,9 @@
 
 # Référence du fichier de configuration
 
-NetFlowAudit lit un fichier JSON : celui donné par `--config`, sinon `netflowaudit.json` dans le dossier de travail, sinon `netflowaudit.json` à côté de l'exécutable. Une clé absente prend sa valeur par défaut ; une clé inconnue est ignorée. Un fichier illisible ou mal formé affiche un avertissement et les valeurs par défaut s'appliquent.
+PortAtlas lit un fichier JSON : celui donné par `--config`, sinon `portatlas.json` dans le dossier de travail, sinon `portatlas.json` à côté de l'exécutable. Une clé absente prend sa valeur par défaut ; une clé inconnue est ignorée. Un fichier illisible ou mal formé affiche un avertissement et les valeurs par défaut s'appliquent.
 
-`NetFlowAudit.Cli config init` écrit un fichier contenant chaque clé avec sa valeur par défaut. Les options de la ligne de commande passent avant le fichier ([référence de la CLI](cli.fr.md#origine-des-valeurs)).
+`PortAtlas config init` écrit un fichier contenant chaque clé avec sa valeur par défaut. Les options de la ligne de commande passent avant le fichier ([référence de la CLI](cli.fr.md#origine-des-valeurs)).
 
 Les chemins acceptent les [jetons de nom de fichier](cli.fr.md#jetons-de-nom-de-fichier) `{ServerName}`, `{HostName}`, `{Date}` et `{Timestamp}`.
 

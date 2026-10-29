@@ -2,7 +2,7 @@
 
 # Terminal dashboard reference
 
-`NetFlowAudit.Cli audit` shows a full-screen dashboard in the terminal, unless `--no-tui` is given, `EnableDashboard` is `false`, or the input or output of the process is redirected.
+`PortAtlas audit` shows a full-screen dashboard in the terminal, unless `--no-tui` is given, `EnableDashboard` is `false`, or the input or output of the process is redirected.
 
 ## Views
 

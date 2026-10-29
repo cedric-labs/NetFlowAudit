@@ -1,8 +1,8 @@
 > **Language / Langue**: **English** · [Français](architecture.fr.md)
 
-# How NetFlowAudit works
+# How PortAtlas works
 
-NetFlowAudit answers one question: which services does a machine talk to, over days or weeks, and which program is responsible? This page explains how the agent collects that answer and why it is built this way. The exact options and formats are in the [reference](../reference/cli.md).
+PortAtlas answers one question: which services does a machine talk to, over days or weeks, and which program is responsible? This page explains how the agent collects that answer and why it is built this way. The exact options and formats are in the [reference](../reference/cli.md).
 
 ## Reading sockets instead of capturing packets
 
@@ -57,14 +57,14 @@ Remote addresses are named in the background so that a slow DNS server never del
 
 The program is split between the application and four frameworks published as NuGet packages, reused by other projects:
 
-| Package | Role in NetFlowAudit |
+| Package | Role in PortAtlas |
 | :--- | :--- |
 | SocketForge 1.1.0 | Socket tables on Windows and Linux |
 | ProcessForge 1.1.1 | Process details and account, launcher targets, process exclusion |
 | FileForge.Core 1.1.0 | CSV and NDJSON writers that keep the files readable by other programs while the audit runs |
 | TopologyForge 1.5.6 | Topology graph, filters, HTML map and Draw.io export |
 
-The application (`NetFlowAudit.Core`, `NetFlowAudit.Cli`) holds what is specific to the audit: the scan cycle, deduplication, name resolution, the command line, the dashboard and the exports.
+The application (`PortAtlas.Core`, `PortAtlas`) holds what is specific to the audit: the scan cycle, deduplication, name resolution, the command line, the dashboard and the exports.
 
 ## Command line
 

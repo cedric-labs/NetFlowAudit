@@ -76,7 +76,7 @@ Written by `export rules`. One row per direction, source address, destination ad
 
 ## Topology map
 
-`map --html` and `audit --html` write a single HTML file that opens without network access. The page offers layout, sorting, routing and spacing choices, text filters applied with the `Apply Filters` button or `Enter`, pagination of servers, an SVG export, and a `CLI Command` section showing the `NetFlowAudit.Cli map` command that reproduces the current filters and layout choices. The copied command contains no `-i` option: add the audit logs to read.
+`map --html` and `audit --html` write a single HTML file that opens without network access. The page offers layout, sorting, routing and spacing choices, text filters applied with the `Apply Filters` button or `Enter`, pagination of servers, an SVG export, and a `CLI Command` section showing the `PortAtlas map` command that reproduces the current filters and layout choices. The copied command contains no `-i` option: add the audit logs to read.
 
 `map --drawio` writes an uncompressed Draw.io file (`.drawio`) for Draw.io Desktop or diagrams.net.
 

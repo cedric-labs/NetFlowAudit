@@ -3,7 +3,7 @@
 param (
     [string]$Tag = "",
     [string]$DistDir = "./dist",
-    [string]$Repo = "curvecoder/NetFlowAudit",
+    [string]$Repo = "curvecoder/PortAtlas",
     [switch]$Prerelease,
     [string]$NotesFile = ""
 )
@@ -29,7 +29,7 @@ if (-not (Test-Path $notesPath)) {
     throw "Release notes not found: $notesPath"
 }
 
-Write-Host "=== Preparing NetFlowAudit Release $Tag (Version: $version) ===" -ForegroundColor Cyan
+Write-Host "=== Preparing PortAtlas Release $Tag (Version: $version) ===" -ForegroundColor Cyan
 
 # 1. Clean and prepare dist directory
 if (Test-Path $DistDir) {
@@ -47,7 +47,7 @@ if (Test-Path $winPublishDir) {
 }
 New-Item -ItemType Directory -Path $winPublishDir -Force | Out-Null
 
-dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj `
+dotnet publish PortAtlas.Cli/PortAtlas.Cli.csproj `
     -c Release `
     -r win-x64 `
     --self-contained true `
@@ -57,19 +57,19 @@ dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj `
 
 if ($LASTEXITCODE -ne 0) { throw "Windows publish failed." }
 
-& (Join-Path $PSScriptRoot "test-published-executable.ps1") -ExecutablePath (Join-Path $winPublishDir "NetFlowAudit.Cli.exe")
+& (Join-Path $PSScriptRoot "test-published-executable.ps1") -ExecutablePath (Join-Path $winPublishDir "PortAtlas.exe")
 
 Get-ChildItem -Path $winPublishDir -Filter "*.pdb" -Recurse | Remove-Item -Force
 Copy-Item "README.md" (Join-Path $winPublishDir "README.md") -Force
 Copy-Item "README.fr.md" (Join-Path $winPublishDir "README.fr.md") -Force
 Copy-Item "LICENSE" (Join-Path $winPublishDir "LICENSE") -Force
 
-$winZip = Join-Path $DistDir "NetFlowAudit-$version-win-x64.zip"
+$winZip = Join-Path $DistDir "PortAtlas-$version-win-x64.zip"
 Write-Host "Creating $winZip ..." -ForegroundColor Yellow
 Compress-Archive -Path "$winPublishDir\*" -DestinationPath $winZip -CompressionLevel Optimal
 
-$winStandaloneExe = Join-Path $DistDir "NetFlowAudit-$version-win-x64.exe"
-Copy-Item (Join-Path $winPublishDir "NetFlowAudit.Cli.exe") $winStandaloneExe -Force
+$winStandaloneExe = Join-Path $DistDir "PortAtlas-$version-win-x64.exe"
+Copy-Item (Join-Path $winPublishDir "PortAtlas.exe") $winStandaloneExe -Force
 
 # 3. Build Linux x64 self-contained package
 Write-Host "`n[2/5] Building Linux x64 self-contained package..." -ForegroundColor Yellow
@@ -78,7 +78,7 @@ if (Test-Path $linuxPublishDir) {
 }
 New-Item -ItemType Directory -Path $linuxPublishDir -Force | Out-Null
 
-dotnet publish NetFlowAudit.Cli/NetFlowAudit.Cli.csproj `
+dotnet publish PortAtlas.Cli/PortAtlas.Cli.csproj `
     -c Release `
     -r linux-x64 `
     --self-contained true `
@@ -93,16 +93,16 @@ Copy-Item "README.md" (Join-Path $linuxPublishDir "README.md") -Force
 Copy-Item "README.fr.md" (Join-Path $linuxPublishDir "README.fr.md") -Force
 Copy-Item "LICENSE" (Join-Path $linuxPublishDir "LICENSE") -Force
 
-$linuxTar = Join-Path $DistDir "NetFlowAudit-$version-linux-x64.tar.gz"
+$linuxTar = Join-Path $DistDir "PortAtlas-$version-linux-x64.tar.gz"
 Write-Host "Creating $linuxTar ..." -ForegroundColor Yellow
 tar -czf $linuxTar -C $linuxPublishDir .
 
-$linuxZip = Join-Path $DistDir "NetFlowAudit-$version-linux-x64.zip"
+$linuxZip = Join-Path $DistDir "PortAtlas-$version-linux-x64.zip"
 Write-Host "Creating $linuxZip ..." -ForegroundColor Yellow
 Compress-Archive -Path "$linuxPublishDir\*" -DestinationPath $linuxZip -CompressionLevel Optimal
 
-$linuxStandaloneBin = Join-Path $DistDir "NetFlowAudit-$version-linux-x64"
-Copy-Item (Join-Path $linuxPublishDir "NetFlowAudit.Cli") $linuxStandaloneBin -Force
+$linuxStandaloneBin = Join-Path $DistDir "PortAtlas-$version-linux-x64"
+Copy-Item (Join-Path $linuxPublishDir "PortAtlas") $linuxStandaloneBin -Force
 
 # 4. Calculate SHA256 checksums
 Write-Host "`n[3/5] Calculating SHA256 checksums..." -ForegroundColor Yellow
@@ -145,7 +145,7 @@ if ([string]::IsNullOrWhiteSpace($token)) {
 $headers = @{
     "Authorization" = "Bearer $token"
     "Accept" = "application/vnd.github.v3+json"
-    "User-Agent" = "NetFlowAudit-Release-Script"
+    "User-Agent" = "PortAtlas-Release-Script"
 }
 
 # 6. Create or Update GitHub Release
@@ -153,27 +153,27 @@ Write-Host "`n[5/5] Creating GitHub Release $Tag on $Repo..." -ForegroundColor Y
 
 $checksumsContent = [System.IO.File]::ReadAllText($checksumFile)
 
-$hWinZip = $hashes["NetFlowAudit-" + $version + "-win-x64.zip"]
-$hWinExe = $hashes["NetFlowAudit-" + $version + "-win-x64.exe"]
-$hLinTar = $hashes["NetFlowAudit-" + $version + "-linux-x64.tar.gz"]
-$hLinZip = $hashes["NetFlowAudit-" + $version + "-linux-x64.zip"]
-$hLinBin = $hashes["NetFlowAudit-" + $version + "-linux-x64"]
+$hWinZip = $hashes["PortAtlas-" + $version + "-win-x64.zip"]
+$hWinExe = $hashes["PortAtlas-" + $version + "-win-x64.exe"]
+$hLinTar = $hashes["PortAtlas-" + $version + "-linux-x64.tar.gz"]
+$hLinZip = $hashes["PortAtlas-" + $version + "-linux-x64.zip"]
+$hLinBin = $hashes["PortAtlas-" + $version + "-linux-x64"]
 
 $bodyList = [System.Collections.Generic.List[string]]::new()
-$bodyList.Add('# NetFlowAudit ' + $Tag)
+$bodyList.Add('# PortAtlas ' + $Tag)
 $bodyList.Add('')
-$bodyList.Add('NetFlowAudit is a cross-platform (Windows & Linux) network flow auditing agent designed to run interactively in the terminal or continuously as a background daemon/service.')
+$bodyList.Add('PortAtlas is a cross-platform (Windows & Linux) network flow auditing agent designed to run interactively in the terminal or continuously as a background daemon/service.')
 $bodyList.Add('')
 $bodyList.Add([System.IO.File]::ReadAllText($notesPath).Trim())
 $bodyList.Add('')
 $bodyList.Add('## Downloads')
 $bodyList.Add('| OS / Architecture | Package | Checksum (SHA256) |')
 $bodyList.Add('|---|---|---|')
-$bodyList.Add('| **Windows x64** | [NetFlowAudit-' + $version + '-win-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/NetFlowAudit-' + $version + '-win-x64.zip) | `' + $hWinZip + '` |')
-$bodyList.Add('| **Windows x64 (Standalone Exe)** | [NetFlowAudit-' + $version + '-win-x64.exe](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/NetFlowAudit-' + $version + '-win-x64.exe) | `' + $hWinExe + '` |')
-$bodyList.Add('| **Linux x64 (tar.gz)** | [NetFlowAudit-' + $version + '-linux-x64.tar.gz](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/NetFlowAudit-' + $version + '-linux-x64.tar.gz) | `' + $hLinTar + '` |')
-$bodyList.Add('| **Linux x64 (zip)** | [NetFlowAudit-' + $version + '-linux-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/NetFlowAudit-' + $version + '-linux-x64.zip) | `' + $hLinZip + '` |')
-$bodyList.Add('| **Linux x64 (Standalone Binary)** | [NetFlowAudit-' + $version + '-linux-x64](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/NetFlowAudit-' + $version + '-linux-x64) | `' + $hLinBin + '` |')
+$bodyList.Add('| **Windows x64** | [PortAtlas-' + $version + '-win-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-win-x64.zip) | `' + $hWinZip + '` |')
+$bodyList.Add('| **Windows x64 (Standalone Exe)** | [PortAtlas-' + $version + '-win-x64.exe](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-win-x64.exe) | `' + $hWinExe + '` |')
+$bodyList.Add('| **Linux x64 (tar.gz)** | [PortAtlas-' + $version + '-linux-x64.tar.gz](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64.tar.gz) | `' + $hLinTar + '` |')
+$bodyList.Add('| **Linux x64 (zip)** | [PortAtlas-' + $version + '-linux-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64.zip) | `' + $hLinZip + '` |')
+$bodyList.Add('| **Linux x64 (Standalone Binary)** | [PortAtlas-' + $version + '-linux-x64](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64) | `' + $hLinBin + '` |')
 $bodyList.Add('')
 $bodyList.Add('### SHA256 Integrity Checksums')
 $bodyList.Add('```text')
@@ -187,7 +187,7 @@ try {
     $release = Invoke-RestMethod -Uri ('https://api.github.com/repos/' + $Repo + '/releases/tags/' + $Tag) -Headers $headers
     Write-Host ("Found existing release " + $release.id + ". Updating...") -ForegroundColor Cyan
     $updatePayload = @{
-        name = "NetFlowAudit $Tag"
+        name = "PortAtlas $Tag"
         body = $releaseBody
     } | ConvertTo-Json
     $updateBytes = [System.Text.Encoding]::UTF8.GetBytes($updatePayload)
@@ -197,7 +197,7 @@ catch {
     Write-Host ("Creating new release for " + $Tag + "...") -ForegroundColor Cyan
     $createPayload = @{
         tag_name = $Tag
-        name = "NetFlowAudit $Tag"
+        name = "PortAtlas $Tag"
         body = $releaseBody
         draft = $false
         prerelease = [bool]$Prerelease
@@ -229,7 +229,7 @@ foreach ($assetFile in (Get-ChildItem -Path $DistDir -File)) {
     $uploadHeaders = @{
         "Authorization" = "Bearer $token"
         "Content-Type" = "application/octet-stream"
-        "User-Agent" = "NetFlowAudit-Release-Script"
+        "User-Agent" = "PortAtlas-Release-Script"
     }
     
     Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $uploadHeaders -Body $fileBytes | Out-Null

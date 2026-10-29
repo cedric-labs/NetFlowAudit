@@ -1,12 +1,12 @@
 name: 💡 Feature Request
-description: Suggest an idea, enhancement, or new capability for NetFlowAudit
+description: Suggest an idea, enhancement, or new capability for PortAtlas
 title: "[FEATURE] "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting an improvement to NetFlowAudit!
+        Thank you for suggesting an improvement to PortAtlas!
   - type: textarea
     id: problem
     attributes:

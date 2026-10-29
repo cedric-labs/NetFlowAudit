@@ -1,8 +1,8 @@
 > **Language / Langue**: [English](architecture.md) · **Français**
 
-# Fonctionnement de NetFlowAudit
+# Fonctionnement de PortAtlas
 
-NetFlowAudit répond à une question : avec quels services une machine communique-t-elle, sur des jours ou des semaines, et quel programme en est à l'origine ? Cette page explique comment l'agent obtient cette réponse et pourquoi il est construit ainsi. Les options et formats exacts sont dans la [référence](../reference/cli.fr.md).
+PortAtlas répond à une question : avec quels services une machine communique-t-elle, sur des jours ou des semaines, et quel programme en est à l'origine ? Cette page explique comment l'agent obtient cette réponse et pourquoi il est construit ainsi. Les options et formats exacts sont dans la [référence](../reference/cli.fr.md).
 
 ## Lire les sockets plutôt que capturer les paquets
 
@@ -57,14 +57,14 @@ Les adresses distantes sont nommées en arrière-plan, pour qu'un serveur DNS le
 
 Le programme est réparti entre l'application et quatre frameworks publiés en paquets NuGet, réutilisés par d'autres projets :
 
-| Paquet | Rôle dans NetFlowAudit |
+| Paquet | Rôle dans PortAtlas |
 | :--- | :--- |
 | SocketForge 1.1.0 | Tables de sockets sous Windows et Linux |
 | ProcessForge 1.1.1 | Informations et compte des processus, cibles des lanceurs, exclusion de processus |
 | FileForge.Core 1.1.0 | Écriture CSV et NDJSON qui laisse les fichiers lisibles par d'autres programmes pendant l'audit |
 | TopologyForge 1.5.6 | Graphe topologique, filtres, carte HTML et export Draw.io |
 
-L'application (`NetFlowAudit.Core`, `NetFlowAudit.Cli`) contient ce qui est propre à l'audit : le cycle de balayage, la déduplication, la résolution de noms, la ligne de commande, le tableau de bord et les exports.
+L'application (`PortAtlas.Core`, `PortAtlas`) contient ce qui est propre à l'audit : le cycle de balayage, la déduplication, la résolution de noms, la ligne de commande, le tableau de bord et les exports.
 
 ## Ligne de commande
 

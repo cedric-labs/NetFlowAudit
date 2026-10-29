@@ -23,7 +23,7 @@ Copiez les journaux CSV de tous les serveurs dans un même dossier, par exemple 
 ## Dessiner la carte
 
 ```bash
-NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
+PortAtlas map -i "collected/audit_*.csv" --html homelab.html
 ```
 
 `-i` accepte un motif, un dossier ou un fichier, et peut être répété.
@@ -31,7 +31,7 @@ NetFlowAudit.Cli map -i "collected/audit_*.csv" --html homelab.html
 Pour se concentrer sur les bases de données :
 
 ```bash
-NetFlowAudit.Cli map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
+PortAtlas map -i collected --include-ports 3306,5432,6379,27017 --html databases.html
 ```
 
 Pour un diagramme modifiable, ajoutez `--drawio homelab.drawio`. Pour réorganiser un grand diagramme, sélectionnez tout et appliquez `Arrange > Layout > Hierarchical` dans Draw.io.

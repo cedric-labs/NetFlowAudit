@@ -2,7 +2,7 @@
 
 # Référence du tableau de bord
 
-`NetFlowAudit.Cli audit` affiche un tableau de bord plein écran dans le terminal, sauf avec `--no-tui`, avec `EnableDashboard` à `false`, ou quand l'entrée ou la sortie du processus est redirigée.
+`PortAtlas audit` affiche un tableau de bord plein écran dans le terminal, sauf avec `--no-tui`, avec `EnableDashboard` à `false`, ou quand l'entrée ou la sortie du processus est redirigée.
 
 ## Vues
 

@@ -2,9 +2,9 @@
 
 # Configuration file reference
 
-NetFlowAudit reads a JSON file: the one given by `--config`, otherwise `netflowaudit.json` in the working directory, otherwise `netflowaudit.json` next to the executable. A missing key takes its default value; an unknown key is ignored. A file that cannot be read or parsed prints a warning and the defaults are used.
+PortAtlas reads a JSON file: the one given by `--config`, otherwise `portatlas.json` in the working directory, otherwise `portatlas.json` next to the executable. A missing key takes its default value; an unknown key is ignored. A file that cannot be read or parsed prints a warning and the defaults are used.
 
-`NetFlowAudit.Cli config init` writes a file holding every key with its default value. Command-line options take precedence over the file ([CLI reference](cli.md#sources-of-values)).
+`PortAtlas config init` writes a file holding every key with its default value. Command-line options take precedence over the file ([CLI reference](cli.md#sources-of-values)).
 
 Paths accept the [file name tokens](cli.md#file-name-tokens) `{ServerName}`, `{HostName}`, `{Date}` and `{Timestamp}`.
 
