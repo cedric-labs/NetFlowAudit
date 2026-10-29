@@ -2,7 +2,7 @@
 
 **Date**: 2026-10-27
 **Status**: accepted
-**Deciders**: curvecoder (owner), Claude (analysis)
+**Deciders**: curvecoder (owner)
 
 ## Context
 
