@@ -54,13 +54,13 @@ $proseLanguages = @('', 'text', 'txt', 'console', 'plaintext', 'output')
 $forbiddenWords = @(
     '\brobust(ness)?\b', '\bresilien(t|cy|ce)\b', '\bseamless(ly)?\b', '\bsmart\b',
     '\badvanced\b', '\bcomprehensive\b', '\bultimate\b',
-    '\brobuste(s)?\b', '\brobustesse\b', '\brésilien\w*', '\bintelligent(e|s|es)?\b',
-    '\bavancé(e|s|es)?\b', '\bexhausti(f|ve|fs|ves)\b', '\bultime(s)?\b'
+    '\brobuste(s)?\b', '\brobustesse\b', '\br\u00e9silien\w*', '\bintelligent(e|s|es)?\b',
+    '\bavanc\u00e9(e|s|es)?\b', '\bexhausti(f|ve|fs|ves)\b', '\bultime(s)?\b'
 )
 $marketingWords = @(
     '\bpowerful\b', '\bcutting-edge\b', '\bstate-of-the-art\b', '\bblazing(ly)?\b', '\beffortless(ly)?\b',
     '\bleverag(e|es|ed|ing)\b', '\bworld-class\b', '\bbest-in-class\b', '\bnext-generation\b', '\bgame-chang\w*',
-    '\bultra-\w+', '\bpuissant(e|s|es)?\b', '\bde pointe\b', '\bsans effort\b', '\brévolutionnaire(s)?\b',
+    '\bultra-\w+', '\bpuissant(e|s|es)?\b', '\bde pointe\b', '\bsans effort\b', '\br\u00e9volutionnaire(s)?\b',
     '\bincontournable(s)?\b', '\brigoureusement\b', '\bscrupuleusement\b'
 )
 
