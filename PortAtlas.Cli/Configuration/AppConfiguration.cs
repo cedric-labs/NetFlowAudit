@@ -31,7 +31,7 @@ public sealed record AppConfiguration
     public string OutputDrawioPath { get; init; } = string.Empty;
 
     /// <summary>
-    /// Edge aggregation mode for Draw.io diagrams: adaptive, direction, or none.
+    /// Edge aggregation mode for Draw.io diagrams: adaptive, direction, pair, or none.
     /// </summary>
     public string DrawioEdgeMode { get; init; } = "adaptive";
 
@@ -106,9 +106,14 @@ public sealed record AppConfiguration
     public string MapSortMethod { get; init; } = "barycentric";
 
     /// <summary>
-    /// Initial arrow routing mode on the map ("bezier", "orthogonal", "straight").
+    /// Initial arrow routing mode on the map ("bezier", "orthogonal", "straight", "bus").
     /// </summary>
     public string MapRoutingMode { get; init; } = "bezier";
+
+    /// <summary>
+    /// Initial content of the arrow labels on the map ("ports", "none"); with "none", the flows of a server pair are merged into one arrow.
+    /// </summary>
+    public string MapEdgeLabels { get; init; } = "ports";
 
     /// <summary>
     /// Initial spacing profile between servers and arrows ("compact", "balanced", "spacious").

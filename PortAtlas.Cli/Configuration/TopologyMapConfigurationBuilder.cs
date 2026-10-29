@@ -94,8 +94,13 @@ public static class TopologyMapConfigurationBuilder
         {
             "ORTHOGONAL" or "ORTHOGONALCORRIDORS" => TopologyEdgeRoutingMode.OrthogonalCorridors,
             "STRAIGHT" or "DIRECT" or "DIRECTSTRAIGHT" => TopologyEdgeRoutingMode.DirectStraight,
+            "BUS" => TopologyEdgeRoutingMode.Bus,
             _ => TopologyEdgeRoutingMode.BezierCurved
         };
+
+        var edgeLabelMode = config.MapEdgeLabels.Equals("none", StringComparison.OrdinalIgnoreCase)
+            ? TopologyEdgeLabelMode.None
+            : TopologyEdgeLabelMode.Ports;
 
         var spacingProfile = config.MapSpacingProfile.Trim().ToUpperInvariant() switch
         {
@@ -121,6 +126,7 @@ public static class TopologyMapConfigurationBuilder
             DefaultSortMethod = sortMethod,
             DefaultRoutingMode = routingMode,
             DefaultSpacingProfile = spacingProfile,
+            DefaultEdgeLabelMode = edgeLabelMode,
             InitialIncludePorts = initialIncludePorts,
             InitialExcludePorts = initialExcludePorts,
             InitialExcludeHosts = initialExcludeHosts,
@@ -136,11 +142,12 @@ public static class TopologyMapConfigurationBuilder
         LayoutOption = "--layout",
         SortOption = "--sort",
         RoutingOption = "--routing",
-        SpacingOption = "--spacing"
+        SpacingOption = "--spacing",
+        EdgeLabelsOption = "--edge-labels"
     };
 
     /// <summary>
-    /// Converts the configured Draw.io edge mode (<c>adaptive</c>, <c>direction</c>, <c>none</c>) into the exporter setting.
+    /// Converts the configured Draw.io edge mode (<c>adaptive</c>, <c>direction</c>, <c>pair</c>, <c>none</c>) into the exporter setting.
     /// </summary>
     /// <param name="config">Application configuration.</param>
     /// <returns>The edge aggregation mode; <see cref="EdgeAggregationMode.AdaptiveThreshold"/> for any other value.</returns>
@@ -151,6 +158,7 @@ public static class TopologyMapConfigurationBuilder
         return config.DrawioEdgeMode.Trim().ToUpperInvariant() switch
         {
             "DIRECTION" => EdgeAggregationMode.ByDirection,
+            "PAIR" => EdgeAggregationMode.ByServerPair,
             "NONE" => EdgeAggregationMode.None,
             _ => EdgeAggregationMode.AdaptiveThreshold
         };

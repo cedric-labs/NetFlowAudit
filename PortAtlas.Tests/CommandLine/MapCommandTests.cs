@@ -82,4 +82,17 @@ public sealed class MapCommandTests
         updated.DrawioEdgeMode.Should().Be("direction");
         updated.DrawioTheme.Should().Be("light");
     }
+
+    [Fact]
+    public void BuildConfiguration_WhenMapLighteningValuesProvided_StoresBusRoutingHiddenLabelsAndPairEdges()
+    {
+        // Act
+        var updated = MapCommandConfiguration.Build(
+            new AppConfiguration(), "map", "--routing", "bus", "--edge-labels", "none", "--drawio-edges", "pair");
+
+        // Assert
+        updated.MapRoutingMode.Should().Be("bus");
+        updated.MapEdgeLabels.Should().Be("none");
+        updated.DrawioEdgeMode.Should().Be("pair");
+    }
 }

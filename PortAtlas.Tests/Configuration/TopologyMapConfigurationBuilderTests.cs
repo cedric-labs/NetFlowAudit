@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using PortAtlas.Cli.Configuration;
+using TopologyForge.Export.Drawio.Adapters;
 using TopologyForge.Models;
 using TopologyForge.Rendering;
 
@@ -19,6 +20,44 @@ public sealed class TopologyMapConfigurationBuilderTests
         format.SortOption.Should().Be("--sort");
         format.RoutingOption.Should().Be("--routing");
         format.SpacingOption.Should().Be("--spacing");
+        format.EdgeLabelsOption.Should().Be("--edge-labels");
+    }
+
+    [Fact]
+    public void BuildRenderingOptions_WhenRoutingIsBus_MapsToBusRouting()
+    {
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(new AppConfiguration { MapRoutingMode = "bus" });
+
+        // Assert
+        renderingOptions.DefaultRoutingMode.Should().Be(TopologyEdgeRoutingMode.Bus);
+    }
+
+    [Theory]
+    [InlineData("none", TopologyEdgeLabelMode.None)]
+    [InlineData("ports", TopologyEdgeLabelMode.Ports)]
+    [InlineData("unknown", TopologyEdgeLabelMode.Ports)]
+    public void BuildRenderingOptions_WhenEdgeLabelsConfigured_MapsToEdgeLabelMode(string edgeLabels, TopologyEdgeLabelMode expected)
+    {
+        // Act
+        var renderingOptions = TopologyMapConfigurationBuilder.BuildRenderingOptions(new AppConfiguration { MapEdgeLabels = edgeLabels });
+
+        // Assert
+        renderingOptions.DefaultEdgeLabelMode.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("pair", EdgeAggregationMode.ByServerPair)]
+    [InlineData("direction", EdgeAggregationMode.ByDirection)]
+    [InlineData("none", EdgeAggregationMode.None)]
+    [InlineData("adaptive", EdgeAggregationMode.AdaptiveThreshold)]
+    public void BuildDrawioEdgeMode_WhenModeConfigured_MapsToAggregationMode(string drawioEdges, EdgeAggregationMode expected)
+    {
+        // Act
+        var mode = TopologyMapConfigurationBuilder.BuildDrawioEdgeMode(new AppConfiguration { DrawioEdgeMode = drawioEdges });
+
+        // Assert
+        mode.Should().Be(expected);
     }
 
     [Fact]

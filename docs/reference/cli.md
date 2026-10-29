@@ -88,12 +88,17 @@ Read by `audit` and `map`. Accepted values are compared without case.
 | `--drawio` | `<path>` | `OutputDrawioPath` | none |
 | `--layout` | `layered`, `tree`, `horizontal-tree`, `organic`, `circular`, `grid` | `MapLayoutMode` | `layered` |
 | `--sort` | `barycentric`, `tiers`, `subnet`, `degree`, `alpha`, `ip` | `MapSortMethod` | `barycentric` |
-| `--routing` | `bezier`, `orthogonal`, `straight` | `MapRoutingMode` | `bezier` |
+| `--routing` | `bezier`, `orthogonal`, `straight`, `bus` | `MapRoutingMode` | `bezier` |
 | `--spacing` | `compact`, `balanced`, `spacious` | `MapSpacingProfile` | `balanced` |
-| `--drawio-edges` | `adaptive`, `direction`, `none` | `DrawioEdgeMode` | `adaptive` |
+| `--edge-labels` | `ports`, `none` | `MapEdgeLabels` | `ports` |
+| `--drawio-edges` | `adaptive`, `direction`, `pair`, `none` | `DrawioEdgeMode` | `adaptive` |
 | `--drawio-theme` | `dark`, `light` | `DrawioTheme` | `dark` |
 
-`--layout`, `--sort`, `--routing` and `--spacing` set the initial state of the HTML map; the map page can change them.
+`--layout`, `--sort`, `--routing`, `--spacing` and `--edge-labels` set the initial state of the HTML map; the map page can change them.
+
+- `bus` routing: the arrows of a server share one trunk per direction, then split into one branch per target. Designed for the `tree` layout.
+- `--edge-labels none`: unchecks *Show Ports*. The arrows lose their port labels and the flows of a server pair are merged into one arrow, with a head at each end that receives a flow. The server inspector still lists the ports.
+- `--drawio-edges pair`: one edge per server pair in the Draw.io diagram, with two heads when flows run both ways.
 
 ## audit
 

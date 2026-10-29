@@ -88,12 +88,17 @@ Lues par `audit` et `map`. Les valeurs admises sont comparées sans tenir compte
 | `--drawio` | `<path>` | `OutputDrawioPath` | aucun |
 | `--layout` | `layered`, `tree`, `horizontal-tree`, `organic`, `circular`, `grid` | `MapLayoutMode` | `layered` |
 | `--sort` | `barycentric`, `tiers`, `subnet`, `degree`, `alpha`, `ip` | `MapSortMethod` | `barycentric` |
-| `--routing` | `bezier`, `orthogonal`, `straight` | `MapRoutingMode` | `bezier` |
+| `--routing` | `bezier`, `orthogonal`, `straight`, `bus` | `MapRoutingMode` | `bezier` |
 | `--spacing` | `compact`, `balanced`, `spacious` | `MapSpacingProfile` | `balanced` |
-| `--drawio-edges` | `adaptive`, `direction`, `none` | `DrawioEdgeMode` | `adaptive` |
+| `--edge-labels` | `ports`, `none` | `MapEdgeLabels` | `ports` |
+| `--drawio-edges` | `adaptive`, `direction`, `pair`, `none` | `DrawioEdgeMode` | `adaptive` |
 | `--drawio-theme` | `dark`, `light` | `DrawioTheme` | `dark` |
 
-`--layout`, `--sort`, `--routing` et `--spacing` fixent l'état initial de la carte HTML ; la page permet de les changer.
+`--layout`, `--sort`, `--routing`, `--spacing` et `--edge-labels` fixent l'état initial de la carte HTML ; la page permet de les changer.
+
+- Routage `bus` : les flèches d'un serveur partagent un tronc par sens, puis se séparent en une branche par cible. Pensé pour la mise en page `tree`.
+- `--edge-labels none` : décoche *Show Ports*. Les flèches perdent leurs étiquettes de ports et les flux d'une paire de serveurs sont fusionnés en une seule flèche, avec une pointe à chaque extrémité qui reçoit un flux. L'inspecteur du serveur liste toujours les ports.
+- `--drawio-edges pair` : une arête par paire de serveurs dans le diagramme Draw.io, avec deux pointes quand les flux vont dans les deux sens.
 
 ## audit
 

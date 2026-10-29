@@ -20,6 +20,7 @@
   "MapLayoutMode": "layered",
   "MapSortMethod": "barycentric",
   "MapRoutingMode": "bezier",
+  "MapEdgeLabels": "ports",
   "MapSpacingProfile": "balanced",
   "CsvColumns": [
     "FirstSeenUtc",
