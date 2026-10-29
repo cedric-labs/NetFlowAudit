@@ -96,7 +96,7 @@ Lues par `audit` et `map`. Les valeurs admises sont comparées sans tenir compte
 
 `--layout`, `--sort`, `--routing`, `--spacing` et `--edge-labels` fixent l'état initial de la carte HTML ; la page permet de les changer.
 
-- Routage `bus` : les flèches d'un serveur partagent un tronc par sens, puis se séparent en une branche par cible. Pensé pour la mise en page `tree`.
+- Routage `bus` : les flèches d'un serveur partagent un tronc par sens, puis se séparent en une branche par cible. Les branches qui atteignent un serveur par le même bord et dans le même sens aboutissent sous une seule pointe. Pensé pour la mise en page `tree`.
 - `--edge-labels none` : décoche *Show Ports*. Les flèches perdent leurs étiquettes de ports et les flux d'une paire de serveurs sont fusionnés en une seule flèche, avec une pointe à chaque extrémité qui reçoit un flux. L'inspecteur du serveur liste toujours les ports.
 - `--drawio-edges pair` : une arête par paire de serveurs dans le diagramme Draw.io, avec deux pointes quand les flux vont dans les deux sens.
 
