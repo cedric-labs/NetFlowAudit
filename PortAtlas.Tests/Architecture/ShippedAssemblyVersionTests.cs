@@ -9,9 +9,9 @@ namespace PortAtlas.Tests.Architecture;
 public sealed class ShippedAssemblyVersionTests
 {
     /// <summary>
-    /// Le runtime refuse de charger une assembly dont la version est inférieure à celle qu'une autre assembly référence :
-    /// l'exécutable publié plante alors au premier appel, alors que la compilation et les tests restent verts.
-    /// Ce test lit les références dans les métadonnées, sans charger les assemblies, pour couvrir tout ce qui est livré.
+    /// The runtime refuses to load an assembly whose version is lower than the one another assembly references:
+    /// the published executable then crashes on the first call, while the build and the tests stay green.
+    /// This test reads the references from the metadata, without loading the assemblies, to cover everything shipped.
     /// </summary>
     [Fact]
     public void ShippedAssemblies_WhenReferencingAnotherShippedAssembly_FindAVersionAtLeastAsHigh()
@@ -25,7 +25,7 @@ public sealed class ShippedAssemblyVersionTests
         var mismatches = shippedVersions.Keys
             .SelectMany(name => ReadReferences(Path.Combine(AppContext.BaseDirectory, name + ".dll"))
                 .Where(reference => shippedVersions.TryGetValue(reference.Name, out var available) && available < reference.Version)
-                .Select(reference => $"{name} référence {reference.Name} {reference.Version}, livré en {shippedVersions[reference.Name]}"))
+                .Select(reference => $"{name} references {reference.Name} {reference.Version}, shipped as {shippedVersions[reference.Name]}"))
             .ToList();
 
         // Assert
