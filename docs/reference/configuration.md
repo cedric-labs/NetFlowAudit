@@ -77,6 +77,7 @@ These keys are read by the map of `audit`, by `map`, and for the filters by `exp
 | `MapSpacingProfile` | see `--spacing` | `balanced` | `--spacing` |
 | `MapEdgeLabels` | `ports`, `none` | `ports` | `--edge-labels` |
 | `DrawioEdgeMode` | `adaptive`, `direction`, `pair`, `none` | `adaptive` | `--drawio-edges` |
+| `DrawioSubnets` | `on`, `off` | `on` | `--drawio-subnets` |
 | `DrawioTheme` | `dark`, `light` | `dark` | `--drawio-theme` |
 
 The topology map (not the rule matrix) also removes the ports of `ExcludedLocalPorts` and `ExcludedRemotePorts` and the addresses of `ExcludedRemoteIps`.

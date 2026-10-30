@@ -5,6 +5,7 @@
   "OutputHtmlMapPath": "",
   "OutputDrawioPath": "",
   "DrawioEdgeMode": "adaptive",
+  "DrawioSubnets": "on",
   "DrawioTheme": "dark",
   "MapExcludeEphemeralPorts": true,
   "MapListenersOnly": false,

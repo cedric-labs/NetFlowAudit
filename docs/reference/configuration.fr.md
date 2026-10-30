@@ -77,6 +77,7 @@ Ces clés sont lues par la carte de `audit`, par `map`, et pour les filtres par 
 | `MapSpacingProfile` | voir `--spacing` | `balanced` | `--spacing` |
 | `MapEdgeLabels` | `ports`, `none` | `ports` | `--edge-labels` |
 | `DrawioEdgeMode` | `adaptive`, `direction`, `pair`, `none` | `adaptive` | `--drawio-edges` |
+| `DrawioSubnets` | `on`, `off` | `on` | `--drawio-subnets` |
 | `DrawioTheme` | `dark`, `light` | `dark` | `--drawio-theme` |
 
 La carte topologique (pas la matrice de règles) retire aussi les ports de `ExcludedLocalPorts` et `ExcludedRemotePorts` et les adresses de `ExcludedRemoteIps`.

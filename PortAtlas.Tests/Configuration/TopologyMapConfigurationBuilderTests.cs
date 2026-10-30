@@ -259,4 +259,28 @@ public sealed class TopologyMapConfigurationBuilderTests
         options.IncludeInboundFlows.Should().BeFalse();
         options.IncludeOutboundFlows.Should().BeTrue();
     }
+    [Fact]
+    public void BuildRenderingOptions_WhenBuilt_NamesTheDefaultSortAsTheCliAcceptsIt()
+    {
+        // Act
+        var format = TopologyMapConfigurationBuilder.BuildRenderingOptions(new AppConfiguration()).CliCommandFormat;
+
+        // Assert
+        format.SugiyamaSortValue.Should().Be("barycentric");
+    }
+
+    [Theory]
+    [InlineData("on", true)]
+    [InlineData("ON", true)]
+    [InlineData("off", false)]
+    [InlineData("Off", false)]
+    [InlineData("", true)]
+    public void BuildDrawioLayoutOptions_WhenSubnetsConfigured_MapsToSubnetGrouping(string drawioSubnets, bool expected)
+    {
+        // Act
+        var options = TopologyMapConfigurationBuilder.BuildDrawioLayoutOptions(new AppConfiguration { DrawioSubnets = drawioSubnets });
+
+        // Assert
+        options.GroupBySubnets.Should().Be(expected);
+    }
 }

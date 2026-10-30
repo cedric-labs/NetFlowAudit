@@ -58,7 +58,7 @@ public sealed class AuditTopologyMapperDrawioTests
                 "Audit Topology",
                 EdgeAggregationMode.AdaptiveThreshold,
                 DiagramTheme.DarkModern,
-                CancellationToken.None);
+                cancellationToken: CancellationToken.None);
 
             // Assert
             File.Exists(tempFile).Should().BeTrue();
@@ -70,6 +70,44 @@ public sealed class AuditTopologyMapperDrawioTests
                 .And.Contain("LOCAL-AUDIT")
                 .And.Contain("POSTGRES-DB")
                 .And.Contain(":5432/Tcp");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task ExportToDrawioAsync_WhenSubnetGroupingChosen_WritesSubnetZonesOnlyWhenOn(bool groupBySubnets, bool expectZone)
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), $"drawio_subnets_{Guid.NewGuid():N}.drawio");
+        var graph = new NetworkTopologyGraph(
+            DateTimeOffset.UtcNow,
+            [
+                new TopologyServerNode("srv_local", "LOCAL-AUDIT", "192.168.1.10", true, [], 0, 1),
+                new TopologyServerNode("srv_nas", "NAS", "192.168.1.50", false, [], 1, 0)
+            ],
+            [],
+            0,
+            0);
+
+        try
+        {
+            // Act
+            await AuditTopologyMapper.ExportToDrawioAsync(
+                graph,
+                tempFile,
+                layoutOptions: new TopologyDrawioLayoutOptions { GroupBySubnets = groupBySubnets });
+
+            // Assert
+            var content = await File.ReadAllTextAsync(tempFile);
+            content.Contains("Subnet 192.168.1.0/24", StringComparison.Ordinal).Should().Be(expectZone);
+            content.Should().Contain("NAS");
         }
         finally
         {

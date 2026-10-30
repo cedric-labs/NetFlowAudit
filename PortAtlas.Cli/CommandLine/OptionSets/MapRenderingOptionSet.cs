@@ -18,6 +18,7 @@ internal sealed class MapRenderingOptionSet
     private readonly Option<string?> _edgeLabels = OptionFactory.CreateChoice("--edge-labels", "Initial arrow labels of the HTML map; none merges the flows of a server pair into one arrow. Default: ports.", "ports", "none");
     private readonly Option<string?> _spacing = OptionFactory.CreateChoice("--spacing", "Initial spacing of the HTML map. Default: balanced.", "compact", "balanced", "spacious");
     private readonly Option<string?> _drawioEdges = OptionFactory.CreateChoice("--drawio-edges", "Grouping of parallel arrows in the Draw.io diagram. Default: adaptive.", "adaptive", "direction", "pair", "none");
+    private readonly Option<string?> _drawioSubnets = OptionFactory.CreateChoice("--drawio-subnets", "Subnet zones of the Draw.io diagram; off lays the servers out as a plain grid without zones. Default: on.", "on", "off");
     private readonly Option<string?> _drawioTheme = OptionFactory.CreateChoice("--drawio-theme", "Theme of the Draw.io diagram. Default: dark.", "dark", "light");
 
     public void AddTo(Command command)
@@ -30,6 +31,7 @@ internal sealed class MapRenderingOptionSet
         command.Options.Add(_edgeLabels);
         command.Options.Add(_spacing);
         command.Options.Add(_drawioEdges);
+        command.Options.Add(_drawioSubnets);
         command.Options.Add(_drawioTheme);
     }
 
@@ -44,6 +46,7 @@ internal sealed class MapRenderingOptionSet
             MapEdgeLabels = parseResult.GetValue(_edgeLabels) ?? config.MapEdgeLabels,
             MapSpacingProfile = parseResult.GetValue(_spacing) ?? config.MapSpacingProfile,
             DrawioEdgeMode = parseResult.GetValue(_drawioEdges) ?? config.DrawioEdgeMode,
+            DrawioSubnets = parseResult.GetValue(_drawioSubnets) ?? config.DrawioSubnets,
             DrawioTheme = parseResult.GetValue(_drawioTheme) ?? config.DrawioTheme
         };
 }

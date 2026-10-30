@@ -380,6 +380,7 @@ public sealed class AuditTopologyMapper(
     /// <param name="title">Diagram title.</param>
     /// <param name="aggregationMode">Edge aggregation mode.</param>
     /// <param name="theme">Visual diagram theme (DarkModern by default).</param>
+    /// <param name="layoutOptions">Placement of the target servers; grouped by subnet with wrapping rows by default.</param>
     /// <param name="cancellationToken">Cooperative cancellation token.</param>
     public static Task ExportToDrawioAsync(
         NetworkTopologyGraph graph,
@@ -387,12 +388,16 @@ public sealed class AuditTopologyMapper(
         string title = "PortAtlas Network Topology",
         EdgeAggregationMode aggregationMode = EdgeAggregationMode.AdaptiveThreshold,
         DiagramTheme? theme = null,
+        TopologyDrawioLayoutOptions? layoutOptions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputDrawioPath);
 
-        var adapter = new TopologyToDrawioAdapter(aggregationMode: aggregationMode);
+        var adapter = new TopologyToDrawioAdapter(aggregationMode: aggregationMode)
+        {
+            LayoutOptions = layoutOptions ?? new TopologyDrawioLayoutOptions()
+        };
         var diagram = adapter.Convert(graph, title);
         var renderer = new DrawioXmlRenderer();
         var xml = renderer.Render(diagram, theme ?? DiagramTheme.DarkModern);

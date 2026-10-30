@@ -92,6 +92,7 @@ Read by `audit` and `map`. Accepted values are compared without case.
 | `--spacing` | `compact`, `balanced`, `spacious` | `MapSpacingProfile` | `balanced` |
 | `--edge-labels` | `ports`, `none` | `MapEdgeLabels` | `ports` |
 | `--drawio-edges` | `adaptive`, `direction`, `pair`, `none` | `DrawioEdgeMode` | `adaptive` |
+| `--drawio-subnets` | `on`, `off` | `DrawioSubnets` | `on` |
 | `--drawio-theme` | `dark`, `light` | `DrawioTheme` | `dark` |
 
 `--layout`, `--sort`, `--routing`, `--spacing` and `--edge-labels` set the initial state of the HTML map; the map page can change them.

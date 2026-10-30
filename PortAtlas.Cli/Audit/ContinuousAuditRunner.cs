@@ -287,6 +287,7 @@ public static class ContinuousAuditRunner
                                         $"PortAtlas Network Topology - {host.HostName}",
                                         TopologyMapConfigurationBuilder.BuildDrawioEdgeMode(config),
                                         TopologyMapConfigurationBuilder.BuildDrawioTheme(config),
+                                        TopologyMapConfigurationBuilder.BuildDrawioLayoutOptions(config),
                                         cts.Token).ConfigureAwait(false);
                                 }
                             }

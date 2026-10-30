@@ -58,6 +58,7 @@ public sealed class TopologyMapCommandRunner(AuditTopologyMapper? topologyMapper
                 "PortAtlas Network Topology",
                 TopologyMapConfigurationBuilder.BuildDrawioEdgeMode(config),
                 TopologyMapConfigurationBuilder.BuildDrawioTheme(config),
+                TopologyMapConfigurationBuilder.BuildDrawioLayoutOptions(config),
                 cancellationToken).ConfigureAwait(false);
             Console.WriteLine($"Draw.io diagram generated: {Path.GetFullPath(drawioPath)} ({graph.Nodes.Count} servers, {graph.Edges.Count} flows)");
         }

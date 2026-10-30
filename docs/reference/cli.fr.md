@@ -92,6 +92,7 @@ Lues par `audit` et `map`. Les valeurs admises sont comparées sans tenir compte
 | `--spacing` | `compact`, `balanced`, `spacious` | `MapSpacingProfile` | `balanced` |
 | `--edge-labels` | `ports`, `none` | `MapEdgeLabels` | `ports` |
 | `--drawio-edges` | `adaptive`, `direction`, `pair`, `none` | `DrawioEdgeMode` | `adaptive` |
+| `--drawio-subnets` | `on`, `off` | `DrawioSubnets` | `on` |
 | `--drawio-theme` | `dark`, `light` | `DrawioTheme` | `dark` |
 
 `--layout`, `--sort`, `--routing`, `--spacing` et `--edge-labels` fixent l'état initial de la carte HTML ; la page permet de les changer.

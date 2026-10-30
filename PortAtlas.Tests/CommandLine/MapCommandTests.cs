@@ -95,4 +95,23 @@ public sealed class MapCommandTests
         updated.MapEdgeLabels.Should().Be("none");
         updated.DrawioEdgeMode.Should().Be("pair");
     }
+    [Fact]
+    public void BuildConfiguration_WhenDrawioSubnetsProvided_StoresTheSetting()
+    {
+        // Act
+        var updated = MapCommandConfiguration.Build(new AppConfiguration(), "map", "--drawio-subnets", "off");
+
+        // Assert
+        updated.DrawioSubnets.Should().Be("off");
+    }
+
+    [Fact]
+    public void BuildConfiguration_WhenDrawioSubnetsOmitted_KeepsSubnetZonesOn()
+    {
+        // Act
+        var updated = MapCommandConfiguration.Build(new AppConfiguration(), "map");
+
+        // Assert
+        updated.DrawioSubnets.Should().Be("on");
+    }
 }

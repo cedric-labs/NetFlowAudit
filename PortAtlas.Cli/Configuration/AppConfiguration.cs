@@ -41,6 +41,11 @@ public sealed record AppConfiguration
     public string DrawioTheme { get; init; } = "dark";
 
     /// <summary>
+    /// Draw.io subnet zones: on groups the target servers into one zone per subnet, off lays them out as a plain grid.
+    /// </summary>
+    public string DrawioSubnets { get; init; } = "on";
+
+    /// <summary>
     /// Exclude ephemeral ports (49152-65535) during HTML map generation.
     /// </summary>
     public bool MapExcludeEphemeralPorts { get; init; } = true;

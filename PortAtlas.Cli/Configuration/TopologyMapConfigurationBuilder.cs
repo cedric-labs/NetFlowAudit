@@ -141,6 +141,7 @@ public static class TopologyMapConfigurationBuilder
         Prefix = "PortAtlas map",
         LayoutOption = "--layout",
         SortOption = "--sort",
+        SugiyamaSortValue = "barycentric",
         RoutingOption = "--routing",
         SpacingOption = "--spacing",
         EdgeLabelsOption = "--edge-labels"
@@ -177,6 +178,22 @@ public static class TopologyMapConfigurationBuilder
             ? DiagramTheme.EnterpriseLight
             : DiagramTheme.DarkModern;
     }
+
+    /// <summary>
+    /// Converts the configured Draw.io subnet setting (<c>on</c>, <c>off</c>) into the exporter layout options.
+    /// </summary>
+    /// <param name="config">Application configuration.</param>
+    /// <returns>Layout options that group the servers by subnet unless the setting is <c>off</c>.</returns>
+    public static TopologyDrawioLayoutOptions BuildDrawioLayoutOptions(AppConfiguration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        return new TopologyDrawioLayoutOptions
+        {
+            GroupBySubnets = !config.DrawioSubnets.Trim().Equals("off", StringComparison.OrdinalIgnoreCase)
+        };
+    }
+
     private static List<NetworkPortRange> ParsePortRanges(IEnumerable<string> specifications)
     {
         var result = new List<NetworkPortRange>();
