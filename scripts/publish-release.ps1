@@ -5,7 +5,8 @@ param (
     [string]$DistDir = "./dist",
     [string]$Repo = "curvecoder/PortAtlas",
     [switch]$Prerelease,
-    [string]$NotesFile = ""
+    [string]$NotesFile = "",
+    [switch]$BuildOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -104,6 +105,36 @@ Compress-Archive -Path "$linuxPublishDir\*" -DestinationPath $linuxZip -Compress
 $linuxStandaloneBin = Join-Path $DistDir "PortAtlas-$version-linux-x64"
 Copy-Item (Join-Path $linuxPublishDir "PortAtlas") $linuxStandaloneBin -Force
 
+# Graphical interface (Windows x64 only: the project targets the Avalonia desktop head)
+Write-Host "`n[2b/5] Building Windows x64 self-contained GUI package..." -ForegroundColor Yellow
+$guiPublishDir = "./publish/gui-win-x64"
+if (Test-Path $guiPublishDir) {
+    Remove-Item -Path $guiPublishDir -Recurse -Force
+}
+New-Item -ItemType Directory -Path $guiPublishDir -Force | Out-Null
+
+dotnet publish PortAtlas.Gui/PortAtlas.Gui.csproj `
+    -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -o $guiPublishDir
+
+if ($LASTEXITCODE -ne 0) { throw "GUI publish failed." }
+
+Get-ChildItem -Path $guiPublishDir -Filter "*.pdb" -Recurse | Remove-Item -Force
+Copy-Item "README.md" (Join-Path $guiPublishDir "README.md") -Force
+Copy-Item "README.fr.md" (Join-Path $guiPublishDir "README.fr.md") -Force
+Copy-Item "LICENSE" (Join-Path $guiPublishDir "LICENSE") -Force
+
+$guiZip = Join-Path $DistDir "PortAtlas.Gui-$version-win-x64.zip"
+Write-Host "Creating $guiZip ..." -ForegroundColor Yellow
+Compress-Archive -Path "$guiPublishDir\*" -DestinationPath $guiZip -CompressionLevel Optimal
+
+$guiStandaloneExe = Join-Path $DistDir "PortAtlas.Gui-$version-win-x64.exe"
+Copy-Item (Join-Path $guiPublishDir "PortAtlas.Gui.exe") $guiStandaloneExe -Force
+
 # 4. Calculate SHA256 checksums
 Write-Host "`n[3/5] Calculating SHA256 checksums..." -ForegroundColor Yellow
 $checksumFile = Join-Path $DistDir "SHA256SUMS.txt"
@@ -121,6 +152,11 @@ foreach ($f in (Get-ChildItem -Path $DistDir -File)) {
 Write-Host "Generated artifacts:" -ForegroundColor Green
 Get-ChildItem -Path $DistDir | Select-Object Name, Length | Format-Table -AutoSize
 Get-Content $checksumFile
+
+if ($BuildOnly) {
+    Write-Host "`nBuild only: artifacts are in $DistDir, nothing was uploaded." -ForegroundColor Green
+    return
+}
 
 # 5. Acquire GitHub Token
 Write-Host "`n[4/5] Acquiring GitHub credentials..." -ForegroundColor Yellow
@@ -158,6 +194,8 @@ $hWinExe = $hashes["PortAtlas-" + $version + "-win-x64.exe"]
 $hLinTar = $hashes["PortAtlas-" + $version + "-linux-x64.tar.gz"]
 $hLinZip = $hashes["PortAtlas-" + $version + "-linux-x64.zip"]
 $hLinBin = $hashes["PortAtlas-" + $version + "-linux-x64"]
+$hGuiZip = $hashes["PortAtlas.Gui-" + $version + "-win-x64.zip"]
+$hGuiExe = $hashes["PortAtlas.Gui-" + $version + "-win-x64.exe"]
 
 $bodyList = [System.Collections.Generic.List[string]]::new()
 $bodyList.Add('# PortAtlas ' + $Tag)
@@ -174,6 +212,8 @@ $bodyList.Add('| **Windows x64 (Standalone Exe)** | [PortAtlas-' + $version + '-
 $bodyList.Add('| **Linux x64 (tar.gz)** | [PortAtlas-' + $version + '-linux-x64.tar.gz](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64.tar.gz) | `' + $hLinTar + '` |')
 $bodyList.Add('| **Linux x64 (zip)** | [PortAtlas-' + $version + '-linux-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64.zip) | `' + $hLinZip + '` |')
 $bodyList.Add('| **Linux x64 (Standalone Binary)** | [PortAtlas-' + $version + '-linux-x64](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas-' + $version + '-linux-x64) | `' + $hLinBin + '` |')
+$bodyList.Add('| **Windows x64 GUI** | [PortAtlas.Gui-' + $version + '-win-x64.zip](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas.Gui-' + $version + '-win-x64.zip) | `' + $hGuiZip + '` |')
+$bodyList.Add('| **Windows x64 GUI (Standalone Exe)** | [PortAtlas.Gui-' + $version + '-win-x64.exe](https://github.com/' + $Repo + '/releases/download/' + $Tag + '/PortAtlas.Gui-' + $version + '-win-x64.exe) | `' + $hGuiExe + '` |')
 $bodyList.Add('')
 $bodyList.Add('### SHA256 Integrity Checksums')
 $bodyList.Add('```text')

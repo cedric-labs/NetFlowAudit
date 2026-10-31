@@ -29,6 +29,8 @@ Déplacer un service auto-hébergé vers une autre machine, écrire des règles 
 
 Téléchargez l'archive de votre système sur la [page des versions](https://github.com/curvecoder/PortAtlas/releases) (`PortAtlas-<version>-win-x64.zip` ou `PortAtlas-<version>-linux-x64.tar.gz`) et décompressez-la. L'exécutable embarque le runtime .NET.
 
+Sous Windows, `PortAtlas.Gui-<version>-win-x64.zip` contient une interface graphique qui construit la ligne de commande de chaque commande à partir d'un formulaire et l'exécute ; voir [Interface graphique](docs/explanation/gui-architecture.fr.md).
+
 Pour compiler depuis les sources (SDK .NET 8) :
 
 ```bash
@@ -64,7 +66,7 @@ PortAtlas export rules -i collected -o rules.csv --zone internal --min-observati
 | Tutoriel | [Premiers pas](docs/getting-started.fr.md) |
 | Guides pratiques | [Exécuter en service](docs/how-to/run-as-a-service.fr.md) · [Cartographier plusieurs machines](docs/how-to/map-several-machines.fr.md) · [Exporter des règles de pare-feu](docs/how-to/export-firewall-rules.fr.md) · [Auditer des serveurs isolés](docs/how-to/audit-isolated-servers.fr.md) · [Diagnostiquer un nom d'hôte manquant](docs/how-to/diagnose-name-resolution.fr.md) · [Passer de la 1.x à la 2.0](docs/how-to/upgrade-to-2.0.fr.md) · [Passer de la 2.x à la 3.0](docs/how-to/upgrade-to-3.0.fr.md) |
 | Référence | [Ligne de commande](docs/reference/cli.fr.md) · [Fichier de configuration](docs/reference/configuration.fr.md) · [Formats de sortie](docs/reference/output-formats.fr.md) · [Tableau de bord](docs/reference/dashboard.fr.md) |
-| Explication | [Fonctionnement de PortAtlas](docs/explanation/architecture.fr.md) · [Décisions d'architecture](docs/adr/README.md) |
+| Explication | [Fonctionnement de PortAtlas](docs/explanation/architecture.fr.md) · [Interface graphique](docs/explanation/gui-architecture.fr.md) · [Décisions d'architecture](docs/adr/README.md) |
 
 ## Développement
 
