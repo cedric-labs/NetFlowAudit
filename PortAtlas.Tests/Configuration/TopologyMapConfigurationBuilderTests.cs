@@ -283,4 +283,19 @@ public sealed class TopologyMapConfigurationBuilderTests
         // Assert
         options.GroupBySubnets.Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("degree", TopologyNodeSortMethod.ConnectionDegree)]
+    [InlineData("alpha", TopologyNodeSortMethod.Alphabetical)]
+    [InlineData("tiers", TopologyNodeSortMethod.FunctionalTier)]
+    [InlineData("ip", TopologyNodeSortMethod.SubnetIp)]
+    [InlineData("barycentric", TopologyNodeSortMethod.BarycentricSugiyama)]
+    public void BuildDrawioLayoutOptions_WhenSortConfigured_MapsToTargetServerOrder(string sortMethod, TopologyNodeSortMethod expected)
+    {
+        // Act
+        var options = TopologyMapConfigurationBuilder.BuildDrawioLayoutOptions(new AppConfiguration { MapSortMethod = sortMethod });
+
+        // Assert
+        options.SortMethod.Should().Be(expected);
+    }
 }

@@ -26,8 +26,9 @@ internal static class OptionFactory
     /// Option accepting one value among <paramref name="acceptedValues"/>, compared without case and stored as written in
     /// <paramref name="acceptedValues"/>; any other value is a parse error listing them.
     /// </summary>
-    public static Option<string?> CreateChoice(string name, string description, params string[] acceptedValues) =>
-        new(name)
+    public static Option<string?> CreateChoice(string name, string description, params string[] acceptedValues)
+    {
+        var option = new Option<string?>(name)
         {
             Description = description,
             HelpName = string.Join('|', acceptedValues),
@@ -43,6 +44,11 @@ internal static class OptionFactory
                 return accepted;
             }
         };
+
+        // A CustomParser hides the closed value set from the parser, so it is declared as completion sources for shells and for the GUI catalog.
+        option.CompletionSources.Add(acceptedValues);
+        return option;
+    }
 
     /// <summary>
     /// Integer option rejecting values lower than <paramref name="minimum"/>.
