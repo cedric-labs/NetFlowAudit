@@ -1,7 +1,7 @@
 namespace PortAtlas.Gui.Core.Execution;
 
 /// <summary>
-/// Looks for the executable next to the GUI, then in the <c>PORTATLAS_EXE</c> environment variable.
+/// Looks for the executable at the configured path, next to the GUI, then in the <c>PORTATLAS_EXE</c> environment variable.
 /// </summary>
 /// <param name="searchDirectory">Directory of the GUI assembly.</param>
 /// <param name="readEnvironmentVariable">Returns the value of an environment variable, or null when it is not set.</param>
@@ -18,21 +18,44 @@ public sealed class PortAtlasExecutableLocator(string searchDirectory, Func<stri
     public static string ExecutableFileName { get; } = OperatingSystem.IsWindows() ? "PortAtlas.exe" : "PortAtlas";
 
     /// <inheritdoc />
+    public string? ConfiguredPath { get; set; }
+
+    /// <inheritdoc />
+    public bool TryLocate(out string? path)
+    {
+        path = Candidates().FirstOrDefault(File.Exists);
+        return path is not null;
+    }
+
+    /// <inheritdoc />
     public string Locate()
     {
-        var besideGui = Path.Combine(searchDirectory, ExecutableFileName);
-        if (File.Exists(besideGui))
+        if (TryLocate(out var path) && path is not null)
         {
-            return besideGui;
+            return path;
         }
 
         var fromEnvironment = readEnvironmentVariable(EnvironmentVariableName);
-        if (!string.IsNullOrWhiteSpace(fromEnvironment) && File.Exists(fromEnvironment))
+        var configured = string.IsNullOrWhiteSpace(ConfiguredPath) ? string.Empty : $"the configured path '{ConfiguredPath}', ";
+        throw new FileNotFoundException(
+            $"The PortAtlas executable was not found. Searched: {configured}'{BesideGuiPath()}' and the file named by the {EnvironmentVariableName} environment variable ({(string.IsNullOrWhiteSpace(fromEnvironment) ? "not set" : $"'{fromEnvironment}'")}).");
+    }
+
+    private IEnumerable<string> Candidates()
+    {
+        if (!string.IsNullOrWhiteSpace(ConfiguredPath))
         {
-            return fromEnvironment;
+            yield return ConfiguredPath;
         }
 
-        throw new FileNotFoundException(
-            $"The PortAtlas executable was not found. Searched: '{besideGui}' and the file named by the {EnvironmentVariableName} environment variable ({(string.IsNullOrWhiteSpace(fromEnvironment) ? "not set" : $"'{fromEnvironment}'")}).");
+        yield return BesideGuiPath();
+
+        var fromEnvironment = readEnvironmentVariable(EnvironmentVariableName);
+        if (!string.IsNullOrWhiteSpace(fromEnvironment))
+        {
+            yield return fromEnvironment;
+        }
     }
+
+    private string BesideGuiPath() => Path.Combine(searchDirectory, ExecutableFileName);
 }

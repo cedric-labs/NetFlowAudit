@@ -34,7 +34,9 @@ Un profil est un ensemble nommé d'états de formulaire, un par commande, stock�
 
 Enregistrer sans nom saisi met à jour le profil sélectionné, et écraser un profil existant, sélectionné ou désigné par son nom, demande toujours une confirmation via `IConfirmationService`. Le thème de couleurs et le nom du dernier profil utilisé sont stockés dans `preferences.json`, un niveau au-dessus du dossier des profils, et restaurés à l'ouverture de la fenêtre ; un fichier de préférences absent ou endommagé retombe sur les valeurs par défaut.
 
-La saisie d'une option répétable compte dès qu'elle est tapée : une valeur laissée dans la zone sans appuyer sur Add fait quand même partie du profil et de la ligne de commande. L'option `--input` accepte des fichiers, des dossiers et des motifs génériques ; elle propose donc un sélecteur File et un sélecteur Folder.
+La saisie d'une option répétable compte dès qu'elle est tapée : une valeur laissée dans la zone sans appuyer sur Add fait quand même partie du profil et de la ligne de commande. L'exécutable est cherché au chemin choisi dans la GUI, puis à côté de la GUI, puis dans `PORTATLAS_EXE`. Lorsqu'aucun n'est trouvé au démarrage, un bandeau propose de le sélectionner sans rien bloquer ; le bouton Change permet d'en choisir un autre à tout moment, et ce choix est enregistré dans le profil, afin que des profils différents puissent lancer des versions différentes de PortAtlas. Les options déclarées une seule fois sur la commande racine, comme `--config`, partagent une même valeur pour toutes les commandes. Les groupes d'options sont repliables, et le groupe Advanced démarre replié.
+
+L'option `--input` accepte des fichiers, des dossiers et des motifs génériques ; elle propose donc un sélecteur File et un sélecteur Folder.
 
 ## Couches
 

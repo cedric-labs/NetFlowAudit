@@ -38,7 +38,8 @@ public sealed partial class App : Application
                 dispatcher,
                 profileStore,
                 new AvaloniaConfirmationService(() => window),
-                new UserPreferencesStore(profileDirectory));
+                new UserPreferencesStore(profileDirectory),
+                new ExecutableViewModel(locator, filePicker));
 
             window.DataContext = viewModel;
             // InitializeAsync reports its failures through the view models' error messages, so the discarded task cannot fault.

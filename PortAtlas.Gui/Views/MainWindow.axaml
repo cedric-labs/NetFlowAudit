@@ -15,9 +15,11 @@
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="ErrorTextBrush" Color="#B3261E" />
+          <SolidColorBrush x:Key="WarningBannerBrush" Color="#FFF4CE" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="ErrorTextBrush" Color="#FF8A80" />
+          <SolidColorBrush x:Key="WarningBannerBrush" Color="#4A3F10" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
@@ -123,7 +125,7 @@
     </DataTemplate>
   </Window.DataTemplates>
 
-  <Grid RowDefinitions="Auto,*" Margin="16" RowSpacing="12">
+  <Grid RowDefinitions="Auto,Auto,*" Margin="16" RowSpacing="12">
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
       <TextBlock Grid.Column="0" Classes="title" Text="PortAtlas" VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Classes="error" Text="{Binding Profiles.ErrorMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="12,0" />
@@ -135,7 +137,14 @@
       <Button Grid.Column="7" Content="{Binding ThemeLabel}" Command="{Binding CycleThemeCommand}" AutomationProperties.Name="Switch colour theme" />
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="220,*" ColumnSpacing="12">
+    <Border Grid.Row="1" Classes="card" IsVisible="{Binding !Executable.IsAvailable}" Background="{DynamicResource WarningBannerBrush}">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <TextBlock Grid.Column="0" Text="{Binding Executable.StatusText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="Select PortAtlas..." Command="{Binding Executable.BrowseCommand}" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="220,*" ColumnSpacing="12">
       <Border Grid.Column="0" Classes="card" Padding="8">
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Classes="label" Text="Commands" Margin="4,0,0,6" />
@@ -173,10 +182,9 @@
               <ItemsControl ItemsSource="{Binding Groups}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:OptionGroupViewModel">
-                    <StackPanel>
-                      <TextBlock Classes="group" Text="{Binding Group}" />
+                    <Expander Classes="group" Header="{Binding Group}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,6,0,0">
                       <ItemsControl ItemsSource="{Binding Options}" />
-                    </StackPanel>
+                    </Expander>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -186,6 +194,12 @@
 
         <Border Grid.Row="1" Classes="card">
           <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+              <TextBlock Grid.Column="0" Classes="label" Text="Executable" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="mono hint" Text="{Binding Executable.StatusText}" ToolTip.Tip="{Binding Executable.StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <Button Grid.Column="2" Content="Change..." Command="{Binding Executable.BrowseCommand}" />
+              <Button Grid.Column="3" Content="Automatic" Command="{Binding Executable.ClearCommand}" IsVisible="{Binding Executable.ConfiguredPath, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Grid>
             <TextBlock Classes="label" Text="Command line" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
               <TextBox x:Name="PreviewBox" Grid.Column="0" Classes="mono" Text="{Binding CurrentForm.Preview}" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="Command line preview" />

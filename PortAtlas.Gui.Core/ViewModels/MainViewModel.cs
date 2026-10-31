@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PortAtlas.Gui.Core.Catalog;
@@ -15,6 +16,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly Dictionary<string, CommandFormViewModel> _formsByKey = new(StringComparer.Ordinal);
     private readonly UserPreferencesStore _preferences;
+    private bool _isApplyingProfile;
 
     /// <summary>
     /// Initializes the main view model.
@@ -26,7 +28,8 @@ public sealed partial class MainViewModel : ObservableObject
         IUiDispatcher dispatcher,
         ProfileStore profileStore,
         IConfirmationService confirmation,
-        UserPreferencesStore preferences)
+        UserPreferencesStore preferences,
+        ExecutableViewModel executable)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(runner);
@@ -35,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(profileStore);
         ArgumentNullException.ThrowIfNull(confirmation);
         ArgumentNullException.ThrowIfNull(preferences);
+        ArgumentNullException.ThrowIfNull(executable);
 
         if (catalog.Commands.Count == 0)
         {
@@ -47,10 +51,16 @@ public sealed partial class MainViewModel : ObservableObject
             _formsByKey[command.Key] = new CommandFormViewModel(command, filePicker);
         }
 
+        foreach (var option in GlobalTextOptions())
+        {
+            option.PropertyChanged += OnGlobalOptionChanged;
+        }
+
         _selectedCommand = Commands[0];
         _currentForm = _formsByKey[_selectedCommand.Key];
         Run = new RunViewModel(runner, dispatcher, () => CurrentForm.BuiltArguments);
         _preferences = preferences;
+        Executable = executable;
         Profiles = new ProfilesViewModel(profileStore, preferences, confirmation, BuildProfileDocument, ApplyProfileDocument);
     }
 
@@ -69,6 +79,11 @@ public sealed partial class MainViewModel : ObservableObject
     /// View model managing execution and output streaming.
     /// </summary>
     public RunViewModel Run { get; }
+
+    /// <summary>
+    /// View model showing and choosing the PortAtlas executable.
+    /// </summary>
+    public ExecutableViewModel Executable { get; }
 
     /// <summary>
     /// View model managing profile persistence.
@@ -95,7 +110,14 @@ public sealed partial class MainViewModel : ObservableObject
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         Theme = _preferences.Load().Theme;
-        return Profiles.InitializeAsync(cancellationToken);
+        return InitializeProfilesAsync(cancellationToken);
+    }
+
+    private async Task InitializeProfilesAsync(CancellationToken cancellationToken)
+    {
+        await Profiles.InitializeAsync(cancellationToken).ConfigureAwait(true);
+        // Checked after the last profile is applied, because the profile may carry the executable path.
+        Executable.Refresh();
     }
 
     [RelayCommand]
@@ -122,7 +144,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private ProfileDocument BuildProfileDocument()
     {
-        var document = new ProfileDocument();
+        var document = new ProfileDocument { ExecutablePath = Executable.ConfiguredPath };
         foreach (var (key, form) in _formsByKey)
         {
             document.Forms[key] = form.ToState();
@@ -133,9 +155,50 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void ApplyProfileDocument(ProfileDocument document)
     {
-        foreach (var (key, form) in _formsByKey)
+        Executable.ConfiguredPath = document.ExecutablePath;
+        // Each form is loaded on its own: propagating while loading would let an empty form wipe the value of another.
+        _isApplyingProfile = true;
+        try
         {
-            form.LoadState(document.Forms.TryGetValue(key, out var state) ? state : new CommandFormState());
+            foreach (var (key, form) in _formsByKey)
+            {
+                form.LoadState(document.Forms.TryGetValue(key, out var state) ? state : new CommandFormState());
+            }
+        }
+        finally
+        {
+            _isApplyingProfile = false;
+        }
+
+        ShareGlobalOptions();
+    }
+
+    // Options such as --config are declared once on the root command: one value serves every command.
+    private IEnumerable<TextOptionViewModel> GlobalTextOptions() =>
+        _formsByKey.Values.SelectMany(f => f.Options).OfType<TextOptionViewModel>().Where(o => o.Descriptor.IsGlobal);
+
+    private void OnGlobalOptionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isApplyingProfile || e.PropertyName != nameof(TextOptionViewModel.Value) || sender is not TextOptionViewModel source)
+        {
+            return;
+        }
+
+        foreach (var other in GlobalTextOptions().Where(o => !ReferenceEquals(o, source) && string.Equals(o.Name, source.Name, StringComparison.Ordinal)))
+        {
+            other.Value = source.Value;
+        }
+    }
+
+    private void ShareGlobalOptions()
+    {
+        foreach (var group in GlobalTextOptions().GroupBy(o => o.Name, StringComparer.Ordinal))
+        {
+            var shared = group.Select(o => o.Value).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
+            foreach (var option in group)
+            {
+                option.Value = shared;
+            }
         }
     }
 }

@@ -41,7 +41,8 @@ public sealed class MainWindowTests : IDisposable
             new ImmediateDispatcher(),
             new ProfileStore(new FixedDirectory(_directory)),
             new AlwaysConfirm(),
-            new UserPreferencesStore(new FixedDirectory(_directory)));
+            new UserPreferencesStore(new FixedDirectory(_directory)),
+            new ExecutableViewModel(new PortAtlasExecutableLocator(_root, _ => null), new NullFilePicker()));
 
         var window = new MainWindow { DataContext = vm };
 
@@ -69,7 +70,8 @@ public sealed class MainWindowTests : IDisposable
             new ImmediateDispatcher(),
             new ProfileStore(new FixedDirectory(_directory)),
             new AlwaysConfirm(),
-            new UserPreferencesStore(new FixedDirectory(_directory)));
+            new UserPreferencesStore(new FixedDirectory(_directory)),
+            new ExecutableViewModel(locator, new NullFilePicker()));
 
         var window = new MainWindow { DataContext = vm };
 

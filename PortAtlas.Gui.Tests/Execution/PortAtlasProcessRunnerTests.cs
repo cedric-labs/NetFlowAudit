@@ -63,6 +63,14 @@ public sealed class PortAtlasProcessRunnerTests
 
     private sealed class FixedExecutableLocator(string path) : IPortAtlasExecutableLocator
     {
+        public string? ConfiguredPath { get; set; }
+
+        public bool TryLocate(out string? located)
+        {
+            located = path;
+            return true;
+        }
+
         public string Locate() => path;
     }
 

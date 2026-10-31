@@ -11,4 +11,9 @@ public sealed class ProfileDocument
     /// Form states keyed by command key (see <see cref="Catalog.CommandDescriptor.Key"/>).
     /// </summary>
     public Dictionary<string, CommandFormState> Forms { get; init; } = [];
+
+    /// <summary>
+    /// Path of the PortAtlas executable this profile runs, or <see langword="null"/> to use the automatic search.
+    /// </summary>
+    public string? ExecutablePath { get; init; }
 }
