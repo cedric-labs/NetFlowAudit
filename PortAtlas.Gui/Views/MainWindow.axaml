@@ -1,0 +1,150 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PortAtlas.Gui.Core.ViewModels"
+        xmlns:catalog="using:PortAtlas.Gui.Core.Catalog"
+        xmlns:exec="using:PortAtlas.Gui.Core.Execution"
+        x:Class="PortAtlas.Gui.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="PortAtlas"
+        Width="1050"
+        Height="750">
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:FlagOptionViewModel">
+      <StackPanel Margin="0,4">
+        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" />
+        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TextOptionViewModel">
+      <StackPanel Margin="0,4">
+        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox Grid.Column="0" Text="{Binding Value}" />
+          <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="4,0,0,0" />
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:IntegerOptionViewModel">
+      <StackPanel Margin="0,4">
+        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+        <TextBox Text="{Binding Value}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ChoiceOptionViewModel">
+      <StackPanel Margin="0,4">
+        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="*,Auto">
+          <ComboBox Grid.Column="0" ItemsSource="{Binding AcceptedValues}" SelectedItem="{Binding SelectedValue}" HorizontalAlignment="Stretch" />
+          <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" Margin="4,0,0,0" />
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TextListOptionViewModel">
+      <StackPanel Margin="0,4">
+        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBox Grid.Column="0" Text="{Binding PendingValue}" />
+          <Button Grid.Column="1" Content="Add" Command="{Binding AddItemCommand}" Margin="4,0,0,0" />
+          <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="4,0,0,0" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Values}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2">
+                <TextBlock Text="{Binding}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Grid ColumnDefinitions="200,*" Margin="8">
+    <DockPanel Grid.Column="0" Margin="0,0,8,0">
+      <TextBlock DockPanel.Dock="Top" Text="Commands" FontWeight="Bold" Margin="0,0,0,4" />
+      <ListBox x:Name="CommandsList"
+               ItemsSource="{Binding Commands}"
+               SelectedItem="{Binding SelectedCommand}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="catalog:CommandDescriptor">
+            <TextBlock Text="{Binding Key}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,180">
+      <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
+        <TextBlock Text="Profile:" VerticalAlignment="Center" />
+        <ComboBox ItemsSource="{Binding Profiles.Names}" SelectedItem="{Binding Profiles.SelectedProfile}" Width="140" />
+        <Button Content="Load" Command="{Binding Profiles.LoadCommand}" />
+        <TextBox Text="{Binding Profiles.ProfileNameInput}" Watermark="Profile name" Width="140" />
+        <Button Content="Save" Command="{Binding Profiles.SaveCommand}" />
+        <TextBlock Text="{Binding Profiles.ErrorMessage}" VerticalAlignment="Center" />
+      </StackPanel>
+
+      <ScrollViewer Grid.Row="1">
+        <StackPanel DataContext="{Binding CurrentForm}" Spacing="8">
+          <TextBlock Text="{Binding Command.Description}" TextWrapping="Wrap" />
+
+          <ItemsControl ItemsSource="{Binding Arguments}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PositionalArgumentViewModel">
+                <StackPanel Margin="0,4">
+                  <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                  <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+                  <TextBox Text="{Binding Value}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OptionGroupViewModel">
+                <StackPanel Margin="0,6">
+                  <TextBlock Text="{Binding Group}" FontWeight="Bold" FontSize="14" />
+                  <ItemsControl ItemsSource="{Binding Options}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Spacing="4" Margin="0,8">
+        <TextBlock Text="Command line preview:" FontWeight="Bold" />
+        <TextBox Text="{Binding CurrentForm.Preview}" IsReadOnly="True" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Run" Command="{Binding Run.RunCommand}" />
+          <Button Content="Cancel" Command="{Binding Run.CancelCommand}" />
+          <TextBlock Text="{Binding Run.State}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Run.ExitCode, StringFormat='Exit code: {0}'}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Run.StatusMessage}" VerticalAlignment="Center" />
+        </StackPanel>
+      </StackPanel>
+
+      <Border Grid.Row="3" BorderBrush="Gray" BorderThickness="1">
+        <ListBox ItemsSource="{Binding Run.OutputLines}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="exec:RunOutputLine">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{Binding Stream}" FontWeight="Bold" />
+                <TextBlock Text="{Binding Text}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
