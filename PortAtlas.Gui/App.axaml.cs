@@ -28,7 +28,7 @@ public sealed partial class App : Application
             var runner = new PortAtlasProcessRunner(locator);
             var filePicker = new AvaloniaFilePickerService(() => window.StorageProvider);
             var dispatcher = new AvaloniaUiDispatcher();
-            var profileDirectory = new ProfileDirectoryProvider();
+            var profileDirectory = new ProfileDirectoryProvider(AppContext.BaseDirectory, ProfileDirectoryProvider.GetLegacyDataDirectory());
             var profileStore = new ProfileStore(profileDirectory);
 
             var viewModel = new MainViewModel(

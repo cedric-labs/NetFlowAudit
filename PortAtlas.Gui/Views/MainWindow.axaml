@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PortAtlas.Gui.Core.ViewModels"
         xmlns:catalog="using:PortAtlas.Gui.Core.Catalog"
+        xmlns:views="using:PortAtlas.Gui.Views"
         xmlns:exec="using:PortAtlas.Gui.Core.Execution"
         x:Class="PortAtlas.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
@@ -12,6 +13,7 @@
         MinHeight="520">
   <Window.Resources>
     <ResourceDictionary>
+      <views:OptionGroupIconConverter x:Key="GroupIcon" />
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="ErrorTextBrush" Color="#B3261E" />
@@ -75,7 +77,7 @@
         <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto">
           <TextBox Grid.Column="0" Text="{Binding Value}" AutomationProperties.Name="{Binding Name}" />
-          <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
+          <Button Grid.Column="1" Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Folder}" /><TextBlock Text="Browse..." /></StackPanel></Button>
         </Grid>
       </StackPanel>
     </DataTemplate>
@@ -94,7 +96,7 @@
         <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto">
           <ComboBox Grid.Column="0" ItemsSource="{Binding AcceptedValues}" SelectedItem="{Binding SelectedValue}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Name}" />
-          <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" Margin="6,0,0,0" />
+          <Button Grid.Column="1" Command="{Binding ClearCommand}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Close}" /><TextBlock Text="Clear" /></StackPanel></Button>
         </Grid>
       </StackPanel>
     </DataTemplate>
@@ -105,18 +107,18 @@
         <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto,Auto,Auto">
           <TextBox Grid.Column="0" Text="{Binding PendingValue}" AutomationProperties.Name="{Binding Name}" />
-          <Button Grid.Column="1" Content="Add" Command="{Binding AddItemCommand}" Margin="6,0,0,0" />
-          <Button Grid.Column="2" Content="File..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
-          <Button Grid.Column="3" Content="Folder..." Command="{Binding BrowseDirectoryCommand}" IsVisible="{Binding HasDirectoryPicker}" Margin="6,0,0,0" />
+          <Button Grid.Column="1" Command="{Binding AddItemCommand}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Add}" /><TextBlock Text="Add" /></StackPanel></Button>
+          <Button Grid.Column="2" Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.File}" /><TextBlock Text="File..." /></StackPanel></Button>
+          <Button Grid.Column="3" Command="{Binding BrowseDirectoryCommand}" IsVisible="{Binding HasDirectoryPicker}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Folder}" /><TextBlock Text="Folder..." /></StackPanel></Button>
         </Grid>
         <ItemsControl ItemsSource="{Binding Values}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="x:String">
               <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                 <TextBlock Grid.Column="0" Classes="mono" Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <Button Grid.Column="1" Content="Remove"
+                <Button Grid.Column="1"
                         Command="{Binding $parent[ItemsControl].((vm:TextListOptionViewModel)DataContext).RemoveItemCommand}"
-                        CommandParameter="{Binding}" />
+                        CommandParameter="{Binding}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Close}" /><TextBlock Text="Remove" /></StackPanel></Button>
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -131,16 +133,16 @@
       <TextBlock Grid.Column="1" Classes="error" Text="{Binding Profiles.ErrorMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="12,0" />
       <TextBlock Grid.Column="2" Text="Profile" VerticalAlignment="Center" />
       <ComboBox Grid.Column="3" ItemsSource="{Binding Profiles.Names}" SelectedItem="{Binding Profiles.SelectedProfile}" Width="160" AutomationProperties.Name="Saved profiles" />
-      <Button Grid.Column="4" Content="Load" Command="{Binding Profiles.LoadCommand}" />
+      <Button Grid.Column="4" Command="{Binding Profiles.LoadCommand}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Load}" /><TextBlock Text="Load" /></StackPanel></Button>
       <TextBox Grid.Column="5" Text="{Binding Profiles.ProfileNameInput}" Watermark="Profile name" Width="150" AutomationProperties.Name="Profile name" />
-      <Button Grid.Column="6" Content="Save" Command="{Binding Profiles.SaveCommand}" />
-      <Button Grid.Column="7" Content="{Binding ThemeLabel}" Command="{Binding CycleThemeCommand}" AutomationProperties.Name="Switch colour theme" />
+      <Button Grid.Column="6" Command="{Binding Profiles.SaveCommand}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Save}" /><TextBlock Text="Save" /></StackPanel></Button>
+      <Button Grid.Column="7" Command="{Binding CycleThemeCommand}" AutomationProperties.Name="Switch colour theme"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Theme}" /><TextBlock Text="{Binding ThemeLabel}" /></StackPanel></Button>
     </Grid>
 
     <Border Grid.Row="1" Classes="card" IsVisible="{Binding !Executable.IsAvailable}" Background="{DynamicResource WarningBannerBrush}">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <TextBlock Grid.Column="0" Text="{Binding Executable.StatusText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Content="Select PortAtlas..." Command="{Binding Executable.BrowseCommand}" />
+        <Button Grid.Column="1" Command="{Binding Executable.BrowseCommand}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Folder}" /><TextBlock Text="Select PortAtlas..." /></StackPanel></Button>
       </Grid>
     </Border>
 
@@ -182,7 +184,8 @@
               <ItemsControl ItemsSource="{Binding Groups}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:OptionGroupViewModel">
-                    <Expander Classes="group" Header="{Binding Group}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,6,0,0">
+                    <Expander Classes="group" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,6,0,0">
+                      <Expander.Header><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{Binding Group, Converter={StaticResource GroupIcon}}" /><TextBlock Text="{Binding Group}" /></StackPanel></Expander.Header>
                       <ItemsControl ItemsSource="{Binding Options}" />
                     </Expander>
                   </DataTemplate>
@@ -197,17 +200,17 @@
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
               <TextBlock Grid.Column="0" Classes="label" Text="Executable" VerticalAlignment="Center" />
               <TextBlock Grid.Column="1" Classes="mono hint" Text="{Binding Executable.StatusText}" ToolTip.Tip="{Binding Executable.StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <Button Grid.Column="2" Content="Change..." Command="{Binding Executable.BrowseCommand}" />
-              <Button Grid.Column="3" Content="Automatic" Command="{Binding Executable.ClearCommand}" IsVisible="{Binding Executable.ConfiguredPath, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <Button Grid.Column="2" Command="{Binding Executable.BrowseCommand}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Folder}" /><TextBlock Text="Change..." /></StackPanel></Button>
+              <Button Grid.Column="3" Command="{Binding Executable.ClearCommand}" IsVisible="{Binding Executable.ConfiguredPath, Converter={x:Static ObjectConverters.IsNotNull}}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Refresh}" /><TextBlock Text="Automatic" /></StackPanel></Button>
             </Grid>
             <TextBlock Classes="label" Text="Command line" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
               <TextBox x:Name="PreviewBox" Grid.Column="0" Classes="mono" Text="{Binding CurrentForm.Preview}" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="Command line preview" />
-              <Button x:Name="CopyButton" Grid.Column="1" Content="Copy" VerticalAlignment="Top" Click="OnCopyClick" />
+              <Button x:Name="CopyButton" Grid.Column="1" VerticalAlignment="Top" Click="OnCopyClick"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Copy}" /><TextBlock Text="Copy" /></StackPanel></Button>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="Run" Command="{Binding Run.RunCommand}" Classes="accent" />
-              <Button Content="Cancel" Command="{Binding Run.CancelCommand}" />
+              <Button Command="{Binding Run.RunCommand}" Classes="accent"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Play}" /><TextBlock Text="Run" /></StackPanel></Button>
+              <Button Command="{Binding Run.CancelCommand}"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Stop}" /><TextBlock Text="Cancel" /></StackPanel></Button>
               <TextBlock Text="{Binding Run.State}" VerticalAlignment="Center" Margin="8,0,0,0" />
               <TextBlock Text="{Binding Run.ExitCode, StringFormat='Exit code: {0}'}" IsVisible="{Binding Run.ExitCode, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center" />
               <TextBlock Classes="error" Text="{Binding Run.StatusMessage}" VerticalAlignment="Center" />
