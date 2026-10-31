@@ -55,8 +55,8 @@ public sealed class AvaloniaConfirmationService(Func<Window?> ownerAccessor) : I
             }
         };
 
-        yes.Click += (_, _) => dialog.Close(true);
-        no.Click += (_, _) => dialog.Close(false);
+        yes.Click += (_, _) => dialog.Close(dialogResult: true);
+        no.Click += (_, _) => dialog.Close(dialogResult: false);
         return dialog;
     }
 }
