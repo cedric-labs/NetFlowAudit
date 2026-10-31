@@ -200,7 +200,7 @@ $hGuiExe = $hashes["PortAtlas.Gui-" + $version + "-win-x64.exe"]
 $bodyList = [System.Collections.Generic.List[string]]::new()
 $bodyList.Add('# PortAtlas ' + $Tag)
 $bodyList.Add('')
-$bodyList.Add('PortAtlas is a cross-platform (Windows & Linux) network flow auditing agent designed to run interactively in the terminal or continuously as a background daemon/service.')
+$bodyList.Add('PortAtlas records which services a Windows or Linux machine talks to, over days or weeks, and which program is responsible. From the logs it draws offline HTML topology maps, Draw.io diagrams and firewall rule matrices.')
 $bodyList.Add('')
 $bodyList.Add([System.IO.File]::ReadAllText($notesPath).Trim())
 $bodyList.Add('')
