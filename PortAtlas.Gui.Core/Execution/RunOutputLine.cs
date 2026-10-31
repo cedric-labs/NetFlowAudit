@@ -5,4 +5,10 @@ namespace PortAtlas.Gui.Core.Execution;
 /// </summary>
 /// <param name="Stream">Stream the line was read from.</param>
 /// <param name="Text">Line without its terminator.</param>
-public sealed record RunOutputLine(RunOutputStream Stream, string Text);
+public sealed record RunOutputLine(RunOutputStream Stream, string Text)
+{
+    /// <summary>
+    /// Whether the line was written to the error stream.
+    /// </summary>
+    public bool IsError => Stream == RunOutputStream.Error;
+}

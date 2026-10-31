@@ -6,61 +6,115 @@
         x:Class="PortAtlas.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="PortAtlas"
-        Width="1050"
-        Height="750">
+        Width="1100"
+        Height="780"
+        MinWidth="760"
+        MinHeight="520">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="ErrorTextBrush" Color="#B3261E" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="ErrorTextBrush" Color="#FF8A80" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.group">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,12,0,2" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.7" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.error">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorTextBrush}" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12" />
+    </Style>
+    <Style Selector="TextBox.mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    </Style>
+  </Window.Styles>
+
   <Window.DataTemplates>
     <DataTemplate DataType="vm:FlagOptionViewModel">
-      <StackPanel Margin="0,4">
+      <StackPanel Margin="0,4" Spacing="2">
         <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" />
-        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+        <TextBlock Classes="hint" Text="{Binding Description}" Margin="28,0,0,0" />
       </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="vm:TextOptionViewModel">
-      <StackPanel Margin="0,4">
-        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+      <StackPanel Margin="0,4" Spacing="2">
+        <TextBlock Classes="label" Text="{Binding Name}" />
+        <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto">
-          <TextBox Grid.Column="0" Text="{Binding Value}" />
-          <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="4,0,0,0" />
+          <TextBox Grid.Column="0" Text="{Binding Value}" AutomationProperties.Name="{Binding Name}" />
+          <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
         </Grid>
       </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="vm:IntegerOptionViewModel">
-      <StackPanel Margin="0,4">
-        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
-        <TextBox Text="{Binding Value}" />
+      <StackPanel Margin="0,4" Spacing="2">
+        <TextBlock Classes="label" Text="{Binding Name}" />
+        <TextBlock Classes="hint" Text="{Binding Description}" />
+        <TextBox Text="{Binding Value}" AutomationProperties.Name="{Binding Name}" />
       </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="vm:ChoiceOptionViewModel">
-      <StackPanel Margin="0,4">
-        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+      <StackPanel Margin="0,4" Spacing="2">
+        <TextBlock Classes="label" Text="{Binding Name}" />
+        <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto">
-          <ComboBox Grid.Column="0" ItemsSource="{Binding AcceptedValues}" SelectedItem="{Binding SelectedValue}" HorizontalAlignment="Stretch" />
-          <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" Margin="4,0,0,0" />
+          <ComboBox Grid.Column="0" ItemsSource="{Binding AcceptedValues}" SelectedItem="{Binding SelectedValue}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Name}" />
+          <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" Margin="6,0,0,0" />
         </Grid>
       </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="vm:TextListOptionViewModel">
-      <StackPanel Margin="0,4">
-        <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-        <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
+      <StackPanel Margin="0,4" Spacing="2">
+        <TextBlock Classes="label" Text="{Binding Name}" />
+        <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto,Auto">
-          <TextBox Grid.Column="0" Text="{Binding PendingValue}" />
-          <Button Grid.Column="1" Content="Add" Command="{Binding AddItemCommand}" Margin="4,0,0,0" />
-          <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="4,0,0,0" />
+          <TextBox Grid.Column="0" Text="{Binding PendingValue}" AutomationProperties.Name="{Binding Name}" />
+          <Button Grid.Column="1" Content="Add" Command="{Binding AddItemCommand}" Margin="6,0,0,0" />
+          <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
         </Grid>
         <ItemsControl ItemsSource="{Binding Values}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="x:String">
-              <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2">
-                <TextBlock Text="{Binding}" VerticalAlignment="Center" />
-              </StackPanel>
+              <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                <TextBlock Grid.Column="0" Classes="mono" Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Content="Remove"
+                        Command="{Binding $parent[ItemsControl].((vm:TextListOptionViewModel)DataContext).RemoveItemCommand}"
+                        CommandParameter="{Binding}" />
+              </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -68,83 +122,94 @@
     </DataTemplate>
   </Window.DataTemplates>
 
-  <Grid ColumnDefinitions="200,*" Margin="8">
-    <DockPanel Grid.Column="0" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Text="Commands" FontWeight="Bold" Margin="0,0,0,4" />
-      <ListBox x:Name="CommandsList"
-               ItemsSource="{Binding Commands}"
-               SelectedItem="{Binding SelectedCommand}">
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="catalog:CommandDescriptor">
-            <TextBlock Text="{Binding Key}" />
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </DockPanel>
+  <Grid RowDefinitions="Auto,*" Margin="16" RowSpacing="12">
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Grid.Column="0" Classes="title" Text="PortAtlas" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Classes="error" Text="{Binding Profiles.ErrorMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="12,0" />
+      <TextBlock Grid.Column="2" Text="Profile" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="3" ItemsSource="{Binding Profiles.Names}" SelectedItem="{Binding Profiles.SelectedProfile}" Width="160" AutomationProperties.Name="Saved profiles" />
+      <Button Grid.Column="4" Content="Load" Command="{Binding Profiles.LoadCommand}" />
+      <TextBox Grid.Column="5" Text="{Binding Profiles.ProfileNameInput}" Watermark="Profile name" Width="150" AutomationProperties.Name="Profile name" />
+      <Button Grid.Column="6" Content="Save" Command="{Binding Profiles.SaveCommand}" />
+      <Button x:Name="ThemeButton" Grid.Column="7" Content="Theme: System" Click="OnThemeClick" AutomationProperties.Name="Switch colour theme" />
+    </Grid>
 
-    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,180">
-      <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
-        <TextBlock Text="Profile:" VerticalAlignment="Center" />
-        <ComboBox ItemsSource="{Binding Profiles.Names}" SelectedItem="{Binding Profiles.SelectedProfile}" Width="140" />
-        <Button Content="Load" Command="{Binding Profiles.LoadCommand}" />
-        <TextBox Text="{Binding Profiles.ProfileNameInput}" Watermark="Profile name" Width="140" />
-        <Button Content="Save" Command="{Binding Profiles.SaveCommand}" />
-        <TextBlock Text="{Binding Profiles.ErrorMessage}" VerticalAlignment="Center" />
-      </StackPanel>
-
-      <ScrollViewer Grid.Row="1">
-        <StackPanel DataContext="{Binding CurrentForm}" Spacing="8">
-          <TextBlock Text="{Binding Command.Description}" TextWrapping="Wrap" />
-
-          <ItemsControl ItemsSource="{Binding Arguments}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:PositionalArgumentViewModel">
-                <StackPanel Margin="0,4">
-                  <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-                  <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" />
-                  <TextBox Text="{Binding Value}" />
-                </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="220,*" ColumnSpacing="12">
+      <Border Grid.Column="0" Classes="card" Padding="8">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Classes="label" Text="Commands" Margin="4,0,0,6" />
+          <ListBox x:Name="CommandsList"
+                   ItemsSource="{Binding Commands}"
+                   SelectedItem="{Binding SelectedCommand}"
+                   AutomationProperties.Name="Commands">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="catalog:CommandDescriptor">
+                <TextBlock Text="{Binding Key}" />
               </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <ItemsControl ItemsSource="{Binding Groups}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:OptionGroupViewModel">
-                <StackPanel Margin="0,6">
-                  <TextBlock Text="{Binding Group}" FontWeight="Bold" FontSize="14" />
-                  <ItemsControl ItemsSource="{Binding Options}" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </ScrollViewer>
-
-      <StackPanel Grid.Row="2" Spacing="4" Margin="0,8">
-        <TextBlock Text="Command line preview:" FontWeight="Bold" />
-        <TextBox Text="{Binding CurrentForm.Preview}" IsReadOnly="True" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="Run" Command="{Binding Run.RunCommand}" />
-          <Button Content="Cancel" Command="{Binding Run.CancelCommand}" />
-          <TextBlock Text="{Binding Run.State}" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding Run.ExitCode, StringFormat='Exit code: {0}'}" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding Run.StatusMessage}" VerticalAlignment="Center" />
-        </StackPanel>
-      </StackPanel>
-
-      <Border Grid.Row="3" BorderBrush="Gray" BorderThickness="1">
-        <ListBox ItemsSource="{Binding Run.OutputLines}">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="exec:RunOutputLine">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Text="{Binding Stream}" FontWeight="Bold" />
-                <TextBlock Text="{Binding Text}" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
       </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="*,Auto,200" RowSpacing="12">
+        <Border Grid.Row="0" Classes="card">
+          <ScrollViewer>
+            <StackPanel DataContext="{Binding CurrentForm}" Spacing="6" Margin="0,0,12,0">
+              <TextBlock Text="{Binding Command.Description}" TextWrapping="Wrap" />
+
+              <ItemsControl ItemsSource="{Binding Arguments}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PositionalArgumentViewModel">
+                    <StackPanel Margin="0,4" Spacing="2">
+                      <TextBlock Classes="label" Text="{Binding Name}" />
+                      <TextBlock Classes="hint" Text="{Binding Description}" />
+                      <TextBox Text="{Binding Value}" AutomationProperties.Name="{Binding Name}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:OptionGroupViewModel">
+                    <StackPanel>
+                      <TextBlock Classes="group" Text="{Binding Group}" />
+                      <ItemsControl ItemsSource="{Binding Options}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="1" Classes="card">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="label" Text="Command line" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox x:Name="PreviewBox" Grid.Column="0" Classes="mono" Text="{Binding CurrentForm.Preview}" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="Command line preview" />
+              <Button x:Name="CopyButton" Grid.Column="1" Content="Copy" VerticalAlignment="Top" Click="OnCopyClick" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Run" Command="{Binding Run.RunCommand}" Classes="accent" />
+              <Button Content="Cancel" Command="{Binding Run.CancelCommand}" />
+              <TextBlock Text="{Binding Run.State}" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <TextBlock Text="{Binding Run.ExitCode, StringFormat='Exit code: {0}'}" IsVisible="{Binding Run.ExitCode, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center" />
+              <TextBlock Classes="error" Text="{Binding Run.StatusMessage}" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card" Padding="4">
+          <ListBox ItemsSource="{Binding Run.OutputLines}" AutomationProperties.Name="Command output">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="exec:RunOutputLine">
+                <TextBlock Classes="mono" Classes.error="{Binding IsError}" Text="{Binding Text}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+      </Grid>
     </Grid>
   </Grid>
 </Window>
