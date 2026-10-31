@@ -141,8 +141,20 @@ public sealed class CachedHostNameResolverTests
     [Fact]
     public async Task ResolveHostNameAsync_WhenIpIsMicrosoftWithoutDnsPtr_ResolvesOrganizationViaRdap()
     {
-        // Arrange: 52.123.242.181 lacks reverse DNS PTR but belongs to Microsoft Corporation
-        using var orgResolver = new RdapIpOrganizationResolver(requestTimeout: TimeSpan.FromSeconds(10));
+        // Arrange: 52.123.242.181 lacks reverse DNS PTR but belongs to Microsoft Corporation (RDAP answer served locally)
+        const string rdapJson = """
+            {
+              "name": "MSFT",
+              "entities": [
+                {
+                  "roles": [ "registrant" ],
+                  "vcardArray": [ "vcard", [ [ "fn", {}, "text", "Microsoft Corporation" ] ] ]
+                }
+              ]
+            }
+            """;
+        using var httpClient = new HttpClient(new StubRdapHandler(rdapJson));
+        using var orgResolver = new RdapIpOrganizationResolver(httpClient, requestTimeout: TimeSpan.FromSeconds(10));
         await using var resolver = new CachedHostNameResolver(
             resolutionTimeout: TimeSpan.FromSeconds(2),
             exclusionEvaluator: null,
@@ -246,5 +258,11 @@ public sealed class CachedHostNameResolverTests
         entry!.Organization.Should().Be("Google LLC");
         entry.Country.Should().Be("US");
         entry.NetworkRange.Should().Be("8.8.8.0/24");
+    }
+
+    private sealed class StubRdapHandler(string json) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) });
     }
 }
