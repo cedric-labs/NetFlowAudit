@@ -95,7 +95,7 @@ Read by `audit` and `map`. Accepted values are compared without case.
 | `--drawio-subnets` | `on`, `off` | `DrawioSubnets` | `on` |
 | `--drawio-theme` | `dark`, `light` | `DrawioTheme` | `dark` |
 
-`--layout`, `--sort`, `--routing`, `--spacing` and `--edge-labels` set the initial state of the HTML map; the map page can change them.
+`--layout`, `--sort`, `--routing`, `--spacing` and `--edge-labels` set the initial state of the HTML map; the map page can change them. `--sort` also orders the target servers, and the subnet zones, of the Draw.io diagram.
 
 - `bus` routing: the arrows of a server share one trunk per direction, then split into one branch per target. The branches that reach a server through the same side and in the same direction end under one arrow head. Designed for the `tree` layout.
 - `--edge-labels none`: unchecks *Show Ports*. The arrows lose their port labels and the flows of a server pair are merged into one arrow, with a head at each end that receives a flow. The server inspector still lists the ports.

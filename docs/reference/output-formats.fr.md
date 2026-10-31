@@ -93,7 +93,7 @@ Au démarrage, `audit` relit le journal CSV existant (`--reload-history`, `Reloa
 
 `map --html` et `audit --html` écrivent un seul fichier HTML qui s'ouvre sans accès réseau. La page propose des choix de disposition, de tri, de routage et d'espacement, des filtres texte appliqués par le bouton `Apply Filters` ou `Enter`, la pagination des serveurs, un export SVG, et une section `CLI Command` qui affiche la commande `PortAtlas map` reproduisant les filtres et choix de disposition en cours. La commande copiée ne contient pas d'option `-i` : ajoutez les journaux à lire.
 
-`map --drawio` écrit un fichier Draw.io non compressé (`.drawio`) pour Draw.io Desktop ou diagrams.net. Les serveurs cibles sont regroupés en une zone par sous-réseau /24 (toutes les adresses IPv4 publiques partagent une seule zone « Internet »), et les zones passent à la ligne au-delà d'une largeur fixe pour que le schéma reste lisible sur un grand réseau. Avec `--drawio-subnets off` (`DrawioSubnets`), aucune zone n'est dessinée et les serveurs sont disposés en grille simple.
+`map --drawio` écrit un fichier Draw.io non compressé (`.drawio`) pour Draw.io Desktop ou diagrams.net. Les serveurs cibles sont regroupés en une zone par sous-réseau /24 (toutes les adresses IPv4 publiques partagent une seule zone « Internet »), et les zones passent à la ligne au-delà d'une largeur fixe pour que le schéma reste lisible sur un grand réseau. Avec `--drawio-subnets off` (`DrawioSubnets`), aucune zone n'est dessinée et les serveurs sont disposés en grille simple. `--sort` (`MapSortMethod`) fixe l'ordre des serveurs et, pour les méthodes par sous-réseau, des zones.
 
 ## Cache DNS
 

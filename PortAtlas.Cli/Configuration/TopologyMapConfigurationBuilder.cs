@@ -80,16 +80,6 @@ public static class TopologyMapConfigurationBuilder
             _ => TopologyLayoutMode.Layered
         };
 
-        var sortMethod = config.MapSortMethod.Trim().ToUpperInvariant() switch
-        {
-            "DEGREE" or "CONNECTIONDEGREE" => TopologyNodeSortMethod.ConnectionDegree,
-            "ALPHA" or "ALPHABETICAL" or "NAME" => TopologyNodeSortMethod.Alphabetical,
-            "TIERS" or "TIER" or "FUNCTIONALTIER" => TopologyNodeSortMethod.FunctionalTier,
-            "CLUSTER" or "SUBNETCLUSTER" or "ZONE" or "ZONES" or "SUBNET" => TopologyNodeSortMethod.SubnetCluster,
-            "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
-            _ => TopologyNodeSortMethod.BarycentricSugiyama
-        };
-
         var routingMode = config.MapRoutingMode.Trim().ToUpperInvariant() switch
         {
             "ORTHOGONAL" or "ORTHOGONALCORRIDORS" => TopologyEdgeRoutingMode.OrthogonalCorridors,
@@ -123,7 +113,7 @@ public static class TopologyMapConfigurationBuilder
         return new TopologyRenderingOptions
         {
             DefaultLayoutMode = layoutMode,
-            DefaultSortMethod = sortMethod,
+            DefaultSortMethod = ParseSortMethod(config.MapSortMethod),
             DefaultRoutingMode = routingMode,
             DefaultSpacingProfile = spacingProfile,
             DefaultEdgeLabelMode = edgeLabelMode,
@@ -180,7 +170,7 @@ public static class TopologyMapConfigurationBuilder
     }
 
     /// <summary>
-    /// Converts the configured Draw.io subnet setting (<c>on</c>, <c>off</c>) into the exporter layout options.
+    /// Converts the configured Draw.io subnet setting (<c>on</c>, <c>off</c>) and the map sort method into the exporter layout options.
     /// </summary>
     /// <param name="config">Application configuration.</param>
     /// <returns>Layout options that group the servers by subnet unless the setting is <c>off</c>.</returns>
@@ -190,9 +180,20 @@ public static class TopologyMapConfigurationBuilder
 
         return new TopologyDrawioLayoutOptions
         {
-            GroupBySubnets = !config.DrawioSubnets.Trim().Equals("off", StringComparison.OrdinalIgnoreCase)
+            GroupBySubnets = !config.DrawioSubnets.Trim().Equals("off", StringComparison.OrdinalIgnoreCase),
+            SortMethod = ParseSortMethod(config.MapSortMethod)
         };
     }
+
+    private static TopologyNodeSortMethod ParseSortMethod(string value) => value.Trim().ToUpperInvariant() switch
+    {
+        "DEGREE" or "CONNECTIONDEGREE" => TopologyNodeSortMethod.ConnectionDegree,
+        "ALPHA" or "ALPHABETICAL" or "NAME" => TopologyNodeSortMethod.Alphabetical,
+        "TIERS" or "TIER" or "FUNCTIONALTIER" => TopologyNodeSortMethod.FunctionalTier,
+        "CLUSTER" or "SUBNETCLUSTER" or "ZONE" or "ZONES" or "SUBNET" => TopologyNodeSortMethod.SubnetCluster,
+        "IP" or "SUBNETIP" => TopologyNodeSortMethod.SubnetIp,
+        _ => TopologyNodeSortMethod.BarycentricSugiyama
+    };
 
     private static List<NetworkPortRange> ParsePortRanges(IEnumerable<string> specifications)
     {

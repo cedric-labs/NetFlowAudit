@@ -93,7 +93,7 @@ Written by `export rules --pairs-output`, from the rows of the firewall rule mat
 
 `map --html` and `audit --html` write a single HTML file that opens without network access. The page offers layout, sorting, routing and spacing choices, text filters applied with the `Apply Filters` button or `Enter`, pagination of servers, an SVG export, and a `CLI Command` section showing the `PortAtlas map` command that reproduces the current filters and layout choices. The copied command contains no `-i` option: add the audit logs to read.
 
-`map --drawio` writes an uncompressed Draw.io file (`.drawio`) for Draw.io Desktop or diagrams.net. The target servers are grouped into one zone per /24 subnet (all public IPv4 addresses share a single "Internet" zone), and zones continue on a new row beyond a fixed width so the diagram stays readable on large networks. With `--drawio-subnets off` (`DrawioSubnets`), no zone is drawn and the servers are laid out as a plain grid.
+`map --drawio` writes an uncompressed Draw.io file (`.drawio`) for Draw.io Desktop or diagrams.net. The target servers are grouped into one zone per /24 subnet (all public IPv4 addresses share a single "Internet" zone), and zones continue on a new row beyond a fixed width so the diagram stays readable on large networks. With `--drawio-subnets off` (`DrawioSubnets`), no zone is drawn and the servers are laid out as a plain grid. `--sort` (`MapSortMethod`) sets the order of the servers and, for the subnet methods, of the zones.
 
 ## DNS cache
 
