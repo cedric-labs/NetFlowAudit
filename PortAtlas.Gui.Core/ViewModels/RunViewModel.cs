@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PortAtlas.Gui.Core.Execution;
@@ -73,8 +74,9 @@ public sealed partial class RunViewModel(
             StatusMessage = "Cancelled.";
             State = RunState.Cancelled;
         }
-        catch (FileNotFoundException ex)
+        catch (Exception ex) when (ex is FileNotFoundException or Win32Exception)
         {
+            // A missing or non-startable executable is an expected user-facing failure, not a crash of the UI command.
             StatusMessage = ex.Message;
             State = RunState.Failed;
         }

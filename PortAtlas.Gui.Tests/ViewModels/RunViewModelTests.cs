@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using AwesomeAssertions;
 using PortAtlas.Gui.Core.Execution;
 using PortAtlas.Gui.Core.Interaction;
@@ -81,6 +82,21 @@ public sealed class RunViewModelTests
         vm.State.Should().Be(RunState.Failed);
         vm.StatusMessage.Should().Contain("/nonexistent/gui/dir")
             .And.Contain(PortAtlasExecutableLocator.EnvironmentVariableName);
+    }
+
+    [Fact]
+    public async Task Run_WhenProcessCannotStart_FailsWithTheErrorMessage()
+    {
+        // Arrange
+        var runner = new StubRunner((_, _, _) => throw new Win32Exception("Access is denied."));
+        var vm = new RunViewModel(runner, new ImmediateDispatcher(), () => ["map"]);
+
+        // Act
+        await vm.RunCommand.ExecuteAsync(null);
+
+        // Assert
+        vm.State.Should().Be(RunState.Failed);
+        vm.StatusMessage.Should().Be("Access is denied.");
     }
 
     [Fact]
