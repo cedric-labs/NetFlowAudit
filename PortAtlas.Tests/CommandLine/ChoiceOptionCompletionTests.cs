@@ -1,7 +1,7 @@
-using AwesomeAssertions;
-using PortAtlas.Cli.CommandLine;
 using System.CommandLine;
 using System.CommandLine.Completions;
+using AwesomeAssertions;
+using PortAtlas.Cli.CommandLine;
 using Xunit;
 
 namespace PortAtlas.Tests.CommandLine;
