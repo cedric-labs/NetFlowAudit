@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>PortAtlas.Gui.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortAtlas.Cli\PortAtlas.Cli.csproj" />
+    <InternalsVisibleTo Include="PortAtlas.Gui.Tests" />
+  </ItemGroup>
+
+</Project>

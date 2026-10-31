@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="PortAtlas.Cli/PortAtlas.Cli.csproj" />
   <Project Path="PortAtlas.Core/PortAtlas.Core.csproj" />
+  <Project Path="PortAtlas.Gui.Core/PortAtlas.Gui.Core.csproj" />
+  <Project Path="PortAtlas.Gui.Tests/PortAtlas.Gui.Tests.csproj" />
   <Project Path="PortAtlas.Tests/PortAtlas.Tests.csproj" />
 </Solution>
