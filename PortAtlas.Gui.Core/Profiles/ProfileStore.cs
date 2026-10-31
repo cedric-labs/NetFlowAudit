@@ -63,5 +63,23 @@ public sealed class ProfileStore(IProfileDirectoryProvider directoryProvider)
         }
     }
 
+    /// <summary>
+    /// Lists the names of all stored profiles, sorted alphabetically.
+    /// </summary>
+    /// <returns>The names of the existing profile files.</returns>
+    public IReadOnlyList<string> ListNames()
+    {
+        var directory = directoryProvider.GetProfileDirectory();
+        if (!Directory.Exists(directory))
+        {
+            return [];
+        }
+
+        return [.. Directory.EnumerateFiles(directory, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .OfType<string>()
+            .Order(StringComparer.OrdinalIgnoreCase)];
+    }
+
     private static string PathOf(string directory, ProfileName name) => Path.Combine(directory, $"{name.Value}.json");
 }
