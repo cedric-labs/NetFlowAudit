@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.22" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="AwesomeAssertions" Version="9.6.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
@@ -20,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PortAtlas.Gui.Core\PortAtlas.Gui.Core.csproj" />
+    <ProjectReference Include="..\PortAtlas.Gui\PortAtlas.Gui.csproj" />
   </ItemGroup>
 
 </Project>

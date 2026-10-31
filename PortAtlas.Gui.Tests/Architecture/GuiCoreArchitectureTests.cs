@@ -24,6 +24,25 @@ public sealed class GuiCoreArchitectureTests
     }
 
     [Fact]
+    public void GuiCore_WhenTypesAreInspected_ReferencesNoSystemWindowsOrAvaloniaType()
+    {
+        // Act
+        var referencedNamespaces = ProjectTypes()
+            .SelectMany(type => type.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                .Select(f => f.FieldType)
+                .Concat(type.GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                    .Select(p => p.PropertyType)))
+            .Select(t => t.Namespace ?? string.Empty)
+            .Distinct(StringComparer.Ordinal);
+
+        // Assert
+        referencedNamespaces.Should().NotContain(ns =>
+            ns == "System.Windows"
+            || (ns.StartsWith("System.Windows.", StringComparison.Ordinal) && ns != "System.Windows.Input")
+            || ns.StartsWith("Avalonia", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void GuiCore_WhenTypesAreNamed_UsesNoCatchAllName()
     {
         // Act
