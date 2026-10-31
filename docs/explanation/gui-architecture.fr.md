@@ -14,6 +14,12 @@ Les ensembles fermés de valeurs (par exemple les dispositions de la carte) sont
 
 Le formulaire propose les commandes qui s'exécutent une fois puis s'arrêtent : `map`, `export rules`, `export ndjson`, `resolve`, `lookup` et `config init`. La commande `audit` s'exécute jusqu'à son arrêt et ne fait pas partie de la première version de l'interface.
 
+## Modèles de vue et abstractions
+
+Chaque descripteur de commande est transformé en un `CommandFormViewModel` qui regroupe ses modèles de vue d'option (`FlagOptionViewModel`, `TextOptionViewModel`, `IntegerOptionViewModel`, `ChoiceOptionViewModel`, `TextListOptionViewModel`) dans l'ordre de `OptionGroup`, sans les groupes vides, et met à jour l'aperçu de la ligne de commande à chaque modification. `MainViewModel` conserve une instance de formulaire par commande afin que les valeurs saisies pour une commande restent présentes lorsqu'on change de commande puis qu'on y revient. `RunViewModel` gère l'état d'exécution (`Idle`, `Running`, `Completed`, `Cancelled`, `Failed`), diffuse les lignes de sortie via `IUiDispatcher` et désactive la commande de lancement tant qu'une exécution est en cours. `ProfilesViewModel` liste, enregistre et charge les profils nommés.
+
+Les modèles de vue résident dans `PortAtlas.Gui.Core` et n'accèdent au système d'exploitation et à la bibliothèque graphique qu'à travers des abstractions : `IPortAtlasRunner` et `IPortAtlasExecutableLocator` pour l'exécution du processus, `IFilePickerService` pour les boîtes de dialogue de fichiers et de dossiers, `IUiDispatcher` pour renvoyer les lignes de sortie sur le fil de l'interface, et `IProfileDirectoryProvider` pour déterminer le dossier des profils.
+
 ## Exécution d'une commande
 
 L'état du formulaire, qui contient les valeurs saisies pour une commande, est converti en liste d'arguments : le chemin de la commande, puis les options renseignées, puis les arguments positionnels. Une option laissée vide n'ajoute rien, et la CLI applique alors son défaut. Une option répétable est écrite une fois par valeur. Un aperçu montre la ligne de commande avec des guillemets pour l'affichage et la copie, mais le programme n'exécute jamais ce texte.
@@ -24,14 +30,14 @@ L'exécution de l'exécutable donne le même comportement que la CLI, codes de s
 
 ## Profils
 
-Un profil est un ensemble nommé d'états de formulaire, un par commande, stocké dans un fichier JSON d'un dossier choisi par l'application. Un fichier est écrit sous un nom temporaire puis renommé par-dessus le précédent : une interruption laisse le profil antérieur intact. Un fichier de profil illisible provoque une erreur qui nomme le fichier.
+Un profil est un ensemble nommé d'états de formulaire, un par commande, stocké dans un fichier JSON sous `%APPDATA%\PortAtlas\profiles` sous Windows et `$XDG_CONFIG_HOME/portatlas/profiles` (ou `~/.config/portatlas/profiles` lorsque `XDG_CONFIG_HOME` n'est pas défini) sous Linux. Un fichier est écrit sous un nom temporaire puis renommé par-dessus le précédent : une interruption laisse le profil antérieur intact. Un fichier de profil illisible provoque une erreur qui nomme le fichier.
 
 ## Couches
 
 | Projet | Rôle |
 | :--- | :--- |
-| `PortAtlas.Gui.Core` | Catalogue des commandes, présentation des options, état du formulaire, liste d'arguments, exécuteur, profils. Aucune dépendance à la bibliothèque d'interface. |
-| `PortAtlas.Gui` | Vues et adaptateurs des sélecteurs de fichiers (lot suivant). |
-| `PortAtlas.Gui.Tests` | Tests du cœur et tests d'architecture. |
+| `PortAtlas.Gui.Core` | Catalogue des commandes, présentation des options, état du formulaire, liste d'arguments, exécuteur, profils, modèles de vue et abstractions d'interface. Aucune dépendance à la bibliothèque d'interface. |
+| `PortAtlas.Gui` | Vues Avalonia, adaptateur des sélecteurs de fichiers, répartiteur du fil d'interface et fournisseur du dossier des profils. |
+| `PortAtlas.Gui.Tests` | Tests unitaires, tests d'interface sans écran et tests d'architecture. |
 
-Le cœur n'atteint le processus, les boîtes de dialogue de fichiers et l'horloge qu'à travers des abstractions : il est testé sans fenêtre.
+Le cœur n'atteint le processus, les boîtes de dialogue de fichiers et le fil d'interface qu'à travers des abstractions : il est testé sans fenêtre.
