@@ -11,6 +11,9 @@ public enum PathKind
     /// <summary>An existing file, directory or wildcard pattern that is read.</summary>
     FileToRead,
 
+    /// <summary>An existing file or a directory; the GUI offers both pickers.</summary>
+    FileOrDirectoryToRead,
+
     /// <summary>A file that is created or overwritten.</summary>
     FileToWrite,
 

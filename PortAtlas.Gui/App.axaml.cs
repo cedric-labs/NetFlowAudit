@@ -28,14 +28,21 @@ public sealed partial class App : Application
             var runner = new PortAtlasProcessRunner(locator);
             var filePicker = new AvaloniaFilePickerService(() => window.StorageProvider);
             var dispatcher = new AvaloniaUiDispatcher();
-            var profileStore = new ProfileStore(new ProfileDirectoryProvider());
+            var profileDirectory = new ProfileDirectoryProvider();
+            var profileStore = new ProfileStore(profileDirectory);
 
-            window.DataContext = new MainViewModel(
+            var viewModel = new MainViewModel(
                 CommandCatalog.Build(),
                 runner,
                 filePicker,
                 dispatcher,
-                profileStore);
+                profileStore,
+                new AvaloniaConfirmationService(() => window),
+                new UserPreferencesStore(profileDirectory));
+
+            window.DataContext = viewModel;
+            // InitializeAsync reports its failures through the view models' error messages, so the discarded task cannot fault.
+            window.Opened += (_, _) => _ = viewModel.InitializeAsync();
 
             desktop.MainWindow = window;
         }

@@ -8,7 +8,7 @@ public static class OptionPresentation
     private static readonly OptionPresentationEntry Filter = new(OptionGroup.Filters, PathKind.None);
     private static readonly OptionPresentationEntry Rendering = new(OptionGroup.MapRendering, PathKind.None);
     private static readonly OptionPresentationEntry Resolving = new(OptionGroup.Resolution, PathKind.None);
-    private static readonly OptionPresentationEntry Input = new(OptionGroup.Inputs, PathKind.FileToRead);
+    private static readonly OptionPresentationEntry Input = new(OptionGroup.Inputs, PathKind.FileOrDirectoryToRead);
     private static readonly OptionPresentationEntry Output = new(OptionGroup.Outputs, PathKind.FileToWrite);
 
     /// <summary>

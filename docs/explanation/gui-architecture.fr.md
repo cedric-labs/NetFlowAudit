@@ -18,7 +18,7 @@ Le formulaire propose les commandes qui s'exécutent une fois puis s'arrêtent :
 
 Chaque descripteur de commande est transformé en un `CommandFormViewModel` qui regroupe ses modèles de vue d'option (`FlagOptionViewModel`, `TextOptionViewModel`, `IntegerOptionViewModel`, `ChoiceOptionViewModel`, `TextListOptionViewModel`) dans l'ordre de `OptionGroup`, sans les groupes vides, et met à jour l'aperçu de la ligne de commande à chaque modification. `MainViewModel` conserve une instance de formulaire par commande afin que les valeurs saisies pour une commande restent présentes lorsqu'on change de commande puis qu'on y revient. `RunViewModel` gère l'état d'exécution (`Idle`, `Running`, `Completed`, `Cancelled`, `Failed`), diffuse les lignes de sortie via `IUiDispatcher` et désactive la commande de lancement tant qu'une exécution est en cours. `ProfilesViewModel` liste, enregistre et charge les profils nommés.
 
-Les modèles de vue résident dans `PortAtlas.Gui.Core` et n'accèdent au système d'exploitation et à la bibliothèque graphique qu'à travers des abstractions : `IPortAtlasRunner` et `IPortAtlasExecutableLocator` pour l'exécution du processus, `IFilePickerService` pour les boîtes de dialogue de fichiers et de dossiers, `IUiDispatcher` pour renvoyer les lignes de sortie sur le fil de l'interface, et `IProfileDirectoryProvider` pour déterminer le dossier des profils.
+Les modèles de vue résident dans `PortAtlas.Gui.Core` et n'accèdent au système d'exploitation et à la bibliothèque graphique qu'à travers des abstractions : `IPortAtlasRunner` et `IPortAtlasExecutableLocator` pour l'exécution du processus, `IFilePickerService` pour les boîtes de dialogue de fichiers et de dossiers, `IUiDispatcher` pour renvoyer les lignes de sortie sur le fil de l'interface, `IConfirmationService` pour les questions oui / non, et `IProfileDirectoryProvider` pour déterminer le dossier des profils.
 
 ## Exécution d'une commande
 
@@ -31,6 +31,10 @@ L'exécution de l'exécutable donne le même comportement que la CLI, codes de s
 ## Profils
 
 Un profil est un ensemble nommé d'états de formulaire, un par commande, stocké dans un fichier JSON sous `%APPDATA%\PortAtlas\profiles` sous Windows et `$XDG_CONFIG_HOME/portatlas/profiles` (ou `~/.config/portatlas/profiles` lorsque `XDG_CONFIG_HOME` n'est pas défini) sous Linux. Un fichier est écrit sous un nom temporaire puis renommé par-dessus le précédent : une interruption laisse le profil antérieur intact. Un fichier de profil illisible provoque une erreur qui nomme le fichier.
+
+Enregistrer sans nom saisi met à jour le profil sélectionné, et écraser un profil existant, sélectionné ou désigné par son nom, demande toujours une confirmation via `IConfirmationService`. Le thème de couleurs et le nom du dernier profil utilisé sont stockés dans `preferences.json`, un niveau au-dessus du dossier des profils, et restaurés à l'ouverture de la fenêtre ; un fichier de préférences absent ou endommagé retombe sur les valeurs par défaut.
+
+La saisie d'une option répétable compte dès qu'elle est tapée : une valeur laissée dans la zone sans appuyer sur Add fait quand même partie du profil et de la ligne de commande. L'option `--input` accepte des fichiers, des dossiers et des motifs génériques ; elle propose donc un sélecteur File et un sélecteur Folder.
 
 ## Couches
 

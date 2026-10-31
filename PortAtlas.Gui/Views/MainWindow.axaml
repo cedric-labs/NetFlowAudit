@@ -101,10 +101,11 @@
       <StackPanel Margin="0,4" Spacing="2">
         <TextBlock Classes="label" Text="{Binding Name}" />
         <TextBlock Classes="hint" Text="{Binding Description}" />
-        <Grid ColumnDefinitions="*,Auto,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
           <TextBox Grid.Column="0" Text="{Binding PendingValue}" AutomationProperties.Name="{Binding Name}" />
           <Button Grid.Column="1" Content="Add" Command="{Binding AddItemCommand}" Margin="6,0,0,0" />
-          <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
+          <Button Grid.Column="2" Content="File..." Command="{Binding BrowseCommand}" IsVisible="{Binding HasPathPicker}" Margin="6,0,0,0" />
+          <Button Grid.Column="3" Content="Folder..." Command="{Binding BrowseDirectoryCommand}" IsVisible="{Binding HasDirectoryPicker}" Margin="6,0,0,0" />
         </Grid>
         <ItemsControl ItemsSource="{Binding Values}">
           <ItemsControl.ItemTemplate>
@@ -131,7 +132,7 @@
       <Button Grid.Column="4" Content="Load" Command="{Binding Profiles.LoadCommand}" />
       <TextBox Grid.Column="5" Text="{Binding Profiles.ProfileNameInput}" Watermark="Profile name" Width="150" AutomationProperties.Name="Profile name" />
       <Button Grid.Column="6" Content="Save" Command="{Binding Profiles.SaveCommand}" />
-      <Button x:Name="ThemeButton" Grid.Column="7" Content="Theme: System" Click="OnThemeClick" AutomationProperties.Name="Switch colour theme" />
+      <Button Grid.Column="7" Content="{Binding ThemeLabel}" Command="{Binding CycleThemeCommand}" AutomationProperties.Name="Switch colour theme" />
     </Grid>
 
     <Grid Grid.Row="1" ColumnDefinitions="220,*" ColumnSpacing="12">

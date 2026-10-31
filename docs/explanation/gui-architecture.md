@@ -18,7 +18,7 @@ The form offers the commands that run once and stop: `map`, `export rules`, `exp
 
 Each command descriptor is turned into a `CommandFormViewModel` that groups its option view models (`FlagOptionViewModel`, `TextOptionViewModel`, `IntegerOptionViewModel`, `ChoiceOptionViewModel`, `TextListOptionViewModel`) in the order of `OptionGroup`, omitting empty groups, and updates the command line preview after every change. `MainViewModel` keeps one form instance per command so values typed for a command remain when switching to another command and back. `RunViewModel` manages the execution state (`Idle`, `Running`, `Completed`, `Cancelled`, `Failed`), streams output lines through `IUiDispatcher` and disables the run command while a run is in progress. `ProfilesViewModel` lists, saves and loads named profiles.
 
-The view models live in `PortAtlas.Gui.Core` and reach the operating system and the windowing toolkit only through abstractions: `IPortAtlasRunner` and `IPortAtlasExecutableLocator` for process execution, `IFilePickerService` for file and folder dialogs, `IUiDispatcher` for marshalling output lines to the user interface thread, and `IProfileDirectoryProvider` for locating the profile directory.
+The view models live in `PortAtlas.Gui.Core` and reach the operating system and the windowing toolkit only through abstractions: `IPortAtlasRunner` and `IPortAtlasExecutableLocator` for process execution, `IFilePickerService` for file and folder dialogs, `IUiDispatcher` for marshalling output lines to the user interface thread, and `IConfirmationService` for yes / no questions, and `IProfileDirectoryProvider` for locating the profile directory.
 
 ## Running a command
 
@@ -31,6 +31,10 @@ Running the executable gives the same behavior as the CLI, including its exit co
 ## Profiles
 
 A profile is a named set of form states, one per command, stored as a JSON file in `%APPDATA%\PortAtlas\profiles` on Windows and `$XDG_CONFIG_HOME/portatlas/profiles` (or `~/.config/portatlas/profiles` when `XDG_CONFIG_HOME` is unset) on Linux. A file is written to a temporary name and then renamed over the previous one, so an interruption leaves the earlier profile intact. A profile file that cannot be read raises an error naming the file.
+
+Saving without a typed name updates the selected profile, and overwriting an existing profile, selected or typed by name, always asks for confirmation through `IConfirmationService`. The colour theme and the name of the last profile used are stored in `preferences.json`, one level above the profile directory, and restored when the window opens; a missing or damaged preferences file falls back to the defaults.
+
+A text entry of a repeatable option counts as soon as it is typed, so a value left in the box without pressing Add is still part of the profile and of the command line. The `--input` option accepts files, directories and wildcard patterns, so it offers both a File and a Folder picker.
 
 ## Layers
 

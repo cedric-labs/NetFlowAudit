@@ -62,6 +62,17 @@ public abstract partial class OptionViewModel : ObservableObject
     public bool HasPathPicker => Presentation.PathKind != PathKind.None;
 
     /// <summary>
+    /// Whether the user may also pick a directory, in addition to a file.
+    /// </summary>
+    public bool HasDirectoryPicker => Presentation.PathKind == PathKind.FileOrDirectoryToRead;
+
+    /// <summary>
+    /// Kind of path the file picker is asked for: a file when the option accepts a file or a directory.
+    /// </summary>
+    protected PathKind FilePickerKind =>
+        Presentation.PathKind == PathKind.FileOrDirectoryToRead ? PathKind.FileToRead : Presentation.PathKind;
+
+    /// <summary>
     /// Creates the specialized <see cref="OptionViewModel"/> for <paramref name="descriptor"/>.
     /// </summary>
     public static OptionViewModel Create(
@@ -152,7 +163,7 @@ public sealed partial class TextOptionViewModel(
             return;
         }
 
-        var picked = await filePicker.PickAsync(Presentation.PathKind, cancellationToken).ConfigureAwait(false);
+        var picked = await filePicker.PickAsync(FilePickerKind, cancellationToken).ConfigureAwait(false);
         if (picked is not null)
         {
             Value = picked;
@@ -250,6 +261,9 @@ public sealed partial class TextListOptionViewModel(
     [ObservableProperty]
     private string _pendingValue = string.Empty;
 
+    // The typed text counts as soon as it is typed: forgetting to press Add must not drop it from the profile or the command line.
+    partial void OnPendingValueChanged(string value) => NotifyChanged();
+
     /// <summary>
     /// Values currently added to the repeatable option.
     /// </summary>
@@ -290,7 +304,23 @@ public sealed partial class TextListOptionViewModel(
             return;
         }
 
-        var picked = await filePicker.PickAsync(Presentation.PathKind, cancellationToken).ConfigureAwait(false);
+        var picked = await filePicker.PickAsync(FilePickerKind, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(picked))
+        {
+            Values.Add(picked);
+            NotifyChanged();
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseDirectoryAsync(CancellationToken cancellationToken = default)
+    {
+        if (!HasDirectoryPicker)
+        {
+            return;
+        }
+
+        var picked = await filePicker.PickAsync(PathKind.Directory, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(picked))
         {
             Values.Add(picked);
@@ -302,7 +332,7 @@ public sealed partial class TextListOptionViewModel(
     public override void ApplyTo(CommandFormState state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        state.SetList(Name, Values);
+        state.SetList(Name, string.IsNullOrWhiteSpace(PendingValue) ? Values : [.. Values, PendingValue]);
     }
 
     /// <inheritdoc />
@@ -310,6 +340,7 @@ public sealed partial class TextListOptionViewModel(
     {
         ArgumentNullException.ThrowIfNull(state);
         Values.Clear();
+        PendingValue = string.Empty;
         if (state.Lists.TryGetValue(Name, out var stored))
         {
             foreach (var item in stored)

@@ -22,7 +22,7 @@ public sealed class AvaloniaFilePickerService(Func<IStorageProvider?> storagePro
 
         return kind switch
         {
-            PathKind.FileToRead => await PickFileToReadAsync(provider).ConfigureAwait(true),
+            PathKind.FileToRead or PathKind.FileOrDirectoryToRead => await PickFileToReadAsync(provider).ConfigureAwait(true),
             PathKind.FileToWrite => await PickFileToWriteAsync(provider).ConfigureAwait(true),
             PathKind.Directory => await PickDirectoryAsync(provider).ConfigureAwait(true),
             _ => null

@@ -24,9 +24,10 @@ public static class TestAppBuilder
 
 public sealed class MainWindowTests : IDisposable
 {
-    private readonly string _directory = Directory.CreateTempSubdirectory("portatlas-window-").FullName;
+    private readonly string _root = Directory.CreateTempSubdirectory("portatlas-window-").FullName;
+    private string _directory => Path.Combine(_root, "profiles");
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
+    public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [AvaloniaFact]
     public void MainWindow_WhenShown_ListsEveryCatalogCommand()
@@ -38,7 +39,9 @@ public sealed class MainWindowTests : IDisposable
             new NoOpRunner(),
             new NullFilePicker(),
             new ImmediateDispatcher(),
-            new ProfileStore(new FixedDirectory(_directory)));
+            new ProfileStore(new FixedDirectory(_directory)),
+            new AlwaysConfirm(),
+            new UserPreferencesStore(new FixedDirectory(_directory)));
 
         var window = new MainWindow { DataContext = vm };
 
@@ -64,7 +67,9 @@ public sealed class MainWindowTests : IDisposable
             runner,
             new NullFilePicker(),
             new ImmediateDispatcher(),
-            new ProfileStore(new FixedDirectory(_directory)));
+            new ProfileStore(new FixedDirectory(_directory)),
+            new AlwaysConfirm(),
+            new UserPreferencesStore(new FixedDirectory(_directory)));
 
         var window = new MainWindow { DataContext = vm };
 
@@ -79,6 +84,11 @@ public sealed class MainWindowTests : IDisposable
         vm.Run.State.Should().Be(RunState.Completed);
         vm.Run.ExitCode.Should().Be(0);
         File.Exists(configPath).Should().BeTrue();
+    }
+
+    private sealed class AlwaysConfirm : IConfirmationService
+    {
+        public Task<bool> ConfirmAsync(string message, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class NoOpRunner : IPortAtlasRunner
