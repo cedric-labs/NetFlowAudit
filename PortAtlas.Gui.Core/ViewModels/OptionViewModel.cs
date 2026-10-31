@@ -229,7 +229,33 @@ public sealed partial class ChoiceOptionViewModel(
     /// </summary>
     public IReadOnlyList<string> AcceptedValues => Descriptor.AcceptedValues;
 
-    partial void OnSelectedValueChanged(string? value) => NotifyChanged();
+    /// <summary>
+    /// Accepted values with their explanation, for the drop-down list.
+    /// </summary>
+    public IReadOnlyList<ChoiceItem> Choices => _choices ??= [.. AcceptedValues.Select(value => new ChoiceItem(value, ChoiceValueDescriptions.For(Name, value)))];
+
+    /// <summary>
+    /// Selected entry of <see cref="Choices"/>, or <see langword="null"/> when the option is omitted.
+    /// </summary>
+    public ChoiceItem? SelectedChoice
+    {
+        get => Choices.FirstOrDefault(choice => string.Equals(choice.Value, SelectedValue, StringComparison.Ordinal));
+        set => SelectedValue = value?.Value;
+    }
+
+    /// <summary>
+    /// Explanation of the selected value, empty when nothing is selected.
+    /// </summary>
+    public string SelectedValueDescription => SelectedChoice?.Description ?? string.Empty;
+
+    private IReadOnlyList<ChoiceItem>? _choices;
+
+    partial void OnSelectedValueChanged(string? value)
+    {
+        OnPropertyChanged(nameof(SelectedChoice));
+        OnPropertyChanged(nameof(SelectedValueDescription));
+        NotifyChanged();
+    }
 
     [RelayCommand]
     private void Clear() => SelectedValue = null;

@@ -95,9 +95,19 @@
         <TextBlock Classes="label" Text="{Binding Name}" />
         <TextBlock Classes="hint" Text="{Binding Description}" />
         <Grid ColumnDefinitions="*,Auto">
-          <ComboBox Grid.Column="0" ItemsSource="{Binding AcceptedValues}" SelectedItem="{Binding SelectedValue}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Name}" />
+          <ComboBox Grid.Column="0" ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Name}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="catalog:ChoiceItem">
+                <StackPanel Spacing="1" ToolTip.Tip="{Binding Description}">
+                  <TextBlock Text="{Binding Value}" />
+                  <TextBlock Classes="hint" Text="{Binding Description}" MaxWidth="420" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <Button Grid.Column="1" Command="{Binding ClearCommand}" Margin="6,0,0,0"><StackPanel Classes="iconButton"><PathIcon Classes="icon" Data="{StaticResource Icon.Close}" /><TextBlock Text="Clear" /></StackPanel></Button>
         </Grid>
+        <TextBlock Classes="hint" Text="{Binding SelectedValueDescription}" IsVisible="{Binding SelectedValueDescription, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       </StackPanel>
     </DataTemplate>
 
